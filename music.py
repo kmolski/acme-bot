@@ -1,3 +1,4 @@
+from asyncio import run_coroutine_threadsafe
 from random import shuffle
 
 import youtube_dl
@@ -36,12 +37,12 @@ class MusicPlaylist:
         return len(self.__list)
 
     def remove(self, index):
-        self.__list.pop(index)
+        return self.__list.pop(index)
 
     def last(self):
         return self.__index >= len(self.__list) - 1
 
-    def add_to_queue(self, elem):
+    def append(self, elem):
         self.__list.append(elem)
 
     def get_queue(self):
@@ -54,7 +55,7 @@ class MusicPlaylist:
         if not self.loop and self.__index != 0:
             entry_list += "\n\n------------------------------------\n"
         for entry in enumerate(
-            self.__list[:self.__index], start=len(self.__list) - self.__index
+                self.__list[:self.__index], start=len(self.__list) - self.__index
         ):
             minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
             entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
@@ -108,15 +109,20 @@ class MusicPlayer:
             self.__voice_client.source.volume = volume
 
     def __play_next(self, err):
-        current = self.playlist.offset_index()
-
         if err:
+            # TODO: Proper logging!
             print("ERROR: Playback ended with {}!".format(err))
             return
         if self.playlist.last() and not self.playlist.loop:
             self.stopped = True
+
+        current = self.playlist.offset_index()
+
         if not self.stopped:
-            self.__event_loop.create_task(self.start_playing(current))
+            future = run_coroutine_threadsafe(
+                self.start_playing(current), self.__event_loop
+            )
+            future.result()
 
     async def start_playing(self, current):
         audio = discord.PCMVolumeTransformer(
@@ -124,6 +130,7 @@ class MusicPlayer:
             volume=self.__volume,
         )
 
+        # TODO: Handle FFMPEG errors gracefully
         self.__voice_client.play(audio, after=self.__play_next)
         await self.__text_channel.send(
             "Playing {title} by {uploader}.".format(**current)
@@ -131,6 +138,9 @@ class MusicPlayer:
 
 
 class MusicModule(commands.Cog):
+    """This module handles commands related to playing music."""
+
+    # TODO: Remove unnecessary options
     YT_DOWNLOAD_OPTIONS = {
         "format": "bestaudio/best",
         "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
@@ -145,6 +155,7 @@ class MusicModule(commands.Cog):
         "source_address": "0.0.0.0",
     }
 
+    # TODO: Should probably be its own object & class.
     YT_DOWNLOADER = youtube_dl.YoutubeDL(YT_DOWNLOAD_OPTIONS)
 
     def __init__(self, bot):
@@ -152,21 +163,30 @@ class MusicModule(commands.Cog):
         self.__queues = {}
 
     def get_player(self, ctx):
+        """Returns a MusicPlayer instance for the channel in the current context."""
         return self.__queues[ctx.voice_client.channel.id]
 
     @commands.command()
     async def leave(self, ctx):
+        """Removes the bot from the channel in the current context."""
+        if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
+            self.get_player(ctx).stopped = True
+            ctx.voice_client.stop()
+
         self.__queues.pop(ctx.voice_client.channel.id)
         await ctx.voice_client.disconnect()
         await ctx.send("Quitting the voice channel.")
 
     # Add proper error handling
     @commands.command()
-    async def play(self, ctx, *, search_query):
+    async def play(self, ctx, *, query):
+        """Searches for and plays a video from YouTube
+        on the channel in the current context."""
         async with ctx.typing():
             # Get video list for query
+            # TODO: Run this asynchronously (maybe in a threadpool)
             results = MusicModule.YT_DOWNLOADER.extract_info(
-                "ytsearch10:" + search_query, download=False
+                "ytsearch10:" + query, download=False
             )["entries"]
             # Assemble and display menu
             menu = "Choose one of the following results:"
@@ -174,23 +194,66 @@ class MusicModule(commands.Cog):
                 menu += "\n{}. {title} - {uploader}".format(str(index), **entry)
             await ctx.send(menu)
 
-        response = await self.bot.wait_for(
-            "message", check=lambda m: m.content.isnumeric() and int(m.content) < 10
-        )
+        def pred(msg):
+            return (
+                msg.channel == ctx.channel
+                and msg.author == ctx.author
+                and msg.content.isnumeric()
+                and int(msg.content) < 10
+            )
+
+        response = await self.bot.wait_for("message", check=pred, timeout=30.0)
         current = results[int(response.content)]
 
         player = self.get_player(ctx)
-        player.playlist.add_to_queue(current)
+        player.playlist.append(current)
 
-        if ctx.voice_client.is_playing() or player.stopped:
+        if (
+                ctx.voice_client.is_playing()
+                or ctx.voice_client.is_paused()
+                or player.stopped
+        ):
             await ctx.send(
                 "{title} by {uploader} added to the queue.".format(**current)
             )
         else:
             await player.start_playing(current)
 
+    @commands.command(name="play-url")
+    async def play_url(self, ctx, *, url_list):
+        """Plays a YouTube video or playlist on
+        the channel in the current context."""
+        results = []
+        async with ctx.typing():
+            for url in url_list.split():
+                result = MusicModule.YT_DOWNLOADER.extract_info(url, download=False)
+                if "extractor" in result and result["extractor"] == "youtube":
+                    results.append(result)
+                else:
+                    ctx.send("Provided URL does not lead to a video!")
+                    return
+
+        player = self.get_player(ctx)
+        message = ""
+        for elem in results:
+            player.playlist.append(elem)
+            if (
+                    ctx.voice_client.is_playing()
+                    or ctx.voice_client.is_paused()
+                    or player.stopped
+            ):
+                message += "\n{title} by {uploader}".format(**elem)
+            else:
+                await player.start_playing(elem)
+
+        if message:
+            await ctx.send("Videos added to the queue: " + message)
+
     @commands.command()
     async def back(self, ctx, offset: int = -1):
+        """Plays the previous video from the current queue
+        based on the provided offset."""
+
         player = self.get_player(ctx)
         player.playlist.set_offset(offset)
         if ctx.voice_client.is_playing():
@@ -198,6 +261,9 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1):
+        """Plays the next video from the current queue
+        based on the provided offset."""
+
         player = self.get_player(ctx)
         player.playlist.set_offset(offset)
         if ctx.voice_client.is_playing():
@@ -205,24 +271,29 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def loop(self, ctx, loop: bool):
+        """Sets looping behaviour of the current playlist."""
         self.get_player(ctx).playlist.loop = loop
         await ctx.send("Playlist loop {}.".format("on" if loop else "off"))
 
     @commands.command()
     async def pause(self, ctx):
+        """Pauses the player on the channel in the current context."""
         ctx.voice_client.pause()
         await ctx.send("Paused.")
 
     @commands.command()
     async def queue(self, ctx):
+        """Displays the queue of the channel in the current context."""
         await ctx.send(self.get_player(ctx).playlist.get_queue())
 
     @commands.command()
     async def playlist(self, ctx):
+        """Displays the playlist of the channel in the current context."""
         await ctx.send(self.get_player(ctx).playlist.get_playlist())
 
     @commands.command()
     async def resume(self, ctx):
+        """Resumes the player on the channel in the current context."""
         player = self.get_player(ctx)
         if ctx.voice_client.is_paused():
             ctx.voice_client.resume()
@@ -237,15 +308,13 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def shuffle(self, ctx):
+        """Shuffles the playlist of the channel in the current context."""
         self.get_player(ctx).playlist.shuffle()
         await ctx.send("Queue shuffled.")
 
     @commands.command()
-    async def unique(self, ctx):
-        self.get_player(ctx).playlist.unique()
-
-    @commands.command()
     async def clear(self, ctx):
+        """Clear the playlist of the channel in the current context."""
         player = self.get_player(ctx)
         player.stopped = True
         ctx.voice_client.stop()
@@ -254,12 +323,14 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx):
+        """Stops the player on the channel in the current context."""
         self.get_player(ctx).stopped = True
         ctx.voice_client.stop()
         await ctx.send("Stopped.")
 
     @commands.command()
     async def volume(self, ctx, volume: int):
+        """Changes the volume of the player on the channel in the current context."""
         if volume in range(0, 101):
             self.get_player(ctx).volume = volume / 100
             await ctx.send("Volume is now at {}%.".format(volume))
@@ -268,6 +339,8 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def current(self, ctx):
+        """Displays information about the video that is being played
+        in the current context."""
         await ctx.send(
             "Playing {title} by {uploader} now.\n{webpage_url}".format(
                 **self.get_player(ctx).playlist.current
@@ -276,14 +349,14 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def remove(self, ctx, index: int):
+        """Removes a video from the playlist in the current context."""
         player = self.get_player(ctx)
         if index in range(0, player.playlist.length):
             await ctx.send(
-                "{title} by {uploader} removed from queue.".format(
-                    **player.playlist.current
+                "{title} by {uploader} removed from the playlist.".format(
+                    **player.playlist.remove(index)
                 )
             )
-            player.playlist.remove(index)
             if index == player.playlist.index:
                 player.playlist.set_offset(0)
                 ctx.voice_client.stop()
@@ -291,7 +364,11 @@ class MusicModule(commands.Cog):
             await ctx.send("Incorrect playlist index!")
 
     @play.before_invoke
+    @play_url.before_invoke
     async def ensure_voice_or_join(self, ctx):
+        """Ensures that the author of the message is in a voice channel,
+        otherwise joins the author's voice channel.
+        """
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -315,9 +392,11 @@ class MusicModule(commands.Cog):
     @resume.before_invoke
     @shuffle.before_invoke
     @stop.before_invoke
-    @unique.before_invoke
     @volume.before_invoke
     async def ensure_voice_or_fail(self, ctx):
+        """Ensures that the author of the message is in a voice channel,
+        otherwise throws an exception that prevents a command from executing.
+        """
         if ctx.voice_client is None:
             await ctx.send("You are not connected to a voice channel.")
             raise commands.CommandError("Author not connected to a voice channel.")
@@ -325,6 +404,7 @@ class MusicModule(commands.Cog):
     @pause.before_invoke
     @stop.before_invoke
     async def ensure_playing(self, ctx):
+        """Ensures that the player for the current context is not paused nor stopped."""
         if not ctx.voice_client.is_playing:
             await ctx.send("Nothing is being played now.")
             raise commands.CommandError("No playback in the voice channel.")
