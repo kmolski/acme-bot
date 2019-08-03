@@ -11,6 +11,10 @@ black = "*"
 [packages]
 discord-py = {extras = ["voice"],version = "*"}
 youtube-dl = "*"
+textx = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

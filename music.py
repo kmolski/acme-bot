@@ -1,4 +1,5 @@
-from asyncio import run_coroutine_threadsafe
+"""This module provides music playback functionality to the bot."""
+from asyncio import run_coroutine_threadsafe, TimeoutError
 from random import shuffle
 
 import youtube_dl
@@ -47,7 +48,7 @@ class MusicPlaylist:
 
     def get_queue(self):
         entry_list = "Current queue:"
-        for entry in enumerate(self.__list[self.__index:]):
+        for entry in enumerate(self.__list[self.__index :]):
             minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
             entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
                 entry[0], minutes, seconds, **entry[1]
@@ -55,7 +56,7 @@ class MusicPlaylist:
         if not self.loop and self.__index != 0:
             entry_list += "\n\n------------------------------------\n"
         for entry in enumerate(
-                self.__list[:self.__index], start=len(self.__list) - self.__index
+            self.__list[: self.__index], start=len(self.__list) - self.__index
         ):
             minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
             entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
@@ -115,6 +116,11 @@ class MusicPlayer:
             return
         if self.playlist.last() and not self.playlist.loop:
             self.stopped = True
+            future = run_coroutine_threadsafe(
+                self.__text_channel.send("Queue is empty, resume to keep playing."),
+                self.__event_loop,
+            )
+            future.result()
 
         current = self.playlist.offset_index()
 
@@ -179,19 +185,19 @@ class MusicModule(commands.Cog):
 
     # Add proper error handling
     @commands.command()
-    async def play(self, ctx, *, query):
+    async def play(self, ctx, *query):
         """Searches for and plays a video from YouTube
         on the channel in the current context."""
         async with ctx.typing():
             # Get video list for query
-            # TODO: Run this asynchronously (maybe in a threadpool)
-            results = MusicModule.YT_DOWNLOADER.extract_info(
-                "ytsearch10:" + query, download=False
+            # TODO: Run this asynchronously
+            results = self.YT_DOWNLOADER.extract_info(
+                "ytsearch10:" + " ".join(query), download=False
             )["entries"]
             # Assemble and display menu
             menu = "Choose one of the following results:"
             for index, entry in enumerate(results):
-                menu += "\n{}. {title} - {uploader}".format(str(index), **entry)
+                menu += "\n{}. {title} - {uploader}".format(index, **entry)
             await ctx.send(menu)
 
         def pred(msg):
@@ -202,16 +208,21 @@ class MusicModule(commands.Cog):
                 and int(msg.content) < 10
             )
 
-        response = await self.bot.wait_for("message", check=pred, timeout=30.0)
+        try:
+            response = await self.bot.wait_for("message", check=pred, timeout=30.0)
+        except TimeoutError:
+            await ctx.send("Selection expired.")
+            return
+
         current = results[int(response.content)]
 
         player = self.get_player(ctx)
         player.playlist.append(current)
 
         if (
-                ctx.voice_client.is_playing()
-                or ctx.voice_client.is_paused()
-                or player.stopped
+            ctx.voice_client.is_playing()
+            or ctx.voice_client.is_paused()
+            or player.stopped
         ):
             await ctx.send(
                 "{title} by {uploader} added to the queue.".format(**current)
@@ -220,13 +231,13 @@ class MusicModule(commands.Cog):
             await player.start_playing(current)
 
     @commands.command(name="play-url")
-    async def play_url(self, ctx, *, url_list):
+    async def play_url(self, ctx, url_list):
         """Plays a YouTube video or playlist on
         the channel in the current context."""
         results = []
         async with ctx.typing():
             for url in url_list.split():
-                result = MusicModule.YT_DOWNLOADER.extract_info(url, download=False)
+                result = self.YT_DOWNLOADER.extract_info(url, download=False)
                 if "extractor" in result and result["extractor"] == "youtube":
                     results.append(result)
                 else:
@@ -238,9 +249,9 @@ class MusicModule(commands.Cog):
         for elem in results:
             player.playlist.append(elem)
             if (
-                    ctx.voice_client.is_playing()
-                    or ctx.voice_client.is_paused()
-                    or player.stopped
+                ctx.voice_client.is_playing()
+                or ctx.voice_client.is_paused()
+                or player.stopped
             ):
                 message += "\n{title} by {uploader}".format(**elem)
             else:
@@ -365,6 +376,7 @@ class MusicModule(commands.Cog):
 
     @play.before_invoke
     @play_url.before_invoke
+    @volume.before_invoke
     async def ensure_voice_or_join(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         otherwise joins the author's voice channel.
@@ -392,7 +404,6 @@ class MusicModule(commands.Cog):
     @resume.before_invoke
     @shuffle.before_invoke
     @stop.before_invoke
-    @volume.before_invoke
     async def ensure_voice_or_fail(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         otherwise throws an exception that prevents a command from executing.

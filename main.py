@@ -4,8 +4,7 @@ from os import environ
 from discord.ext import commands
 
 from music import MusicModule
-
-# from shell import ShellModule
+from shell import ShellModule
 
 
 def get_token_from_env():
@@ -28,5 +27,6 @@ if __name__ == "__main__":
         print("ACME Universal Bot started!")
 
     CLIENT.add_cog(MusicModule(CLIENT))
+    CLIENT.add_cog(ShellModule(CLIENT))
 
     CLIENT.run(get_token_from_env())

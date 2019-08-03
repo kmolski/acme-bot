@@ -2,6 +2,7 @@ FROM alpine
 
 ENV DIR /opt/acme-bot
 
+# TODO: Consider whether libffi-dev should be a build dependency or not.
 ENV DEPS ffmpeg libffi-dev python3-dev
 ENV BUILD_DEPS gcc make musl-dev
 
