@@ -398,7 +398,6 @@ class MusicModule(commands.Cog):
     @leave.before_invoke
     @loop.before_invoke
     @pause.before_invoke
-    @playlist.before_invoke
     @queue.before_invoke
     @remove.before_invoke
     @resume.before_invoke
@@ -406,7 +405,7 @@ class MusicModule(commands.Cog):
     @stop.before_invoke
     async def ensure_voice_or_fail(self, ctx):
         """Ensures that the author of the message is in a voice channel,
-        otherwise throws an exception that prevents a command from executing.
+        otherwise throws an exception that prevents the command from executing.
         """
         if ctx.voice_client is None:
             await ctx.send("You are not connected to a voice channel.")

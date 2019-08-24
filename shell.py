@@ -6,28 +6,29 @@ from textx import metamodel_from_str
 
 
 class ExprSeq:
-    def __init__(self, parent=None, expr=None):
+    def __init__(self, parent=None, expr_comps=None):
         self.parent = parent
-        self.expr = expr
+        self.expr_comps = expr_comps
 
-    async def eval(self, ctx):
+    async def eval(self, ctx, display=True):
         result = ""
-        for elem in self.expr:
-            ret = await elem.eval(ctx)
+        for elem in self.expr_comps:
+            ret = await elem.eval(ctx, display)
             if ret is not None:
                 result += ret
         return result
 
 
 class ExprComp:
-    def __init__(self, parent, expr):
+    def __init__(self, parent, exprs):
         self.parent = parent
-        self.expr = expr
+        self.exprs = exprs
 
-    async def eval(self, ctx):
-        result, data = "", ""
-        for elem in self.expr:
-            result = await elem.eval(ctx, data)
+    async def eval(self, ctx, display):
+        data, result = "", ""
+        end = len(self.exprs) - 1
+        for index, elem in enumerate(self.exprs):
+            result = await elem.eval(ctx, data, display=display and (index == end))
             data = result
         return result
 
@@ -38,32 +39,24 @@ class Command:
         self.name = name
         self.args = args
 
-    async def eval(self, ctx, data):
-        #   result = []
-        #   async def get_output(
-        #       content=None,
-        #       *,
-        #       tts=False,
-        #       embed=None,
-        #       file=None,
-        #       files=None,
-        #       delete_after=None,
-        #       nonce=None
-        #   ):
-        #       result += (content, tts, embed, file, files, delete_after, nonce)
+    async def eval(self, ctx, data, *, display):
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
-            raise commands.errors.CommandNotFound(
-                'Command "{}" is not found'.format(ctx.invoked_with)
+            raise commands.CommandError(
+                "Command '{}' not found".format(ctx.invoked_with)
             )
 
-        await cmd._verify_checks(ctx)
+        # Unfortunately there is no way to respect command
+        # checks without accessing this protected method.
+        await cmd._verify_checks(ctx)  # pylint: disable=protected-access
         await cmd.call_before_hooks(ctx)
 
-        args = [ctx] if cmd.cog is None else [cmd.cog, ctx]
-        args += [data] if data else []
-        args += [await elem.eval(ctx) for elem in self.args]
-        result = await cmd.callback(*args)
+        args = (
+            ([ctx] if cmd.cog is None else [cmd.cog, ctx])
+            + ([data] if data else [])
+            + ([await elem.eval(ctx, display=False) for elem in self.args])
+        )
+        result = await cmd.callback(*args, display=display)
 
         await cmd.call_after_hooks(ctx)
         return result
@@ -74,7 +67,9 @@ class StrLiteral:
         self.parent = parent
         self.value = value
 
-    async def eval(self, *_):
+    async def eval(self, ctx, *_, display):
+        if display:
+            await ctx.send("```\n{}\n```".format(self.value))
         return self.value
 
 
@@ -83,7 +78,7 @@ class IntLiteral:
         self.parent = parent
         self.value = value
 
-    async def eval(self, *_):
+    async def eval(self, *_, **__):
         return self.value
 
 
@@ -92,7 +87,7 @@ class BoolLiteral:
         self.parent = parent
         self.value = value
 
-    async def eval(self, *_):
+    async def eval(self, *_, **__):
         return self.value
 
 
@@ -101,64 +96,50 @@ class FileContent:
         self.parent = parent
         self.name = name
 
-    async def eval(self, ctx, *_):
+    async def eval(self, ctx, *_, display):
         for elem in ctx.message.attachments:
             if elem.filename == self.name:
-                return str(await elem.read(), errors="replace")
+                content = str(await elem.read(), errors="replace")
+                if display:
+                    await ctx.send("```\n{}\n```".format(content))
+                return content
 
-        raise ValueError("No such file!")
+        raise commands.CommandError("No such file!")
 
 
 class ExprSubst:
-    def __init__(self, parent, expr):
+    def __init__(self, parent, expr_seq):
         self.parent = parent
-        self.expr = expr
+        self.expr_seq = expr_seq
 
-    async def eval(self, ctx, *_):
-        return await self.expr.eval(ctx)
+    async def eval(self, ctx, *_, display):
+        result = await self.expr_seq.eval(ctx)
+        if display:
+            await ctx.send("```\n{}\n```".format(result))
+        return result
 
 
 class ShellModule(commands.Cog):
     GRAMMAR = """
-ExprSeq:
-    expr=ExprComp ('&&'- expr=ExprComp)*
-;
+ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
 
-ExprComp:
-    expr=Expr ('|'- expr=Expr)*
-;
+ExprComp: exprs=Expr ('|'- exprs=Expr)* ;
 
-Expr:
-    Command | StrLiteral | FileContent | ExprSubst
-;
+Expr: Command | StrLiteral | FileContent | ExprSubst;
 
-Command:
-    name=/[\\w\\-]*\\b/ args*=Argument
-;
+Command: name=/[\\w\\-]*\\b/ args*=Argument;
 
-Argument:
-    StrLiteral | IntLiteral | BoolLiteral | FileContent | ExprSubst
-;
+Argument: StrLiteral | IntLiteral | BoolLiteral | FileContent | ExprSubst;
 
-StrLiteral:
-    value=STRING
-;
+StrLiteral: value=STRING;
 
-IntLiteral:
-    value=INT
-;
+IntLiteral: value=INT;
 
-BoolLiteral:
-    value=BOOL
-;
+BoolLiteral: value=BOOL;
 
-FileContent:
-    '['- name=/[\\w\\-_. '"]+/ ']'-
-;
+FileContent: '['- name=/[\\w\\-_. '"]+/ ']'- ;
 
-ExprSubst:
-    '('- expr=ExprSeq ')'-
-;
+ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 """
 
     META_MODEL = metamodel_from_str(
