@@ -1,25 +1,22 @@
 FROM alpine
 
+ENV DISCORD_TOKEN ""
+
 ENV DIR /opt/acme-bot
-
-# TODO: Consider whether libffi-dev should be a build dependency or not.
-ENV DEPS ffmpeg libffi-dev python3-dev
-ENV BUILD_DEPS gcc make musl-dev
-
 RUN mkdir -p ${DIR}
 
-COPY *.py ${DIR}/
-COPY Pipfile ${DIR}/
+ENV BUILD_DEPS gcc libffi-dev make musl-dev
+ENV DEPS ffmpeg python3-dev
 
-RUN apk update
-RUN apk add ${BUILD_DEPS} ${DEPS}
-RUN pip3 install pipenv
+RUN apk update && apk add ${BUILD_DEPS} ${DEPS}
 
 WORKDIR ${DIR}
-RUN pipenv lock --pre
-RUN pipenv install --pre --deploy --system
+COPY requirements.txt ${DIR}/
+
+RUN pip3 install -r requirements.txt
 
 RUN apk del ${BUILD_DEPS}
 
-ENV DISCORD_TOKEN ""
+COPY *.py ${DIR}/
+
 ENTRYPOINT ["/opt/acme-bot/main.py"]

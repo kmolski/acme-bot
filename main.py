@@ -26,6 +26,20 @@ if __name__ == "__main__":
         """Prints a message to stdout once the bot has started."""
         print("ACME Universal Bot started!")
 
+    @CLIENT.event
+    async def on_command_error(ctx, error):
+        # TODO: Improve the command error handling
+        # if isinstance(error, commands.Command)
+        await ctx.send("An error occured: {}".format(error))
+
+    @CLIENT.event
+    async def on_disconnect():
+        print("Disconnected!")
+
+    @CLIENT.event
+    async def on_resumed():
+        print("Connection resumed!")
+
     CLIENT.add_cog(MusicModule(CLIENT))
     CLIENT.add_cog(ShellModule(CLIENT))
 
