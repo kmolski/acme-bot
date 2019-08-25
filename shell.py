@@ -157,29 +157,50 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
     )
 
     @commands.command(name="!")
-    async def execute(self, ctx, *, expr):
-        model = self.META_MODEL.model_from_str(expr)
-        result = await model.eval(ctx)
-        if result:
-            await ctx.send(result)
+    async def execute(self, ctx, *, expression):
+        model = self.META_MODEL.model_from_str(expression)
+        await model.eval(ctx)
 
-    @commands.command()
-    async def concat(self, _, *args):
-        content = " ".join(args)
+    @commands.command(aliases=["cat"])
+    async def concat(self, ctx, *arguments, display=True):
+        arguments = [str(element) for element in arguments]
+        content = "".join(arguments)
+        if display:
+            await ctx.send(content)
         return content
 
     @commands.command()
-    async def ping(self, ctx):
-        start = datetime.now()
-        msg = await ctx.send("Meep!")
-        await msg.edit(
-            content="Meep meep! {}ms.".format(
-                (datetime.now() - start).microseconds // 1000
-            )
-        )
+    async def join(self, ctx, *arguments, display=True):
+        *arguments, separator = [str(element) for element in arguments]
+        content = separator.join(arguments)
+        if display:
+            await ctx.send(content)
+        return content
 
-    @commands.command(name="to-file")
-    async def to_file(self, ctx, content, filename):
+    @commands.command()
+    async def pretty(self, ctx, content, file_format, *, display=True):
+        content = "```{}\n{}\n```".format(file_format, content)
+        if display:
+            await ctx.send(content)
+        return content
+
+    @commands.command()
+    async def ping(self, ctx, *_, display=True):
+        start = datetime.now()
+        await ctx.message.add_reaction("\U0001F3D3")
+        milliseconds = str((datetime.now() - start).microseconds // 1000)
+        if display:
+            await ctx.send("\U0001F4A8 Meep meep! {} ms.".format(milliseconds))
+        return milliseconds
+
+    @commands.command(name="to-file", aliases=["tee"])
+    async def to_file(self, ctx, content, file_name, *_, display=True):
+        content, file_name = str(content), str(file_name)
         with StringIO(content) as stream:
-            new_file = File(stream, filename=filename)
-            await ctx.send("Created file {}.".format(filename), file=new_file)
+            new_file = File(stream, filename=file_name)
+            await ctx.send(
+                "\U0001F4BE Created file '{}'.".format(file_name), file=new_file
+            )
+            if display:
+                await ctx.send("```\n{}\n```".format(content))
+        return content

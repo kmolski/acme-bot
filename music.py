@@ -1,10 +1,12 @@
 """This module provides music playback functionality to the bot."""
-from asyncio import run_coroutine_threadsafe, TimeoutError
+from asyncio import run_coroutine_threadsafe
+from concurrent import futures
+from math import ceil
 from random import shuffle
 
 import youtube_dl
-import discord
 
+import discord
 from discord.ext import commands
 
 youtube_dl.utils.bug_reports_message = lambda: ""
@@ -162,15 +164,16 @@ class MusicModule(commands.Cog):
     }
 
     # TODO: Should probably be its own object & class.
+    # Should run searches asynchronously by itself?
     YT_DOWNLOADER = youtube_dl.YoutubeDL(YT_DOWNLOAD_OPTIONS)
 
     def __init__(self, bot):
         self.bot = bot
-        self.__queues = {}
+        self.__players = {}
 
     def get_player(self, ctx):
         """Returns a MusicPlayer instance for the channel in the current context."""
-        return self.__queues[ctx.voice_client.channel.id]
+        return self.__players[ctx.voice_client.channel.id]
 
     @commands.command()
     async def leave(self, ctx):
@@ -179,7 +182,7 @@ class MusicModule(commands.Cog):
             self.get_player(ctx).stopped = True
             ctx.voice_client.stop()
 
-        self.__queues.pop(ctx.voice_client.channel.id)
+        self.__players.pop(ctx.voice_client.channel.id)
         await ctx.voice_client.disconnect()
         await ctx.send("Quitting the voice channel.")
 
@@ -198,7 +201,7 @@ class MusicModule(commands.Cog):
             menu = "Choose one of the following results:"
             for index, entry in enumerate(results):
                 menu += "\n{}. {title} - {uploader}".format(index, **entry)
-            await ctx.send(menu)
+            menu_msg = await ctx.send(menu)
 
         def pred(msg):
             return (
@@ -210,9 +213,9 @@ class MusicModule(commands.Cog):
 
         try:
             response = await self.bot.wait_for("message", check=pred, timeout=30.0)
-        except TimeoutError:
-            await ctx.send("Selection expired.")
-            return
+        except futures.TimeoutError:
+            await menu_msg.edit(content="\U0001F552 Selection expired.")
+            raise
 
         current = results[int(response.content)]
 
@@ -384,7 +387,7 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
-                self.__queues[ctx.voice_client.channel.id] = MusicPlayer(
+                self.__players[ctx.voice_client.channel.id] = MusicPlayer(
                     self.bot.loop, ctx.voice_client, ctx.message.channel
                 )
             else:
@@ -414,7 +417,9 @@ class MusicModule(commands.Cog):
     @pause.before_invoke
     @stop.before_invoke
     async def ensure_playing(self, ctx):
-        """Ensures that the player for the current context is not paused nor stopped."""
+        """Ensures that the player for the current
+        context is neither paused nor stopped.
+        """
         if not ctx.voice_client.is_playing:
             await ctx.send("Nothing is being played now.")
             raise commands.CommandError("No playback in the voice channel.")
