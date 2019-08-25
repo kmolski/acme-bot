@@ -190,7 +190,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         await ctx.message.add_reaction("\U0001F3D3")
         milliseconds = str((datetime.now() - start).microseconds // 1000)
         if display:
-            await ctx.send("\U0001F4A8 Meep meep! {} ms.".format(milliseconds))
+            await ctx.send("\U0001F4A8 Meep meep! **{} ms**.".format(milliseconds))
         return milliseconds
 
     @commands.command(name="to-file", aliases=["tee"])
@@ -199,7 +199,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
             await ctx.send(
-                "\U0001F4BE Created file '{}'.".format(file_name), file=new_file
+                "\U0001F4BE Created file **{}**.".format(file_name), file=new_file
             )
             if display:
                 await ctx.send("```\n{}\n```".format(content))

@@ -60,7 +60,7 @@ class MusicQueue:
 def format_queue_entry(index, entry):
     duration = ceil(entry["duration"])
     minutes, seconds = duration // 60, duration % 60
-    return "\n{}. {title} - {uploader} - {}:{:02}".format(
+    return "\n{}. **{title}** - {uploader} - {}:{:02}".format(
         index, minutes, seconds, **entry
     )
 
@@ -117,7 +117,7 @@ class MusicPlayer(MusicQueue):
         if self.__voice_client.is_paused():
             self.__voice_client.resume()
             await self.__text_channel.send(
-                "\u25B6 Playing {title} by {uploader}.".format(**self.current)
+                "\u25B6 Playing **{title}** by {uploader}.".format(**self.current)
             )
         elif self.__stopped:
             self.__stopped = False
@@ -130,7 +130,7 @@ class MusicPlayer(MusicQueue):
         for index, entry in enumerate(self.playlist[self.index :]):
             entry_list += format_queue_entry(index, entry)
         if not self.loop and self.index != 0:
-            entry_list += "\n\n------------------------------------\n"
+            entry_list += "\n------------------------------------\n"
         for index, entry in enumerate(
             self.playlist[: self.index], start=len(self.playlist) - self.index
         ):
@@ -150,32 +150,28 @@ class MusicPlayer(MusicQueue):
             # TODO: Proper logging!
             print("ERROR: Playback ended with {}!".format(err))
             return
-        if self.playlist.last() and not self.playlist.loop:
-            self.stopped = True
-            future = run_coroutine_threadsafe(
-                self.__text_channel.send("Queue is empty, resume to keep playing."),
+        if self.on_last and not self.loop:
+            self.__stopped = True
+            run_coroutine_threadsafe(
+                self.__text_channel.send("The queue is empty, resume to keep playing."),
                 self.__event_loop,
-            )
-            future.result()
+            ).result()
 
-        current = self.playlist.offset_index()
-
-        if not self.stopped:
-            future = run_coroutine_threadsafe(
-                self.start_playing(current), self.__event_loop
-            )
-            future.result()
+        if not self.__stopped:
+            run_coroutine_threadsafe(
+                self.start_playing(self.next), self.__event_loop
+            ).result()
 
     async def start_playing(self, current):
         audio = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(current["url"], **MusicPlayer.FFMPEG_OPTIONS),
+            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS),
             volume=self.__volume,
         )
 
         # TODO: Handle FFMPEG errors gracefully
         self.__voice_client.play(audio, after=self.__play_next)
         await self.__text_channel.send(
-            "Playing {title} by {uploader}.".format(**current)
+            "\u25B6 Playing **{title}** by {uploader}.".format(**current)
         )
 
 
@@ -213,8 +209,7 @@ class MusicModule(commands.Cog):
     async def leave(self, ctx):
         """Removes the bot from the channel in the current context."""
         if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
-            self.get_player(ctx).stopped = True
-            ctx.voice_client.stop()
+            self.get_player(ctx).stop()
 
         self.__players.pop(ctx.voice_client.channel.id)
         await ctx.voice_client.disconnect()
@@ -234,7 +229,7 @@ class MusicModule(commands.Cog):
             # Assemble and display menu
             menu = "Choose one of the following results:"
             for index, entry in enumerate(results):
-                menu += "\n{}. {title} - {uploader}".format(index, **entry)
+                menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
             menu_msg = await ctx.send(menu)
 
         def pred(msg):
@@ -248,13 +243,13 @@ class MusicModule(commands.Cog):
         try:
             response = await self.bot.wait_for("message", check=pred, timeout=30.0)
         except futures.TimeoutError:
-            await menu_msg.edit(content="\U0001F552 Selection expired.")
+            await menu_msg.edit(content="\U0001F552 *Selection expired.*")
             raise
 
         current = results[int(response.content)]
 
         player = self.get_player(ctx)
-        player.playlist.append(current)
+        player.add(current)
 
         if (
             ctx.voice_client.is_playing()
@@ -262,7 +257,7 @@ class MusicModule(commands.Cog):
             or player.stopped
         ):
             await ctx.send(
-                "{title} by {uploader} added to the queue.".format(**current)
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(
             )
         else:
             await player.start_playing(current)
@@ -274,48 +269,39 @@ class MusicModule(commands.Cog):
         results = []
         async with ctx.typing():
             for url in url_list.split():
+                # TODO: Run this asynchronously
                 result = self.YT_DOWNLOADER.extract_info(url, download=False)
                 if "extractor" in result and result["extractor"] == "youtube":
                     results.append(result)
                 else:
-                    ctx.send("Provided URL does not lead to a video!")
-                    return
+                    raise ValueError("Provided URL does not lead to a video!")
 
         player = self.get_player(ctx)
         message = ""
         for elem in results:
-            player.playlist.append(elem)
+            player.add(elem)
             if (
                 ctx.voice_client.is_playing()
                 or ctx.voice_client.is_paused()
                 or player.stopped
             ):
-                message += "\n{title} by {uploader}".format(**elem)
+                message += "\n**{title}** by {uploader}".format(**elem)
             else:
                 await player.start_playing(elem)
 
-        if message:
-            await ctx.send("Videos added to the queue: " + message)
+            await ctx.send("\u2795 Videos added to the queue: " + message)
 
     @commands.command()
     async def back(self, ctx, offset: int = -1):
         """Plays the previous video from the current queue
         based on the provided offset."""
-
-        player = self.get_player(ctx)
-        player.playlist.set_offset(offset)
-        if ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
+        self.get_player(ctx).move(offset)
 
     @commands.command()
-    async def forward(self, ctx, offset: int = 1):
+    async def forward(self, ctx, offset: int = 1, **_):
         """Plays the next video from the current queue
         based on the provided offset."""
-
-        player = self.get_player(ctx)
-        player.playlist.set_offset(offset)
-        if ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
+        self.get_player(ctx).move(offset)
 
     @commands.command()
     async def loop(self, ctx, loop: bool):
@@ -342,32 +328,18 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def resume(self, ctx):
         """Resumes the player on the channel in the current context."""
-        player = self.get_player(ctx)
-        if ctx.voice_client.is_paused():
-            ctx.voice_client.resume()
-            await ctx.send(
-                "Playing {title} by {uploader}.".format(**player.playlist.current)
-            )
-        elif player.stopped:
-            player.stopped = False
-            await player.start_playing(player.playlist.current)
-        else:
-            await ctx.send("Not paused!")
+        await self.get_player(ctx).resume()
 
     @commands.command()
     async def shuffle(self, ctx):
         """Shuffles the playlist of the channel in the current context."""
-        self.get_player(ctx).playlist.shuffle()
-        await ctx.send("Queue shuffled.")
+        self.get_player(ctx).shuffle()
 
     @commands.command()
     async def clear(self, ctx):
         """Clear the playlist of the channel in the current context."""
-        player = self.get_player(ctx)
-        player.stopped = True
-        ctx.voice_client.stop()
-        player.playlist.clear()
-        await ctx.send("Playlist cleared.")
+        self.get_player(ctx).stop()
+        self.get_player(ctx).clear()
 
     @commands.command()
     async def stop(self, ctx):
