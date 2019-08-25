@@ -12,94 +12,77 @@ from discord.ext import commands
 youtube_dl.utils.bug_reports_message = lambda: ""
 
 
-class MusicPlaylist:
+class MusicQueue:
     def __init__(self):
-        self.loop = True
-        self.__list = []
         self.__index = 0
         self.__offset = 1
-
-    def set_offset(self, offset):
-        self.__offset = offset
-
-    def offset_index(self):
-        self.__index = (self.__index + self.__offset) % len(self.__list)
-        self.__offset = 1
-        return self.__list[self.__index]
+        self.__playlist = []
 
     @property
     def current(self):
-        return self.__list[self.__index]
+        return self.__playlist[self.__index]
 
     @property
     def index(self):
         return self.__index
 
     @property
-    def length(self):
-        return len(self.__list)
+    def next(self):
+        self.__index = (self.__index + self.__offset) % len(self.__playlist)
+        self.__offset = 1
+        return self.__playlist[self.__index]
 
-    def remove(self, index):
-        return self.__list.pop(index)
+    @property
+    def on_last(self):
+        return self.__playlist and self.__index >= len(self.__playlist) - 1
 
-    def last(self):
-        return self.__index >= len(self.__list) - 1
+    @property
+    def playlist(self):
+        return self.__playlist
 
-    def append(self, elem):
-        self.__list.append(elem)
-
-    def get_queue(self):
-        entry_list = "Current queue:"
-        for entry in enumerate(self.__list[self.__index :]):
-            minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
-            entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
-                entry[0], minutes, seconds, **entry[1]
-            )
-        if not self.loop and self.__index != 0:
-            entry_list += "\n\n------------------------------------\n"
-        for entry in enumerate(
-            self.__list[: self.__index], start=len(self.__list) - self.__index
-        ):
-            minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
-            entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
-                entry[0] % len(self.__list), minutes, seconds, **entry[1]
-            )
-        return entry_list
-
-    def get_playlist(self):
-        entry_list = "Current playlist:"
-        for entry in enumerate(self.__list):
-            minutes, seconds = entry[1]["duration"] // 60, entry[1]["duration"] % 60
-            entry_list += "\n{}. {title} - {uploader} - {}:{:02}".format(
-                entry[0], minutes, seconds, **entry[1]
-            )
-        return entry_list
-
-    def shuffle(self):
-        shuffle(self.__list)
-
-    def unique(self):
-        for key, _ in self.__list[0].items():
-            print("{}\n", key)
+    def add(self, elem):
+        self.__playlist.append(elem)
 
     def clear(self):
-        self.__list.clear()
+        self.__playlist.clear()
         self.__index = 0
 
+    def pop(self, offset):
+        return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
 
-class MusicPlayer:
+    def set_offset(self, new_offset):
+        self.__offset = new_offset
+
+    def shuffle(self):
+        shuffle(self.__playlist)
+
+
+def format_queue_entry(index, entry):
+    duration = ceil(entry["duration"])
+    minutes, seconds = duration // 60, duration % 60
+    return "\n{}. {title} - {uploader} - {}:{:02}".format(
+        index, minutes, seconds, **entry
+    )
+
+
+class MusicPlayer(MusicQueue):
     FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
         "options": "-vn -af dynaudnorm",
     }
 
     def __init__(self, event_loop, voice_client, text_channel):
-        self.playlist = MusicPlaylist()
-        self.stopped = False
+        super().__init__()
         self.__event_loop = event_loop
         self.__voice_client = voice_client
         self.__text_channel = text_channel
+        self.__stopped = False
         self.__volume = 1.0
+        self.loop = True
+
+    @property
+    def stopped(self):
+        return self.__stopped
 
     @property
     def volume(self):
@@ -107,9 +90,60 @@ class MusicPlayer:
 
     @volume.setter
     def volume(self, volume):
-        self.__volume = volume
+        if volume in range(0, 101):
+            self.__volume = volume / 100
         if self.__voice_client.source:
-            self.__voice_client.source.volume = volume
+                self.__voice_client.source.volume = volume / 100
+        else:
+            raise commands.CommandError("Incorrect volume value!")
+
+    def move(self, offset):
+        self.set_offset(offset)
+        if self.__voice_client.is_playing():
+            self.__voice_client.stop()
+
+    def stop(self):
+        self.__stopped = True
+        self.__voice_client.stop()
+
+    def remove(self, offset):
+        elem = self.pop(offset)
+        if offset == 0:
+            self.set_offset(0)
+            self.__voice_client.stop()
+        return elem
+
+    async def resume(self):
+        if self.__voice_client.is_paused():
+            self.__voice_client.resume()
+            await self.__text_channel.send(
+                "\u25B6 Playing {title} by {uploader}.".format(**self.current)
+            )
+        elif self.__stopped:
+            self.__stopped = False
+            await self.start_playing(self.current)
+        else:
+            raise commands.CommandError("This player is not paused!")
+
+    def get_queue_info(self):
+        entry_list = "\U0001F3BC Current queue:"
+        for index, entry in enumerate(self.playlist[self.index :]):
+            entry_list += format_queue_entry(index, entry)
+        if not self.loop and self.index != 0:
+            entry_list += "\n\n------------------------------------\n"
+        for index, entry in enumerate(
+            self.playlist[: self.index], start=len(self.playlist) - self.index
+        ):
+            entry_list += format_queue_entry(index, entry)
+        return entry_list
+
+    def get_queue_ids(self):
+        id_list = ""
+        for entry in self.playlist[self.index :]:
+            id_list += "{id}\n".format(**entry)
+        for entry in self.playlist[: self.index]:
+            id_list += "{id}\n".format(**entry)
+        return id_list
 
     def __play_next(self, err):
         if err:
