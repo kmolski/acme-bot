@@ -92,7 +92,7 @@ class MusicPlayer(MusicQueue):
     def volume(self, volume):
         if volume in range(0, 101):
             self.__volume = volume / 100
-        if self.__voice_client.source:
+            if self.__voice_client.source:
                 self.__voice_client.source.volume = volume / 100
         else:
             raise commands.CommandError("Incorrect volume value!")
@@ -257,11 +257,67 @@ class MusicModule(commands.Cog):
             or ctx.voice_client.is_paused()
             or player.stopped
         ):
-            await ctx.send(
+            if display:
+                await ctx.send(
                     "\u2795 **{title}** by {uploader} added to the queue.".format(
-            )
+                        **current
+                    )
+                )
         else:
             await player.start_playing(current)
+
+        return current["id"]
+
+    @commands.command(name="play-snd")
+    async def play_snd(self, ctx, *query, display=True):
+        """Searches for and plays a video from Soundcloud
+        on the channel in the current context."""
+        async with ctx.typing():
+            # Get video list for query
+            # TODO: Run this asynchronously
+            results = self.YT_DOWNLOADER.extract_info(
+                "scsearch10:" + " ".join(query), download=False
+            )["entries"]
+            # Assemble and display menu
+            menu = "\u2049 Choose one of the following results:"
+            for index, entry in enumerate(results):
+                menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
+            menu_msg = await ctx.send(menu)
+
+        def pred(msg):
+            return (
+                msg.channel == ctx.channel
+                and msg.author == ctx.author
+                and msg.content.isnumeric()
+                and int(msg.content) < 10
+            )
+
+        try:
+            response = await self.bot.wait_for("message", check=pred, timeout=30.0)
+        except futures.TimeoutError:
+            await menu_msg.edit(content="\U0001F552 *Selection expired.*")
+            raise
+
+        current = results[int(response.content)]
+
+        player = self.get_player(ctx)
+        player.add(current)
+
+        if (
+            ctx.voice_client.is_playing()
+            or ctx.voice_client.is_paused()
+            or player.stopped
+        ):
+            if display:
+                await ctx.send(
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(
+                        **current
+                    )
+                )
+        else:
+            await player.start_playing(current)
+
+        return current["id"]
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, url_list, *_, display=True):
@@ -272,7 +328,10 @@ class MusicModule(commands.Cog):
             for url in url_list.split():
                 # TODO: Run this asynchronously
                 result = self.YT_DOWNLOADER.extract_info(url, download=False)
-                if "extractor" in result and result["extractor"] == "youtube":
+                if "extractor" in result and (
+                    result["extractor"] == "youtube"
+                    or result["extractor"] == "soundcloud"
+                ):
                     results.append(result)
                 else:
                     raise ValueError("Provided URL does not lead to a video!")
@@ -374,11 +433,11 @@ class MusicModule(commands.Cog):
         in the current context."""
         current = self.get_player(ctx).current
         if display:
-        await ctx.send(
+            await ctx.send(
                 "\u25B6 Playing **{title}** by {uploader} now.\n{webpage_url}".format(
                     **current
+                )
             )
-        )
         return current["id"]
 
     @commands.command()
@@ -394,6 +453,7 @@ class MusicModule(commands.Cog):
         return removed["id"]
 
     @play.before_invoke
+    @play_snd.before_invoke
     @play_url.before_invoke
     @volume.before_invoke
     async def ensure_voice_or_join(self, ctx):
