@@ -206,18 +206,19 @@ class MusicModule(commands.Cog):
         return self.__players[ctx.voice_client.channel.id]
 
     @commands.command()
-    async def leave(self, ctx):
+    async def leave(self, ctx, *_, display=True):
         """Removes the bot from the channel in the current context."""
         if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
             self.get_player(ctx).stop()
 
         self.__players.pop(ctx.voice_client.channel.id)
         await ctx.voice_client.disconnect()
-        await ctx.send("Quitting the voice channel.")
+        if display:
+            await ctx.send("\u23CF Quitting the voice channel.")
 
     # Add proper error handling
     @commands.command()
-    async def play(self, ctx, *query):
+    async def play(self, ctx, *query, display=True):
         """Searches for and plays a video from YouTube
         on the channel in the current context."""
         async with ctx.typing():
@@ -227,7 +228,7 @@ class MusicModule(commands.Cog):
                 "ytsearch10:" + " ".join(query), download=False
             )["entries"]
             # Assemble and display menu
-            menu = "Choose one of the following results:"
+            menu = "\u2049 Choose one of the following results:"
             for index, entry in enumerate(results):
                 menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
             menu_msg = await ctx.send(menu)
@@ -263,10 +264,10 @@ class MusicModule(commands.Cog):
             await player.start_playing(current)
 
     @commands.command(name="play-url")
-    async def play_url(self, ctx, url_list):
-        """Plays a YouTube video or playlist on
+    async def play_url(self, ctx, url_list, *_, display=True):
+        """Plays a YouTube/Soundcloud track on
         the channel in the current context."""
-        results = []
+        url_list, results = str(url_list), []
         async with ctx.typing():
             for url in url_list.split():
                 # TODO: Run this asynchronously
@@ -289,10 +290,13 @@ class MusicModule(commands.Cog):
             else:
                 await player.start_playing(elem)
 
+        if message and display:
             await ctx.send("\u2795 Videos added to the queue: " + message)
 
+        return url_list
+
     @commands.command()
-    async def back(self, ctx, offset: int = -1):
+    async def back(self, ctx, offset: int = -1, **_):
         """Plays the previous video from the current queue
         based on the provided offset."""
         self.get_player(ctx).move(offset)
@@ -304,84 +308,90 @@ class MusicModule(commands.Cog):
         self.get_player(ctx).move(offset)
 
     @commands.command()
-    async def loop(self, ctx, loop: bool):
+    async def loop(self, ctx, should_loop: bool, *_, display=True):
         """Sets looping behaviour of the current playlist."""
-        self.get_player(ctx).playlist.loop = loop
-        await ctx.send("Playlist loop {}.".format("on" if loop else "off"))
+        self.get_player(ctx).loop = should_loop
+        msg = "on" if should_loop else "off"
+        if display:
+            await ctx.send("\U0001F501 Playlist loop {}.".format(msg))
+        return msg
 
     @commands.command()
-    async def pause(self, ctx):
+    async def pause(self, ctx, *_, display=True):
         """Pauses the player on the channel in the current context."""
         ctx.voice_client.pause()
-        await ctx.send("Paused.")
+        if display:
+            await ctx.send("\u23F8 Paused.")
 
     @commands.command()
-    async def queue(self, ctx):
+    async def queue(self, ctx, *_, display=True):
         """Displays the queue of the channel in the current context."""
-        await ctx.send(self.get_player(ctx).playlist.get_queue())
+        player = self.get_player(ctx)
+        if display:
+            entries = player.get_queue_info()
+            await ctx.send(entries)
+        ids = player.get_queue_ids()
+        return ids
 
     @commands.command()
-    async def playlist(self, ctx):
-        """Displays the playlist of the channel in the current context."""
-        await ctx.send(self.get_player(ctx).playlist.get_playlist())
-
-    @commands.command()
-    async def resume(self, ctx):
+    async def resume(self, ctx, **_):
         """Resumes the player on the channel in the current context."""
         await self.get_player(ctx).resume()
 
     @commands.command()
-    async def shuffle(self, ctx):
+    async def shuffle(self, ctx, *_, display=True):
         """Shuffles the playlist of the channel in the current context."""
         self.get_player(ctx).shuffle()
+        if display:
+            await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
-    async def clear(self, ctx):
+    async def clear(self, ctx, *_, display=True):
         """Clear the playlist of the channel in the current context."""
         self.get_player(ctx).stop()
         self.get_player(ctx).clear()
+        if display:
+            await ctx.send("\u2716 Queue cleared.")
 
     @commands.command()
-    async def stop(self, ctx):
+    async def stop(self, ctx, *_, display=True):
         """Stops the player on the channel in the current context."""
-        self.get_player(ctx).stopped = True
-        ctx.voice_client.stop()
-        await ctx.send("Stopped.")
+        self.get_player(ctx).stop()
+        if display:
+            await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
-    async def volume(self, ctx, volume: int):
+    async def volume(self, ctx, volume: int, *_, display=True):
         """Changes the volume of the player on the channel in the current context."""
-        if volume in range(0, 101):
-            self.get_player(ctx).volume = volume / 100
-            await ctx.send("Volume is now at {}%.".format(volume))
-        else:
-            await ctx.send("Incorrect volume value!")
+        self.get_player(ctx).volume = volume
+        if display:
+            await ctx.send("\U0001F4E2 Volume is now at **{}%**.".format(volume))
+        return str(volume)
 
     @commands.command()
-    async def current(self, ctx):
+    async def current(self, ctx, *_, display=True):
         """Displays information about the video that is being played
         in the current context."""
+        current = self.get_player(ctx).current
+        if display:
         await ctx.send(
-            "Playing {title} by {uploader} now.\n{webpage_url}".format(
-                **self.get_player(ctx).playlist.current
+                "\u25B6 Playing **{title}** by {uploader} now.\n{webpage_url}".format(
+                    **current
             )
         )
+        return current["id"]
 
     @commands.command()
-    async def remove(self, ctx, index: int):
-        """Removes a video from the playlist in the current context."""
-        player = self.get_player(ctx)
-        if index in range(0, player.playlist.length):
+    async def remove(self, ctx, offset: int, *_, display=True):
+        """Removes a video from the music queue."""
+        removed = self.get_player(ctx).remove(offset)
+        if display:
             await ctx.send(
-                "{title} by {uploader} removed from the playlist.".format(
-                    **player.playlist.remove(index)
+                "\u2796 **{title}** by {uploader} removed from the playlist.".format(
+                    **removed
                 )
             )
-            if index == player.playlist.index:
-                player.playlist.set_offset(0)
-                ctx.voice_client.stop()
-        else:
-            await ctx.send("Incorrect playlist index!")
+        return removed["id"]
 
     @play.before_invoke
     @play_url.before_invoke
