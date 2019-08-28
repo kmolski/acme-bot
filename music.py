@@ -27,8 +27,12 @@ class MusicQueue:
         return self.__index == 0
 
     @property
-    def on_last(self):
-        return self.__playlist and self.__index >= len(self.__playlist) - 1
+    def on_rollover(self):
+        return (
+            self.__playlist
+            and self.__offset == 1
+            and self.__index >= len(self.__playlist) - 1
+        )
 
     @property
     def queue_data(self):
@@ -82,6 +86,10 @@ class MusicPlayer(MusicQueue):
         self.__stopped = False
         self.__volume = 1.0
         self.loop = True
+
+    @property
+    def rollover(self):
+        return not self.__stopped and not self.loop
 
     @property
     def stopped(self):
@@ -153,7 +161,7 @@ class MusicPlayer(MusicQueue):
             # TODO: Proper logging!
             print("ERROR: Playback ended with {}!".format(err))
             return
-        if self.on_last and not self.loop:
+        if self.on_rollover and not self.rollover:
             self.__stopped = True
             run_coroutine_threadsafe(
                 self.__text_channel.send("The queue is empty, resume to keep playing."),
@@ -416,8 +424,9 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def clear(self, ctx, *, display=True):
         """Clear the playlist of the channel in the current context."""
-        self.get_player(ctx).stop()
-        self.get_player(ctx).clear()
+        player = self.get_player(ctx)
+        player.stop()
+        player.clear()
         if display:
             await ctx.send("\u2716 Queue cleared.")
 
