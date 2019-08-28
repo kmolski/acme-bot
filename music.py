@@ -175,14 +175,10 @@ class MusicPlayer(MusicQueue):
         )
 
 
-class MusicModule(commands.Cog):
-    """This module handles commands related to playing music."""
+class MusicFinder(youtube_dl.YoutubeDL):
 
-    # TODO: Remove unnecessary options
-    YT_DOWNLOAD_OPTIONS = {
+    FINDER_OPTIONS = {
         "format": "bestaudio/best",
-        "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
-        "restrictfilenames": True,
         "noplaylist": True,
         "nocheckcertificate": True,
         "ignoreerrors": True,
@@ -193,12 +189,29 @@ class MusicModule(commands.Cog):
         "source_address": "0.0.0.0",
     }
 
-    # TODO: Should probably be its own object & class.
-    # Should run searches asynchronously by itself?
-    YT_DOWNLOADER = youtube_dl.YoutubeDL(YT_DOWNLOAD_OPTIONS)
+    def __init__(self, bot):
+        super().__init__(self.FINDER_OPTIONS)
+        self.loop = bot.loop
+
+    async def get_single_entry(self, url):
+        result = await self.loop.run_in_executor(
+            None, lambda: self.extract_info(url, download=False)
+        )
+        return result
+
+    async def get_entry_list(self, provider, query):
+        results = await self.loop.run_in_executor(
+            None, lambda: self.extract_info(provider + query, download=False)
+        )
+        return results["entries"]
+
+
+class MusicModule(commands.Cog):
+    """This module handles commands related to playing music."""
 
     def __init__(self, bot):
         self.bot = bot
+        self.__downloader = MusicFinder(bot)
         self.__players = {}
 
     def get_player(self, ctx):
@@ -206,7 +219,7 @@ class MusicModule(commands.Cog):
         return self.__players[ctx.voice_client.channel.id]
 
     @commands.command()
-    async def leave(self, ctx, *_, display=True):
+    async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel in the current context."""
         if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
             self.get_player(ctx).stop()
@@ -222,11 +235,9 @@ class MusicModule(commands.Cog):
         """Searches for and plays a video from YouTube
         on the channel in the current context."""
         async with ctx.typing():
+            query = " ".join(query)
             # Get video list for query
-            # TODO: Run this asynchronously
-            results = self.YT_DOWNLOADER.extract_info(
-                "ytsearch10:" + " ".join(query), download=False
-            )["entries"]
+            results = await self.__downloader.get_entry_list("ytsearch10:", query)
             # Assemble and display menu
             menu = "\u2049 Choose one of the following results:"
             for index, entry in enumerate(results):
@@ -273,11 +284,9 @@ class MusicModule(commands.Cog):
         """Searches for and plays a video from Soundcloud
         on the channel in the current context."""
         async with ctx.typing():
+            query = " ".join(query)
             # Get video list for query
-            # TODO: Run this asynchronously
-            results = self.YT_DOWNLOADER.extract_info(
-                "scsearch10:" + " ".join(query), download=False
-            )["entries"]
+            results = await self.__downloader.get_entry_list("scsearch10:", query)
             # Assemble and display menu
             menu = "\u2049 Choose one of the following results:"
             for index, entry in enumerate(results):
@@ -320,14 +329,14 @@ class MusicModule(commands.Cog):
         return current["id"]
 
     @commands.command(name="play-url")
-    async def play_url(self, ctx, url_list, *_, display=True):
+    async def play_url(self, ctx, url_list, *, display=True):
         """Plays a YouTube/Soundcloud track on
         the channel in the current context."""
+        # TODO: This command should ask for confirmation before adding songs!
         url_list, results = str(url_list), []
         async with ctx.typing():
             for url in url_list.split():
-                # TODO: Run this asynchronously
-                result = self.YT_DOWNLOADER.extract_info(url, download=False)
+                result = await self.__downloader.get_single_entry(url)
                 if "extractor" in result and (
                     result["extractor"] == "youtube"
                     or result["extractor"] == "soundcloud"
@@ -367,7 +376,7 @@ class MusicModule(commands.Cog):
         self.get_player(ctx).move(offset)
 
     @commands.command()
-    async def loop(self, ctx, should_loop: bool, *_, display=True):
+    async def loop(self, ctx, should_loop: bool, *, display=True):
         """Sets looping behaviour of the current playlist."""
         self.get_player(ctx).loop = should_loop
         msg = "on" if should_loop else "off"
@@ -376,14 +385,14 @@ class MusicModule(commands.Cog):
         return msg
 
     @commands.command()
-    async def pause(self, ctx, *_, display=True):
+    async def pause(self, ctx, *, display=True):
         """Pauses the player on the channel in the current context."""
         ctx.voice_client.pause()
         if display:
             await ctx.send("\u23F8 Paused.")
 
     @commands.command()
-    async def queue(self, ctx, *_, display=True):
+    async def queue(self, ctx, *, display=True):
         """Displays the queue of the channel in the current context."""
         player = self.get_player(ctx)
         if display:
@@ -398,14 +407,14 @@ class MusicModule(commands.Cog):
         await self.get_player(ctx).resume()
 
     @commands.command()
-    async def shuffle(self, ctx, *_, display=True):
+    async def shuffle(self, ctx, *, display=True):
         """Shuffles the playlist of the channel in the current context."""
         self.get_player(ctx).shuffle()
         if display:
             await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
-    async def clear(self, ctx, *_, display=True):
+    async def clear(self, ctx, *, display=True):
         """Clear the playlist of the channel in the current context."""
         self.get_player(ctx).stop()
         self.get_player(ctx).clear()
@@ -413,14 +422,14 @@ class MusicModule(commands.Cog):
             await ctx.send("\u2716 Queue cleared.")
 
     @commands.command()
-    async def stop(self, ctx, *_, display=True):
+    async def stop(self, ctx, *, display=True):
         """Stops the player on the channel in the current context."""
         self.get_player(ctx).stop()
         if display:
             await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
-    async def volume(self, ctx, volume: int, *_, display=True):
+    async def volume(self, ctx, volume: int, *, display=True):
         """Changes the volume of the player on the channel in the current context."""
         self.get_player(ctx).volume = volume
         if display:
@@ -428,7 +437,7 @@ class MusicModule(commands.Cog):
         return str(volume)
 
     @commands.command()
-    async def current(self, ctx, *_, display=True):
+    async def current(self, ctx, *, display=True):
         """Displays information about the video that is being played
         in the current context."""
         current = self.get_player(ctx).current
@@ -441,7 +450,7 @@ class MusicModule(commands.Cog):
         return current["id"]
 
     @commands.command()
-    async def remove(self, ctx, offset: int, *_, display=True):
+    async def remove(self, ctx, offset: int, *, display=True):
         """Removes a video from the music queue."""
         removed = self.get_player(ctx).remove(offset)
         if display:

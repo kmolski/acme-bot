@@ -185,7 +185,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         return content
 
     @commands.command()
-    async def ping(self, ctx, *_, display=True):
+    async def ping(self, ctx, *, display=True):
         start = datetime.now()
         await ctx.message.add_reaction("\U0001F3D3")
         milliseconds = str((datetime.now() - start).microseconds // 1000)
@@ -194,7 +194,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         return milliseconds
 
     @commands.command(name="to-file", aliases=["tee"])
-    async def to_file(self, ctx, content, file_name, *_, display=True):
+    async def to_file(self, ctx, content, file_name, *, display=True):
         content, file_name = str(content), str(file_name)
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
