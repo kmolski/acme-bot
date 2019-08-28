@@ -34,10 +34,12 @@ if __name__ == "__main__":
 
     @CLIENT.event
     async def on_disconnect():
+        # CLIENT.get_cog("MusicModule").pause_players()
         print("Disconnected!")
 
     @CLIENT.event
     async def on_resumed():
+        # CLIENT.get_cog("MusicModule").resume_players()
         print("Connection resumed!")
 
     CLIENT.add_cog(MusicModule(CLIENT))

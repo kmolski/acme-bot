@@ -23,22 +23,20 @@ class MusicQueue:
         return self.__playlist[self.__index]
 
     @property
-    def index(self):
-        return self.__index
-
-    @property
-    def next(self):
-        self.__index = (self.__index + self.__offset) % len(self.__playlist)
-        self.__offset = 1
-        return self.__playlist[self.__index]
+    def on_first(self):
+        return self.__index == 0
 
     @property
     def on_last(self):
         return self.__playlist and self.__index >= len(self.__playlist) - 1
 
     @property
-    def playlist(self):
-        return self.__playlist
+    def queue_data(self):
+        return (
+            self.__playlist[self.__index :],
+            self.__playlist[: self.__index],
+            len(self.__playlist) - self.__index,
+        )
 
     def add(self, elem):
         self.__playlist.append(elem)
@@ -46,6 +44,11 @@ class MusicQueue:
     def clear(self):
         self.__playlist.clear()
         self.__index = 0
+
+    def next(self):
+        self.__index = (self.__index + self.__offset) % len(self.__playlist)
+        self.__offset = 1
+        return self.__playlist[self.__index]
 
     def pop(self, offset):
         return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
@@ -127,21 +130,21 @@ class MusicPlayer(MusicQueue):
 
     def get_queue_info(self):
         entry_list = "\U0001F3BC Current queue:"
-        for index, entry in enumerate(self.playlist[self.index :]):
+        head, tail, split = self.queue_data
+        for index, entry in enumerate(head):
             entry_list += format_queue_entry(index, entry)
-        if not self.loop and self.index != 0:
+        if not self.loop and not self.on_first:
             entry_list += "\n------------------------------------\n"
-        for index, entry in enumerate(
-            self.playlist[: self.index], start=len(self.playlist) - self.index
-        ):
+        for index, entry in enumerate(tail, start=split):
             entry_list += format_queue_entry(index, entry)
         return entry_list
 
     def get_queue_ids(self):
         id_list = ""
-        for entry in self.playlist[self.index :]:
+        head, tail, _ = self.queue_data
+        for entry in head:
             id_list += "{id}\n".format(**entry)
-        for entry in self.playlist[: self.index]:
+        for entry in tail:
             id_list += "{id}\n".format(**entry)
         return id_list
 
@@ -156,10 +159,10 @@ class MusicPlayer(MusicQueue):
                 self.__text_channel.send("The queue is empty, resume to keep playing."),
                 self.__event_loop,
             ).result()
-
+        current = self.next()
         if not self.__stopped:
             run_coroutine_threadsafe(
-                self.start_playing(self.next), self.__event_loop
+                self.start_playing(current), self.__event_loop
             ).result()
 
     async def start_playing(self, current):
@@ -221,9 +224,6 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel in the current context."""
-        if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
-            self.get_player(ctx).stop()
-
         self.__players.pop(ctx.voice_client.channel.id)
         await ctx.voice_client.disconnect()
         if display:
