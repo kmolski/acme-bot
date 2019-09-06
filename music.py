@@ -14,33 +14,9 @@ youtube_dl.utils.bug_reports_message = lambda: ""
 
 class MusicQueue:
     def __init__(self):
+        self.next_offset = 1
         self.__index = 0
-        self.__offset = 1
         self.__playlist = []
-
-    @property
-    def current(self):
-        return self.__playlist[self.__index]
-
-    @property
-    def on_first(self):
-        return self.__index == 0
-
-    @property
-    def on_rollover(self):
-        return (
-            self.__playlist
-            and self.__offset == 1
-            and self.__index >= len(self.__playlist) - 1
-        )
-
-    @property
-    def queue_data(self):
-        return (
-            self.__playlist[self.__index :],
-            self.__playlist[: self.__index],
-            len(self.__playlist) - self.__index,
-        )
 
     def add(self, elem):
         self.__playlist.append(elem)
@@ -49,16 +25,33 @@ class MusicQueue:
         self.__playlist.clear()
         self.__index = 0
 
-    def next(self):
-        self.__index = (self.__index + self.__offset) % len(self.__playlist)
-        self.__offset = 1
+    def current(self):
         return self.__playlist[self.__index]
+
+    def next(self):
+        self.__index = (self.__index + self.next_offset) % len(self.__playlist)
+        self.next_offset = 1
+        return self.__playlist[self.__index]
+
+    def on_first(self):
+        return self.__index == 0
+
+    def on_rollover(self):
+        return (
+            self.__playlist
+            and self.next_offset == 1
+            and self.__index >= len(self.__playlist) - 1
+        )
 
     def pop(self, offset):
         return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
 
-    def set_offset(self, new_offset):
-        self.__offset = new_offset
+    def queue_data(self):
+        return (
+            self.__playlist[self.__index :],
+            self.__playlist[: self.__index],
+            len(self.__playlist) - self.__index,
+        )
 
     def shuffle(self):
         shuffle(self.__playlist)
@@ -87,31 +80,21 @@ class MusicPlayer(MusicQueue):
         self.__volume = 1.0
         self.loop = True
 
-    @property
-    def rollover(self):
-        return not self.__stopped and not self.loop
-
-    @property
-    def stopped(self):
+    def is_stopped(self):
         return self.__stopped
 
-    @property
-    def volume(self):
-        return self.__volume
+    def move(self, new_offset):
+        self.next_offset = new_offset
+        if self.__voice_client.is_playing():
+            self.__voice_client.stop()
 
-    @volume.setter
-    def volume(self, volume):
+    def set_volume(self, volume):
         if volume in range(0, 101):
             self.__volume = volume / 100
             if self.__voice_client.source:
                 self.__voice_client.source.volume = volume / 100
         else:
             raise commands.CommandError("Incorrect volume value!")
-
-    def move(self, offset):
-        self.set_offset(offset)
-        if self.__voice_client.is_playing():
-            self.__voice_client.stop()
 
     def stop(self):
         self.__stopped = True
@@ -120,7 +103,7 @@ class MusicPlayer(MusicQueue):
     def remove(self, offset):
         elem = self.pop(offset)
         if offset == 0:
-            self.set_offset(0)
+            self.next_offset = 0
             self.__voice_client.stop()
         return elem
 
@@ -128,20 +111,20 @@ class MusicPlayer(MusicQueue):
         if self.__voice_client.is_paused():
             self.__voice_client.resume()
             await self.__text_channel.send(
-                "\u25B6 Playing **{title}** by {uploader}.".format(**self.current)
+                "\u25B6 Playing **{title}** by {uploader}.".format(**self.current())
             )
         elif self.__stopped:
             self.__stopped = False
-            await self.start_playing(self.current)
+            await self.start_playing(self.current())
         else:
             raise commands.CommandError("This player is not paused!")
 
     def get_queue_info(self):
         entry_list = "\U0001F3BC Current queue:"
-        head, tail, split = self.queue_data
+        head, tail, split = self.queue_data()
         for index, entry in enumerate(head):
             entry_list += format_queue_entry(index, entry)
-        if not self.loop and not self.on_first:
+        if not self.loop and not self.on_first():
             entry_list += "\n------------------------------------\n"
         for index, entry in enumerate(tail, start=split):
             entry_list += format_queue_entry(index, entry)
@@ -149,7 +132,7 @@ class MusicPlayer(MusicQueue):
 
     def get_queue_ids(self):
         id_list = ""
-        head, tail, _ = self.queue_data
+        head, tail, _ = self.queue_data()
         for entry in head:
             id_list += "{id}\n".format(**entry)
         for entry in tail:
@@ -161,7 +144,7 @@ class MusicPlayer(MusicQueue):
             # TODO: Proper logging!
             print("ERROR: Playback ended with {}!".format(err))
             return
-        if self.on_rollover and not self.rollover:
+        if self.on_rollover() and not self.loop and not self.__stopped:
             self.__stopped = True
             run_coroutine_threadsafe(
                 self.__text_channel.send("The queue is empty, resume to keep playing."),
@@ -274,7 +257,7 @@ class MusicModule(commands.Cog):
         if (
             ctx.voice_client.is_playing()
             or ctx.voice_client.is_paused()
-            or player.stopped
+            or player.is_stopped()
         ):
             if display:
                 await ctx.send(
@@ -323,7 +306,7 @@ class MusicModule(commands.Cog):
         if (
             ctx.voice_client.is_playing()
             or ctx.voice_client.is_paused()
-            or player.stopped
+            or player.is_stopped()
         ):
             if display:
                 await ctx.send(
@@ -360,7 +343,7 @@ class MusicModule(commands.Cog):
             if (
                 ctx.voice_client.is_playing()
                 or ctx.voice_client.is_paused()
-                or player.stopped
+                or player.is_stopped()
             ):
                 message += "\n**{title}** by {uploader}".format(**elem)
             else:
@@ -440,7 +423,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
         """Changes the volume of the player on the channel in the current context."""
-        self.get_player(ctx).volume = volume
+        self.get_player(ctx).set_volume(volume)
         if display:
             await ctx.send("\U0001F4E2 Volume is now at **{}%**.".format(volume))
         return str(volume)
@@ -449,7 +432,7 @@ class MusicModule(commands.Cog):
     async def current(self, ctx, *, display=True):
         """Displays information about the video that is being played
         in the current context."""
-        current = self.get_player(ctx).current
+        current = self.get_player(ctx).current()
         if display:
             await ctx.send(
                 "\u25B6 Playing **{title}** by {uploader} now.\n{webpage_url}".format(
