@@ -130,19 +130,19 @@ class MusicPlayer(MusicQueue):
             entry_list += format_queue_entry(index, entry)
         return entry_list
 
-    def get_queue_ids(self):
-        id_list = ""
+    def get_queue_urls(self):
+        url_list = ""
         head, tail, _ = self.queue_data()
         for entry in head:
-            id_list += "{id}\n".format(**entry)
+            url_list += "{webpage_url}\n".format(**entry)
         for entry in tail:
-            id_list += "{id}\n".format(**entry)
-        return id_list
+            url_list += "{webpage_url}\n".format(**entry)
+        return url_list
 
     def __play_next(self, err):
         if err:
             # TODO: Proper logging!
-            print("ERROR: Playback ended with {}!".format(err))
+            print(f"ERROR: Playback ended with {err}!")
             return
         if self.on_rollover() and not self.loop and not self.__stopped:
             self.__stopped = True
@@ -183,9 +183,9 @@ class MusicFinder(youtube_dl.YoutubeDL):
         "source_address": "0.0.0.0",
     }
 
-    def __init__(self, bot):
+    def __init__(self, loop):
         super().__init__(self.FINDER_OPTIONS)
-        self.loop = bot.loop
+        self.loop = loop
 
     async def get_single_entry(self, url):
         result = await self.loop.run_in_executor(
@@ -205,7 +205,7 @@ class MusicModule(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.__downloader = MusicFinder(bot)
+        self.__downloader = MusicFinder(bot.loop)
         self.__players = {}
 
     def get_player(self, ctx):
@@ -268,7 +268,7 @@ class MusicModule(commands.Cog):
         else:
             await player.start_playing(current)
 
-        return current["id"]
+        return current["webpage_url"]
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
@@ -317,7 +317,7 @@ class MusicModule(commands.Cog):
         else:
             await player.start_playing(current)
 
-        return current["id"]
+        return current["webpage_url"]
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, url_list, *, display=True):
@@ -328,7 +328,7 @@ class MusicModule(commands.Cog):
         async with ctx.typing():
             for url in url_list.split():
                 result = await self.__downloader.get_single_entry(url)
-                if "extractor" in result and (
+                if result and (
                     result["extractor"] == "youtube"
                     or result["extractor"] == "soundcloud"
                 ):
@@ -372,7 +372,7 @@ class MusicModule(commands.Cog):
         self.get_player(ctx).loop = should_loop
         msg = "on" if should_loop else "off"
         if display:
-            await ctx.send("\U0001F501 Playlist loop {}.".format(msg))
+            await ctx.send(f"\U0001F501 Playlist loop {msg}.")
         return msg
 
     @commands.command()
@@ -389,8 +389,8 @@ class MusicModule(commands.Cog):
         if display:
             entries = player.get_queue_info()
             await ctx.send(entries)
-        ids = player.get_queue_ids()
-        return ids
+        urls = player.get_queue_urls()
+        return urls
 
     @commands.command()
     async def resume(self, ctx, **_):
@@ -425,7 +425,7 @@ class MusicModule(commands.Cog):
         """Changes the volume of the player on the channel in the current context."""
         self.get_player(ctx).set_volume(volume)
         if display:
-            await ctx.send("\U0001F4E2 Volume is now at **{}%**.".format(volume))
+            await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return str(volume)
 
     @commands.command()
@@ -439,7 +439,7 @@ class MusicModule(commands.Cog):
                     **current
                 )
             )
-        return current["id"]
+        return current["webpage_url"]
 
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
@@ -451,7 +451,7 @@ class MusicModule(commands.Cog):
                     **removed
                 )
             )
-        return removed["id"]
+        return removed["webpage_url"]
 
     @play.before_invoke
     @play_snd.before_invoke

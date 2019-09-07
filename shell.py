@@ -42,9 +42,7 @@ class Command:
     async def eval(self, ctx, data, *, display):
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
-            raise commands.CommandError(
-                "Command '{}' not found".format(ctx.invoked_with)
-            )
+            raise commands.CommandError(f"Command '{ctx.invoked_with}' not found")
 
         # Unfortunately there is no way to respect command
         # checks without accessing this protected method.
@@ -69,7 +67,7 @@ class StrLiteral:
 
     async def eval(self, ctx, *_, display):
         if display:
-            await ctx.send("```\n{}\n```".format(self.value))
+            await ctx.send(f"```\n{self.value}\n```")
         return self.value
 
 
@@ -101,7 +99,7 @@ class FileContent:
             if elem.filename == self.name:
                 content = str(await elem.read(), errors="replace")
                 if display:
-                    await ctx.send("```\n{}\n```".format(content))
+                    await ctx.send(f"```\n{content}\n```")
                 return content
 
         raise commands.CommandError("No such file!")
@@ -115,7 +113,7 @@ class ExprSubst:
     async def eval(self, ctx, *_, display):
         result = await self.expr_seq.eval(ctx)
         if display:
-            await ctx.send("```\n{}\n```".format(result))
+            await ctx.send(f"```\n{result}\n```")
         return result
 
 
@@ -179,7 +177,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
     @commands.command()
     async def pretty(self, ctx, content, file_format, *, display=True):
-        content = "```{}\n{}\n```".format(file_format, content)
+        content = f"```{file_format}\n{content}\n```"
         if display:
             await ctx.send(content)
         return content
@@ -190,7 +188,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         await ctx.message.add_reaction("\U0001F3D3")
         milliseconds = str((datetime.now() - start).microseconds // 1000)
         if display:
-            await ctx.send("\U0001F4A8 Meep meep! **{} ms**.".format(milliseconds))
+            await ctx.send(f"\U0001F4A8 Meep meep! **{milliseconds} ms**.")
         return milliseconds
 
     @commands.command(name="to-file", aliases=["tee"])
@@ -198,9 +196,7 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
         content, file_name = str(content), str(file_name)
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
-            await ctx.send(
-                "\U0001F4BE Created file **{}**.".format(file_name), file=new_file
-            )
+            await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
             if display:
-                await ctx.send("```\n{}\n```".format(content))
+                await ctx.send(f"```\n{content}\n```")
         return content

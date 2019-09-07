@@ -28,9 +28,9 @@ if __name__ == "__main__":
 
     @CLIENT.event
     async def on_command_error(ctx, error):
-        # TODO: Improve the command error handling
-        # if isinstance(error, commands.Command)
-        await ctx.send("An error occured: {}".format(error))
+        # TODO: Make this log all exceptions (with traceback and original message)!
+        if isinstance(error, commands.CommandError):
+            await ctx.send(f"An error occured: {error}")
 
     @CLIENT.event
     async def on_disconnect():
