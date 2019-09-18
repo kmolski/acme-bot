@@ -355,10 +355,10 @@ class MusicModule(commands.Cog):
         return url_list
 
     @commands.command()
-    async def back(self, ctx, offset: int = -1, **_):
+    async def back(self, ctx, offset: int = 1, **_):
         """Plays the previous video from the current queue
         based on the provided offset."""
-        self.get_player(ctx).move(offset)
+        self.get_player(ctx).move(-offset)
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1, **_):
@@ -468,8 +468,7 @@ class MusicModule(commands.Cog):
                     self.bot.loop, ctx.voice_client, ctx.message.channel
                 )
             else:
-                await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
+                raise commands.CommandError("You are not connected to a voice channel.")
 
     @back.before_invoke
     @clear.before_invoke
@@ -488,8 +487,7 @@ class MusicModule(commands.Cog):
         otherwise throws an exception that prevents the command from executing.
         """
         if ctx.voice_client is None:
-            await ctx.send("You are not connected to a voice channel.")
-            raise commands.CommandError("Author not connected to a voice channel.")
+            raise commands.CommandError("You are not connected to a voice channel.")
 
     @pause.before_invoke
     @stop.before_invoke
@@ -498,5 +496,4 @@ class MusicModule(commands.Cog):
         context is neither paused nor stopped.
         """
         if not ctx.voice_client.is_playing:
-            await ctx.send("Nothing is being played now.")
-            raise commands.CommandError("No playback in the voice channel.")
+            raise commands.CommandError("Nothing is being played now.")

@@ -121,15 +121,15 @@ class ShellModule(commands.Cog):
     GRAMMAR = """
 ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
 
-ExprComp: exprs=Expr ('|'- exprs=Expr)* ;
+ExprComp: exprs=Expr ('|'- exprs=Command)* ;
 
 Expr: Command | StrLiteral | FileContent | ExprSubst;
 
 Command: name=/[\\w\\-]*\\b/ args*=Argument;
 
-Argument: StrLiteral | IntLiteral | BoolLiteral | FileContent | ExprSubst;
+Argument: IntLiteral | BoolLiteral | StrLiteral | FileContent | ExprSubst;
 
-StrLiteral: value=STRING;
+StrLiteral: value=STRING | value=/```((?:\\`|[^`])*)```/ ;
 
 IntLiteral: value=INT;
 
@@ -152,12 +152,8 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
             FileContent,
             ExprSubst,
         ],
+        use_regexp_group=True,
     )
-
-    @commands.command(name="!")
-    async def execute(self, ctx, *, expression):
-        model = self.META_MODEL.model_from_str(expression)
-        await model.eval(ctx)
 
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
@@ -167,17 +163,15 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
             await ctx.send(content)
         return content
 
+    @commands.command(aliases=["!"])
+    async def eval(self, ctx, *, expression):
+        model = self.META_MODEL.model_from_str(expression)
+        await model.eval(ctx)
+
     @commands.command()
     async def join(self, ctx, *arguments, display=True):
         *arguments, separator = [str(element) for element in arguments]
         content = separator.join(arguments)
-        if display:
-            await ctx.send(content)
-        return content
-
-    @commands.command()
-    async def pretty(self, ctx, content, file_format, *, display=True):
-        content = f"```{file_format}\n{content}\n```"
         if display:
             await ctx.send(content)
         return content
@@ -191,12 +185,23 @@ ExprSubst: '('- expr_seq=ExprSeq ')'- ;
             await ctx.send(f"\U0001F4A8 Meep meep! **{milliseconds} ms**.")
         return milliseconds
 
+    @commands.command()
+    async def pretty(self, ctx, content, file_format="", *, display=True):
+        content = f"```{file_format}\n{content}\n```"
+        if display:
+            await ctx.send(content)
+        return content
+
     @commands.command(name="to-file", aliases=["tee"])
     async def to_file(self, ctx, content, file_name, *, display=True):
-        content, file_name = str(content), str(file_name)
+        content, file_name = str(content), f"{ctx.author.name} - {file_name}"
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
             await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
             if display:
                 await ctx.send(f"```\n{content}\n```")
         return content
+
+    @commands.command()
+    async def tts(self, ctx, content, **_):
+        await ctx.send(content, tts=True, delete_after=5.0)
