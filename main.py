@@ -30,7 +30,10 @@ if __name__ == "__main__":
     async def on_command_error(ctx, error):
         # TODO: Make this log all exceptions (with traceback and original message)!
         if isinstance(error, commands.CommandError):
-            await ctx.send(f"An error occured: {error}")
+            if hasattr(error, "original"):
+                await ctx.send(f"Error: {error.original}")
+            else:
+                await ctx.send(f"Error: {error}")
 
     @CLIENT.event
     async def on_disconnect():

@@ -125,19 +125,23 @@ ExprComp: exprs=Expr ('|'- exprs=Command)* ;
 
 Expr: Command | StrLiteral | FileContent | ExprSubst;
 
-Command: name=/[\\w\\-]*\\b/ args*=Argument;
+Command: name=COMMAND_NAME args*=Argument;
 
 Argument: IntLiteral | BoolLiteral | StrLiteral | FileContent | ExprSubst;
 
-StrLiteral: value=STRING | value=/```((?:\\`|[^`])*)```/ ;
+StrLiteral: value=STRING | value=CODE_BLOCK;
 
 IntLiteral: value=INT;
 
 BoolLiteral: value=BOOL;
 
-FileContent: '['- name=/[\\w\\-_. '"]+/ ']'- ;
+FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
+
+CODE_BLOCK: /```((?:\\`|[^`])*)```/;
+COMMAND_NAME: /[\\w\\-]*\\b/;
+FILE_NAME: /[\\w\\-_. '"]+/;
 """
 
     META_MODEL = metamodel_from_str(
