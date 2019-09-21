@@ -167,18 +167,10 @@ FILE_NAME: /[\\w\\-_. '"]+/;
             await ctx.send(content)
         return content
 
-    @commands.command(aliases=["!"])
+    @commands.command(name="!", hidden=True)
     async def eval(self, ctx, *, expression):
         model = self.META_MODEL.model_from_str(expression)
         await model.eval(ctx)
-
-    @commands.command()
-    async def join(self, ctx, *arguments, display=True):
-        *arguments, separator = [str(element) for element in arguments]
-        content = separator.join(arguments)
-        if display:
-            await ctx.send(content)
-        return content
 
     @commands.command()
     async def ping(self, ctx, *, display=True):

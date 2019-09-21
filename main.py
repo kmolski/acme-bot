@@ -18,8 +18,14 @@ def get_token_from_env():
         )
 
 
+class HelpCommand(commands.DefaultHelpCommand):
+    # pylint: disable=arguments-differ
+    async def command_callback(self, ctx, command=None, **_):
+        return await super().command_callback(ctx, command=command)
+
+
 if __name__ == "__main__":
-    CLIENT = commands.Bot(command_prefix="!")
+    CLIENT = commands.Bot(command_prefix="!", help_command=HelpCommand())
 
     @CLIENT.event
     async def on_ready():
