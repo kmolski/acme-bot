@@ -80,8 +80,12 @@ class MusicPlayer(MusicQueue):
         self.__volume = 1.0
         self.loop = True
 
-    def is_stopped(self):
-        return self.__stopped
+    def is_busy(self):
+        return (
+            self.__voice_client.is_playing()
+            or self.__voice_client.is_paused()
+            or self.__stopped
+        )
 
     def move(self, new_offset):
         self.next_offset = new_offset
@@ -187,17 +191,55 @@ class MusicFinder(youtube_dl.YoutubeDL):
         super().__init__(self.FINDER_OPTIONS)
         self.loop = loop
 
-    async def get_single_entry(self, url):
-        result = await self.loop.run_in_executor(
-            None, lambda: self.extract_info(url, download=False)
-        )
-        return result
+    async def get_entries_by_urls(self, url_list):
+        results = []
+        for url in url_list:
+            result = await self.loop.run_in_executor(
+                None, partial(self.extract_info, url, download=False)
+            )
+            if result and (result["extractor"] in ("youtube", "soundcloud")):
+                results.append(result)
+        if not results:
+            raise ValueError("No videos found for the provided URL list!")
+        return results
 
-    async def get_entry_list(self, provider, query):
+    async def get_entries_by_query(self, provider, query):
         results = await self.loop.run_in_executor(
-            None, lambda: self.extract_info(provider + query, download=False)
+            None, partial(self.extract_info, provider + query, download=False)
         )
-        return results["entries"]
+        if not results or not results["entries"]:
+            raise ValueError("No videos found for the provided query!")
+        return list(filter(None.__ne__, results["entries"]))
+
+
+def assemble_menu(header, entries):
+    menu = header
+    for index, entry in enumerate(entries):
+        menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
+    return menu
+
+
+def pred_select(ctx, results):
+    def pred(msg):
+        return (
+            msg.channel == ctx.channel
+            and msg.author == ctx.author
+            and msg.content.isnumeric()
+            and int(msg.content) in range(0, len(results))
+        )
+
+    return pred
+
+
+def pred_confirm(ctx, menu_msg):
+    def pred(resp, user):
+        return (
+            resp.message.id == menu_msg.id
+            and user == ctx.author
+            and resp.emoji in ("\u2714", "\u274C")
+        )
+
+    return pred
 
 
 class MusicModule(commands.Cog):
@@ -208,9 +250,16 @@ class MusicModule(commands.Cog):
         self.__downloader = MusicFinder(bot.loop)
         self.__players = {}
 
-    def get_player(self, ctx):
+    def __get_player(self, ctx):
         """Returns a MusicPlayer instance for the channel in the current context."""
         return self.__players[ctx.voice_client.channel.id]
+
+    @commands.command()
+    async def join(self, ctx, *, display=True):
+        if display:
+            await ctx.send(
+                f"\u27A1 Joining the voice channel **{ctx.voice_client.channel.name}**."
+            )
 
     @commands.command()
     async def leave(self, ctx, *, display=True):
@@ -225,130 +274,111 @@ class MusicModule(commands.Cog):
     async def play(self, ctx, *query, display=True):
         """Searches for and plays a video from YouTube
         on the channel in the current context."""
+        query = " ".join(query)
         async with ctx.typing():
-            query = " ".join(query)
             # Get video list for query
-            results = await self.__downloader.get_entry_list("ytsearch10:", query)
+            results = await self.__downloader.get_entries_by_query("ytsearch10:", query)
             # Assemble and display menu
-            menu = "\u2049 Choose one of the following results:"
-            for index, entry in enumerate(results):
-                menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
-            menu_msg = await ctx.send(menu)
-
-        def pred(msg):
-            return (
-                msg.channel == ctx.channel
-                and msg.author == ctx.author
-                and msg.content.isnumeric()
-                and int(msg.content) < 10
+            menu_msg = await ctx.send(
+                assemble_menu("\u2049 Choose one of the following results:", results)
             )
 
         try:
-            response = await self.bot.wait_for("message", check=pred, timeout=30.0)
+            response = await self.bot.wait_for(
+                "message", check=pred_select(ctx, results), timeout=30.0
+            )
         except futures.TimeoutError:
-            await menu_msg.edit(content="\U0001F552 *Selection expired.*")
-            raise
+            await menu_msg.edit(content="\u231B *Action expired.*")
+            return
 
-        current = results[int(response.content)]
+        new = results[int(response.content)]
 
-        player = self.get_player(ctx)
-        player.add(current)
+        player = self.__get_player(ctx)
+        player.add(new)
 
-        if (
-            ctx.voice_client.is_playing()
-            or ctx.voice_client.is_paused()
-            or player.is_stopped()
-        ):
+        if player.is_busy():
             if display:
                 await ctx.send(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(
-                        **current
-                    )
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
         else:
-            await player.start_playing(current)
+            await player.start_playing(new)
 
-        return current["webpage_url"]
+        return new["webpage_url"]
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
         """Searches for and plays a video from Soundcloud
         on the channel in the current context."""
+        query = " ".join(query)
         async with ctx.typing():
-            query = " ".join(query)
             # Get video list for query
-            results = await self.__downloader.get_entry_list("scsearch10:", query)
+            results = await self.__downloader.get_entries_by_query("scsearch10:", query)
             # Assemble and display menu
-            menu = "\u2049 Choose one of the following results:"
-            for index, entry in enumerate(results):
-                menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
-            menu_msg = await ctx.send(menu)
-
-        def pred(msg):
-            return (
-                msg.channel == ctx.channel
-                and msg.author == ctx.author
-                and msg.content.isnumeric()
-                and int(msg.content) < 10
+            menu_msg = await ctx.send(
+                assemble_menu("\u2049 Choose one of the following results:", results)
             )
 
         try:
-            response = await self.bot.wait_for("message", check=pred, timeout=30.0)
+            response = await self.bot.wait_for(
+                "message", check=pred_select(ctx, results), timeout=30.0
+            )
         except futures.TimeoutError:
-            await menu_msg.edit(content="\U0001F552 *Selection expired.*")
-            raise
+            await menu_msg.edit(content="\u231B *Action expired.*")
+            return
 
-        current = results[int(response.content)]
+        new = results[int(response.content)]
 
-        player = self.get_player(ctx)
-        player.add(current)
+        player = self.__get_player(ctx)
+        player.add(new)
 
-        if (
-            ctx.voice_client.is_playing()
-            or ctx.voice_client.is_paused()
-            or player.is_stopped()
-        ):
+        if player.is_busy():
             if display:
                 await ctx.send(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(
-                        **current
-                    )
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
         else:
-            await player.start_playing(current)
+            await player.start_playing(new)
 
-        return current["webpage_url"]
+        return new["webpage_url"]
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, url_list, *, display=True):
         """Plays a YouTube/Soundcloud track on
         the channel in the current context."""
-        # TODO: This command should ask for confirmation before adding songs!
-        url_list, results = str(url_list), []
+        url_list = str(url_list)
         async with ctx.typing():
-            for url in url_list.split():
-                result = await self.__downloader.get_single_entry(url)
-                if result and (
-                    result["extractor"] == "youtube"
-                    or result["extractor"] == "soundcloud"
-                ):
-                    results.append(result)
-                else:
-                    raise ValueError("Provided URL does not lead to a video!")
+            # Get video list for the URL list
+            results = await self.__downloader.get_entries_by_urls(url_list.split())
+            # Assemble and display menu
+            menu_msg = await ctx.send(
+                assemble_menu("\u2049 Do you want to add this to the queue?", results)
+            )
+            await menu_msg.add_reaction("\u2714")
+            await menu_msg.add_reaction("\u274C")
 
-        player = self.get_player(ctx)
+        try:
+            response, _ = await self.bot.wait_for(
+                "reaction_add", check=pred_confirm(ctx, menu_msg), timeout=30.0
+            )
+        except futures.TimeoutError:
+            await menu_msg.edit(content="\u231B *Action expired.*")
+            return
+
+        if response.emoji == "\u274C":
+            await menu_msg.edit(content="\u274C *Action cancelled.*")
+            return
+
+        await menu_msg.delete()
+
+        player = self.__get_player(ctx)
         message = ""
         for elem in results:
             player.add(elem)
-            if (
-                ctx.voice_client.is_playing()
-                or ctx.voice_client.is_paused()
-                or player.is_stopped()
-            ):
+            if player.is_busy():
                 message += "\n**{title}** by {uploader}".format(**elem)
             else:
                 await player.start_playing(elem)
-
         if message and display:
             await ctx.send("\u2795 Videos added to the queue: " + message)
 
@@ -358,18 +388,18 @@ class MusicModule(commands.Cog):
     async def back(self, ctx, offset: int = 1, **_):
         """Plays the previous video from the current queue
         based on the provided offset."""
-        self.get_player(ctx).move(-offset)
+        self.__get_player(ctx).move(-offset)
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1, **_):
         """Plays the next video from the current queue
         based on the provided offset."""
-        self.get_player(ctx).move(offset)
+        self.__get_player(ctx).move(offset)
 
     @commands.command()
     async def loop(self, ctx, should_loop: bool, *, display=True):
         """Sets looping behaviour of the current playlist."""
-        self.get_player(ctx).loop = should_loop
+        self.__get_player(ctx).loop = should_loop
         msg = "on" if should_loop else "off"
         if display:
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
@@ -385,29 +415,27 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def queue(self, ctx, *, display=True):
         """Displays the queue of the channel in the current context."""
-        player = self.get_player(ctx)
+        player = self.__get_player(ctx)
         if display:
-            entries = player.get_queue_info()
-            await ctx.send(entries)
-        urls = player.get_queue_urls()
-        return urls
+            await ctx.send(player.get_queue_info())
+        return player.get_queue_urls()
 
     @commands.command()
     async def resume(self, ctx, **_):
         """Resumes the player on the channel in the current context."""
-        await self.get_player(ctx).resume()
+        await self.__get_player(ctx).resume()
 
     @commands.command()
     async def shuffle(self, ctx, *, display=True):
         """Shuffles the playlist of the channel in the current context."""
-        self.get_player(ctx).shuffle()
+        self.__get_player(ctx).shuffle()
         if display:
             await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
     async def clear(self, ctx, *, display=True):
         """Clear the playlist of the channel in the current context."""
-        player = self.get_player(ctx)
+        player = self.__get_player(ctx)
         player.stop()
         player.clear()
         if display:
@@ -416,14 +444,14 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def stop(self, ctx, *, display=True):
         """Stops the player on the channel in the current context."""
-        self.get_player(ctx).stop()
+        self.__get_player(ctx).stop()
         if display:
             await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
         """Changes the volume of the player on the channel in the current context."""
-        self.get_player(ctx).set_volume(volume)
+        self.__get_player(ctx).set_volume(volume)
         if display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return str(volume)
@@ -432,7 +460,7 @@ class MusicModule(commands.Cog):
     async def current(self, ctx, *, display=True):
         """Displays information about the video that is being played
         in the current context."""
-        current = self.get_player(ctx).current()
+        current = self.__get_player(ctx).current()
         if display:
             await ctx.send(
                 "\u25B6 Playing **{title}** by {uploader} now.\n{webpage_url}".format(
@@ -444,7 +472,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
         """Removes a video from the music queue."""
-        removed = self.get_player(ctx).remove(offset)
+        removed = self.__get_player(ctx).remove(offset)
         if display:
             await ctx.send(
                 "\u2796 **{title}** by {uploader} removed from the playlist.".format(
@@ -453,6 +481,7 @@ class MusicModule(commands.Cog):
             )
         return removed["webpage_url"]
 
+    @join.before_invoke
     @play.before_invoke
     @play_snd.before_invoke
     @play_url.before_invoke
@@ -488,12 +517,3 @@ class MusicModule(commands.Cog):
         """
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
-
-    @pause.before_invoke
-    @stop.before_invoke
-    async def ensure_playing(self, ctx):
-        """Ensures that the player for the current
-        context is neither paused nor stopped.
-        """
-        if not ctx.voice_client.is_playing:
-            raise commands.CommandError("Nothing is being played now.")
