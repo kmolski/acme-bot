@@ -1,8 +1,10 @@
 """This module provides music playback functionality to the bot."""
 from asyncio import run_coroutine_threadsafe
 from concurrent import futures
+from functools import partial
 from math import ceil
 from random import shuffle
+from threading import Lock
 
 import youtube_dl
 
@@ -17,44 +19,54 @@ class MusicQueue:
         self.next_offset = 1
         self.__index = 0
         self.__playlist = []
+        self.__lock = Lock()
 
     def add(self, elem):
-        self.__playlist.append(elem)
+        with self.__lock:
+            self.__playlist.append(elem)
 
     def clear(self):
-        self.__playlist.clear()
-        self.__index = 0
+        with self.__lock:
+            self.__playlist.clear()
+            self.__index = 0
 
     def current(self):
-        return self.__playlist[self.__index]
+        with self.__lock:
+            return self.__playlist[self.__index]
 
     def next(self):
-        self.__index = (self.__index + self.next_offset) % len(self.__playlist)
-        self.next_offset = 1
-        return self.__playlist[self.__index]
+        with self.__lock:
+            self.__index = (self.__index + self.next_offset) % len(self.__playlist)
+            self.next_offset = 1
+            return self.__playlist[self.__index]
 
     def on_first(self):
-        return self.__index == 0
+        with self.__lock:
+            return self.__index == 0
 
     def on_rollover(self):
-        return (
-            self.__playlist
-            and self.next_offset == 1
-            and self.__index >= len(self.__playlist) - 1
-        )
+        with self.__lock:
+            return (
+                self.__playlist
+                and self.next_offset == 1
+                and self.__index >= len(self.__playlist) - 1
+            )
 
     def pop(self, offset):
-        return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
+        with self.__lock:
+            return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
 
     def queue_data(self):
-        return (
-            self.__playlist[self.__index :],
-            self.__playlist[: self.__index],
-            len(self.__playlist) - self.__index,
-        )
+        with self.__lock:
+            return (
+                self.__playlist[self.__index :],
+                self.__playlist[: self.__index],
+                len(self.__playlist) - self.__index,
+            )
 
     def shuffle(self):
-        shuffle(self.__playlist)
+        with self.__lock:
+            shuffle(self.__playlist)
 
 
 def format_queue_entry(index, entry):
@@ -71,57 +83,62 @@ class MusicPlayer(MusicQueue):
         "options": "-vn -af dynaudnorm",
     }
 
-    def __init__(self, event_loop, voice_client, text_channel):
+    def __init__(self, ctx):
         super().__init__()
-        self.__event_loop = event_loop
-        self.__voice_client = voice_client
-        self.__text_channel = text_channel
+        self.__ctx = ctx
+        self.__lock = Lock()
         self.__stopped = False
         self.__volume = 1.0
         self.loop = True
 
     def is_busy(self):
-        return (
-            self.__voice_client.is_playing()
-            or self.__voice_client.is_paused()
-            or self.__stopped
-        )
+        with self.__lock:
+            return (
+                self.__ctx.voice_client.is_playing()
+                or self.__ctx.voice_client.is_paused()
+                or self.__stopped
+            )
 
     def move(self, new_offset):
-        self.next_offset = new_offset
-        if self.__voice_client.is_playing():
-            self.__voice_client.stop()
+        with self.__lock:
+            self.next_offset = new_offset
+            if self.__ctx.voice_client.is_playing():
+                self.__ctx.voice_client.stop()
 
     def set_volume(self, volume):
-        if volume in range(0, 101):
-            self.__volume = volume / 100
-            if self.__voice_client.source:
-                self.__voice_client.source.volume = volume / 100
-        else:
-            raise commands.CommandError("Incorrect volume value!")
+        with self.__lock:
+            if volume in range(0, 101):
+                self.__volume = volume / 100
+                if self.__ctx.voice_client.source:
+                    self.__ctx.voice_client.source.volume = volume / 100
+            else:
+                raise commands.CommandError("Incorrect volume value!")
 
     def stop(self):
-        self.__stopped = True
-        self.__voice_client.stop()
+        with self.__lock:
+            self.__stopped = True
+            self.__ctx.voice_client.stop()
 
     def remove(self, offset):
-        elem = self.pop(offset)
-        if offset == 0:
-            self.next_offset = 0
-            self.__voice_client.stop()
-        return elem
+        with self.__lock:
+            elem = self.pop(offset)
+            if offset == 0:
+                self.next_offset = 0
+                self.__ctx.voice_client.stop()
+            return elem
 
     async def resume(self):
-        if self.__voice_client.is_paused():
-            self.__voice_client.resume()
-            await self.__text_channel.send(
-                "\u25B6 Playing **{title}** by {uploader}.".format(**self.current())
-            )
-        elif self.__stopped:
-            self.__stopped = False
-            await self.start_playing(self.current())
-        else:
-            raise commands.CommandError("This player is not paused!")
+        with self.__lock:
+            if self.__ctx.voice_client.is_paused():
+                self.__ctx.voice_client.resume()
+                return "\u25B6 Playing **{title}** by {uploader}.".format(
+                    **self.current()
+                )
+            if self.__stopped:
+                self.__stopped = False
+                await self.start_playing(self.current())
+            else:
+                raise commands.CommandError("This player is not paused!")
 
     def get_queue_info(self):
         entry_list = "\U0001F3BC Current queue:"
@@ -151,13 +168,13 @@ class MusicPlayer(MusicQueue):
         if self.on_rollover() and not self.loop and not self.__stopped:
             self.__stopped = True
             run_coroutine_threadsafe(
-                self.__text_channel.send("The queue is empty, resume to keep playing."),
-                self.__event_loop,
+                self.__ctx.send("The queue is empty, resume to keep playing."),
+                self.__ctx.bot.loop,
             ).result()
         current = self.next()
         if not self.__stopped:
             run_coroutine_threadsafe(
-                self.start_playing(current), self.__event_loop
+                self.start_playing(current), self.__ctx.bot.loop
             ).result()
 
     async def start_playing(self, current):
@@ -165,10 +182,9 @@ class MusicPlayer(MusicQueue):
             discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS),
             volume=self.__volume,
         )
-
         # TODO: Handle FFMPEG errors gracefully
-        self.__voice_client.play(audio, after=self.__play_next)
-        await self.__text_channel.send(
+        self.__ctx.voice_client.play(audio, after=self.__play_next)
+        await self.__ctx.send(
             "\u25B6 Playing **{title}** by {uploader}.".format(**current)
         )
 
@@ -265,11 +281,11 @@ class MusicModule(commands.Cog):
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel in the current context."""
         self.__players.pop(ctx.voice_client.channel.id)
+        ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
         if display:
             await ctx.send("\u23CF Quitting the voice channel.")
 
-    # Add proper error handling
     @commands.command()
     async def play(self, ctx, *query, display=True):
         """Searches for and plays a video from YouTube
@@ -296,13 +312,12 @@ class MusicModule(commands.Cog):
         player = self.__get_player(ctx)
         player.add(new)
 
-        if player.is_busy():
-            if display:
-                await ctx.send(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-                )
-        else:
+        if not player.is_busy():
             await player.start_playing(new)
+        elif display:
+            await ctx.send(
+                "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
+            )
 
         return new["webpage_url"]
 
@@ -332,13 +347,12 @@ class MusicModule(commands.Cog):
         player = self.__get_player(ctx)
         player.add(new)
 
-        if player.is_busy():
-            if display:
-                await ctx.send(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-                )
-        else:
+        if not player.is_busy():
             await player.start_playing(new)
+        elif display:
+            await ctx.send(
+                "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
+            )
 
         return new["webpage_url"]
 
@@ -379,6 +393,7 @@ class MusicModule(commands.Cog):
                 message += "\n**{title}** by {uploader}".format(**elem)
             else:
                 await player.start_playing(elem)
+
         if message and display:
             await ctx.send("\u2795 Videos added to the queue: " + message)
 
@@ -421,9 +436,11 @@ class MusicModule(commands.Cog):
         return player.get_queue_urls()
 
     @commands.command()
-    async def resume(self, ctx, **_):
+    async def resume(self, ctx, *, display=True):
         """Resumes the player on the channel in the current context."""
-        await self.__get_player(ctx).resume()
+        msg = await self.__get_player(ctx).resume()
+        if msg and display:
+            await ctx.send(msg)
 
     @commands.command()
     async def shuffle(self, ctx, *, display=True):
@@ -493,9 +510,7 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
-                self.__players[ctx.voice_client.channel.id] = MusicPlayer(
-                    self.bot.loop, ctx.voice_client, ctx.message.channel
-                )
+                self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx)
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 
