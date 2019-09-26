@@ -21,9 +21,9 @@ class MusicQueue:
         self.__playlist = []
         self.__lock = Lock()
 
-    def add(self, elem):
+    def append(self, new_elem):
         with self.__lock:
-            self.__playlist.append(elem)
+            self.__playlist.append(new_elem)
 
     def clear(self):
         with self.__lock:
@@ -34,11 +34,9 @@ class MusicQueue:
         with self.__lock:
             return self.__playlist[self.__index]
 
-    def next(self):
+    def extend(self, elem_list):
         with self.__lock:
-            self.__index = (self.__index + self.next_offset) % len(self.__playlist)
-            self.next_offset = 1
-            return self.__playlist[self.__index]
+            self.__playlist.extend(elem_list)
 
     def on_first(self):
         with self.__lock:
@@ -52,10 +50,6 @@ class MusicQueue:
                 and self.__index >= len(self.__playlist) - 1
             )
 
-    def pop(self, offset):
-        with self.__lock:
-            return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
-
     def queue_data(self):
         with self.__lock:
             return (
@@ -67,6 +61,20 @@ class MusicQueue:
     def shuffle(self):
         with self.__lock:
             shuffle(self.__playlist)
+
+    def _next(self):
+        with self.__lock:
+            self.__index = (self.__index + self.next_offset) % len(self.__playlist)
+            self.next_offset = 1
+            return self.__playlist[self.__index]
+
+    def _pop(self, offset):
+        with self.__lock:
+            return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
+
+    def _update_current(self, updated_entry):
+        with self.__lock:
+            self.__playlist[self.__index] = updated_entry
 
 
 def format_queue_entry(index, entry):
@@ -83,62 +91,14 @@ class MusicPlayer(MusicQueue):
         "options": "-vn -af dynaudnorm",
     }
 
-    def __init__(self, ctx):
+    def __init__(self, ctx, cog):
         super().__init__()
         self.__ctx = ctx
         self.__lock = Lock()
         self.__stopped = False
         self.__volume = 1.0
+        self.cog = cog
         self.loop = True
-
-    def is_busy(self):
-        with self.__lock:
-            return (
-                self.__ctx.voice_client.is_playing()
-                or self.__ctx.voice_client.is_paused()
-                or self.__stopped
-            )
-
-    def move(self, new_offset):
-        with self.__lock:
-            self.next_offset = new_offset
-            if self.__ctx.voice_client.is_playing():
-                self.__ctx.voice_client.stop()
-
-    def set_volume(self, volume):
-        with self.__lock:
-            if volume in range(0, 101):
-                self.__volume = volume / 100
-                if self.__ctx.voice_client.source:
-                    self.__ctx.voice_client.source.volume = volume / 100
-            else:
-                raise commands.CommandError("Incorrect volume value!")
-
-    def stop(self):
-        with self.__lock:
-            self.__stopped = True
-            self.__ctx.voice_client.stop()
-
-    def remove(self, offset):
-        with self.__lock:
-            elem = self.pop(offset)
-            if offset == 0:
-                self.next_offset = 0
-                self.__ctx.voice_client.stop()
-            return elem
-
-    async def resume(self):
-        with self.__lock:
-            if self.__ctx.voice_client.is_paused():
-                self.__ctx.voice_client.resume()
-                return "\u25B6 Playing **{title}** by {uploader}.".format(
-                    **self.current()
-                )
-            if self.__stopped:
-                self.__stopped = False
-                await self.start_playing(self.current())
-            else:
-                raise commands.CommandError("This player is not paused!")
 
     def get_queue_info(self):
         entry_list = "\U0001F3BC Current queue:"
@@ -160,6 +120,69 @@ class MusicPlayer(MusicQueue):
             url_list += "{webpage_url}\n".format(**entry)
         return url_list
 
+    def is_busy(self):
+        with self.__lock:
+            return (
+                self.__ctx.voice_client.is_playing()
+                or self.__ctx.voice_client.is_paused()
+                or self.__stopped
+            )
+
+    def move(self, new_offset):
+        with self.__lock:
+            self.next_offset = new_offset
+            if self.__ctx.voice_client.is_playing():
+                self.__ctx.voice_client.stop()
+
+    def remove(self, offset):
+        with self.__lock:
+            removed = self._pop(offset)
+            if offset == 0:
+                self.next_offset = 0
+                self.__ctx.voice_client.stop()
+            return removed
+
+    async def resume(self):
+        with self.__lock:
+            if self.__ctx.voice_client.is_paused():
+                self.__ctx.voice_client.resume()
+                return "\u25B6 Playing **{title}** by {uploader}.".format(
+                    **self.current()
+                )
+            if self.__stopped:
+                self.__stopped = False
+                await self.start_playing(self.current())
+            else:
+                raise commands.CommandError("This player is not paused!")
+
+    def set_volume(self, volume):
+        with self.__lock:
+            if volume in range(0, 101):
+                self.__volume = volume / 100
+                if self.__ctx.voice_client.source:
+                    self.__ctx.voice_client.source.volume = volume / 100
+            else:
+                raise commands.CommandError("Incorrect volume value!")
+
+    async def start_playing(self, current):
+        # Update the entry, so that we get a fresh URL
+        updated = await self.cog.downloader.get_updated_entry(current)
+        self._update_current(updated)
+        audio = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(updated["url"], **self.FFMPEG_OPTIONS),
+            volume=self.__volume,
+        )
+        # TODO: Handle FFMPEG errors gracefully
+        self.__ctx.voice_client.play(audio, after=self.__play_next)
+        await self.__ctx.send(
+            "\u25B6 Playing **{title}** by {uploader}.".format(**current)
+        )
+
+    def stop(self):
+        with self.__lock:
+            self.__stopped = True
+            self.__ctx.voice_client.stop()
+
     def __play_next(self, err):
         if err:
             # TODO: Proper logging!
@@ -171,25 +194,14 @@ class MusicPlayer(MusicQueue):
                 self.__ctx.send("The queue is empty, resume to keep playing."),
                 self.__ctx.bot.loop,
             ).result()
-        current = self.next()
+        current = self._next()
         if not self.__stopped:
             run_coroutine_threadsafe(
                 self.start_playing(current), self.__ctx.bot.loop
             ).result()
 
-    async def start_playing(self, current):
-        audio = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS),
-            volume=self.__volume,
-        )
-        # TODO: Handle FFMPEG errors gracefully
-        self.__ctx.voice_client.play(audio, after=self.__play_next)
-        await self.__ctx.send(
-            "\u25B6 Playing **{title}** by {uploader}.".format(**current)
-        )
 
-
-class MusicFinder(youtube_dl.YoutubeDL):
+class MusicDownloader(youtube_dl.YoutubeDL):
 
     FINDER_OPTIONS = {
         "format": "bestaudio/best",
@@ -207,6 +219,15 @@ class MusicFinder(youtube_dl.YoutubeDL):
         super().__init__(self.FINDER_OPTIONS)
         self.loop = loop
 
+    async def get_updated_entry(self, old_entry):
+        result = await self.loop.run_in_executor(
+            None, partial(self.extract_info, old_entry["webpage_url"], download=False)
+        )
+        if not result or (result["extractor"] not in ("youtube", "soundcloud")):
+            raise ValueError("Incorrect track URL!")
+
+        return result
+
     async def get_entries_by_urls(self, url_list):
         results = []
         for url in url_list:
@@ -216,7 +237,7 @@ class MusicFinder(youtube_dl.YoutubeDL):
             if result and (result["extractor"] in ("youtube", "soundcloud")):
                 results.append(result)
         if not results:
-            raise ValueError("No videos found for the provided URL list!")
+            raise ValueError("No tracks found for the provided URL list!")
         return results
 
     async def get_entries_by_query(self, provider, query):
@@ -224,7 +245,7 @@ class MusicFinder(youtube_dl.YoutubeDL):
             None, partial(self.extract_info, provider + query, download=False)
         )
         if not results or not results["entries"]:
-            raise ValueError("No videos found for the provided query!")
+            raise ValueError("No tracks found for the provided query!")
         return list(filter(None.__ne__, results["entries"]))
 
 
@@ -263,7 +284,7 @@ class MusicModule(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.__downloader = MusicFinder(bot.loop)
+        self.downloader = MusicDownloader(bot.loop)
         self.__players = {}
 
     def __get_player(self, ctx):
@@ -279,7 +300,7 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def leave(self, ctx, *, display=True):
-        """Removes the bot from the channel in the current context."""
+        """Removes the bot from the channel."""
         self.__players.pop(ctx.voice_client.channel.id)
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
@@ -288,12 +309,11 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *query, display=True):
-        """Searches for and plays a video from YouTube
-        on the channel in the current context."""
+        """Searches for and plays a video from YouTube."""
         query = " ".join(query)
         async with ctx.typing():
             # Get video list for query
-            results = await self.__downloader.get_entries_by_query("ytsearch10:", query)
+            results = await self.downloader.get_entries_by_query("ytsearch10:", query)
             # Assemble and display menu
             menu_msg = await ctx.send(
                 assemble_menu("\u2049 Choose one of the following results:", results)
@@ -310,7 +330,7 @@ class MusicModule(commands.Cog):
         new = results[int(response.content)]
 
         player = self.__get_player(ctx)
-        player.add(new)
+        player.append(new)
 
         if not player.is_busy():
             await player.start_playing(new)
@@ -323,12 +343,11 @@ class MusicModule(commands.Cog):
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
-        """Searches for and plays a video from Soundcloud
-        on the channel in the current context."""
+        """Searches for and plays a video from Soundcloud."""
         query = " ".join(query)
         async with ctx.typing():
             # Get video list for query
-            results = await self.__downloader.get_entries_by_query("scsearch10:", query)
+            results = await self.downloader.get_entries_by_query("scsearch10:", query)
             # Assemble and display menu
             menu_msg = await ctx.send(
                 assemble_menu("\u2049 Choose one of the following results:", results)
@@ -345,7 +364,7 @@ class MusicModule(commands.Cog):
         new = results[int(response.content)]
 
         player = self.__get_player(ctx)
-        player.add(new)
+        player.append(new)
 
         if not player.is_busy():
             await player.start_playing(new)
@@ -358,12 +377,11 @@ class MusicModule(commands.Cog):
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, url_list, *, display=True):
-        """Plays a YouTube/Soundcloud track on
-        the channel in the current context."""
+        """Plays a YouTube/Soundcloud track from the given URL."""
         url_list = str(url_list)
         async with ctx.typing():
             # Get video list for the URL list
-            results = await self.__downloader.get_entries_by_urls(url_list.split())
+            results = await self.downloader.get_entries_by_urls(url_list.split())
             # Assemble and display menu
             menu_msg = await ctx.send(
                 assemble_menu("\u2049 Do you want to add this to the queue?", results)
@@ -387,8 +405,8 @@ class MusicModule(commands.Cog):
 
         player = self.__get_player(ctx)
         message = ""
+        player.extend(results)
         for elem in results:
-            player.add(elem)
             if player.is_busy():
                 message += "\n**{title}** by {uploader}".format(**elem)
             else:
@@ -401,14 +419,12 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def back(self, ctx, offset: int = 1, **_):
-        """Plays the previous video from the current queue
-        based on the provided offset."""
+        """Plays the previous video from the current queue."""
         self.__get_player(ctx).move(-offset)
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1, **_):
-        """Plays the next video from the current queue
-        based on the provided offset."""
+        """Plays the next video from the current queue."""
         self.__get_player(ctx).move(offset)
 
     @commands.command()
@@ -422,14 +438,14 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def pause(self, ctx, *, display=True):
-        """Pauses the player on the channel in the current context."""
+        """Pauses the player."""
         ctx.voice_client.pause()
         if display:
             await ctx.send("\u23F8 Paused.")
 
     @commands.command()
     async def queue(self, ctx, *, display=True):
-        """Displays the queue of the channel in the current context."""
+        """Displays the queue of the player."""
         player = self.__get_player(ctx)
         if display:
             await ctx.send(player.get_queue_info())
@@ -437,21 +453,21 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def resume(self, ctx, *, display=True):
-        """Resumes the player on the channel in the current context."""
+        """Resumes the player."""
         msg = await self.__get_player(ctx).resume()
         if msg and display:
             await ctx.send(msg)
 
     @commands.command()
     async def shuffle(self, ctx, *, display=True):
-        """Shuffles the playlist of the channel in the current context."""
+        """Shuffles the queue of the player."""
         self.__get_player(ctx).shuffle()
         if display:
             await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
     async def clear(self, ctx, *, display=True):
-        """Clear the playlist of the channel in the current context."""
+        """Clears the playlist of the player."""
         player = self.__get_player(ctx)
         player.stop()
         player.clear()
@@ -460,14 +476,14 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx, *, display=True):
-        """Stops the player on the channel in the current context."""
+        """Stops the player."""
         self.__get_player(ctx).stop()
         if display:
             await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
-        """Changes the volume of the player on the channel in the current context."""
+        """Changes the volume of the player."""
         self.__get_player(ctx).set_volume(volume)
         if display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
@@ -475,8 +491,7 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def current(self, ctx, *, display=True):
-        """Displays information about the video that is being played
-        in the current context."""
+        """Displays information about the current track."""
         current = self.__get_player(ctx).current()
         if display:
             await ctx.send(
@@ -488,7 +503,7 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
-        """Removes a video from the music queue."""
+        """Removes a track from the queue."""
         removed = self.__get_player(ctx).remove(offset)
         if display:
             await ctx.send(
@@ -510,7 +525,7 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
-                self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx)
+                self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx, self)
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 
