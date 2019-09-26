@@ -1,10 +1,14 @@
 """This module provides music playback functionality to the bot."""
 from asyncio import run_coroutine_threadsafe
+from base64 import b64decode
 from concurrent import futures
 from functools import partial
+from json import loads
 from math import ceil
 from random import shuffle
 from threading import Lock
+from time import time
+from urllib.parse import urlparse, parse_qs
 
 import youtube_dl
 
@@ -71,10 +75,6 @@ class MusicQueue:
     def _pop(self, offset):
         with self.__lock:
             return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
-
-    def _update_current(self, updated_entry):
-        with self.__lock:
-            self.__playlist[self.__index] = updated_entry
 
 
 def format_queue_entry(index, entry):
@@ -166,10 +166,10 @@ class MusicPlayer(MusicQueue):
 
     async def start_playing(self, current):
         # Update the entry, so that we get a fresh URL
-        updated = await self.cog.downloader.get_updated_entry(current)
-        self._update_current(updated)
+        if time() + current["duration"] > current["expire"]:
+            await self.cog.downloader.update_entry(current)
         audio = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(updated["url"], **self.FFMPEG_OPTIONS),
+            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS),
             volume=self.__volume,
         )
         # TODO: Handle FFMPEG errors gracefully
@@ -219,15 +219,6 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         super().__init__(self.FINDER_OPTIONS)
         self.loop = loop
 
-    async def get_updated_entry(self, old_entry):
-        result = await self.loop.run_in_executor(
-            None, partial(self.extract_info, old_entry["webpage_url"], download=False)
-        )
-        if not result or (result["extractor"] not in ("youtube", "soundcloud")):
-            raise ValueError("Incorrect track URL!")
-
-        return result
-
     async def get_entries_by_urls(self, url_list):
         results = []
         for url in url_list:
@@ -246,7 +237,34 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         )
         if not results or not results["entries"]:
             raise ValueError("No tracks found for the provided query!")
+        # Filter out None entries
         return list(filter(None.__ne__, results["entries"]))
+
+    async def update_entry(self, entry):
+        result = await self.loop.run_in_executor(
+            None, partial(self.extract_info, entry["webpage_url"], download=False)
+        )
+        if not result or (result["extractor"] not in ("youtube", "soundcloud")):
+            raise ValueError("Incorrect track URL!")
+        add_expire_time(result)
+        entry.update(result)
+
+
+def add_expire_time(entry):
+    query_str = urlparse(entry["url"]).query
+    query = parse_qs(query_str)
+
+    if entry["extractor"] == "youtube":
+        entry["expire"] = int(query["expire"][0])
+    elif entry["extractor"] == "soundcloud":
+        policy_b64 = query["Policy"][0]
+        policy_str = b64decode(policy_b64.replace("_", "="), altchars="~-")
+        policy_dict = loads(policy_str)
+        entry["expire"] = int(
+            policy_dict["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
+        )
+    else:
+        raise ValueError("Expected a YouTube/Soundcloud entry!")
 
 
 def assemble_menu(header, entries):
@@ -328,6 +346,7 @@ class MusicModule(commands.Cog):
             return
 
         new = results[int(response.content)]
+        add_expire_time(new)
 
         player = self.__get_player(ctx)
         player.append(new)
@@ -362,6 +381,7 @@ class MusicModule(commands.Cog):
             return
 
         new = results[int(response.content)]
+        add_expire_time(new)
 
         player = self.__get_player(ctx)
         player.append(new)
@@ -402,11 +422,12 @@ class MusicModule(commands.Cog):
             return
 
         await menu_msg.delete()
-
-        player = self.__get_player(ctx)
         message = ""
+        player = self.__get_player(ctx)
         player.extend(results)
+
         for elem in results:
+            add_expire_time(elem)
             if player.is_busy():
                 message += "\n**{title}** by {uploader}".format(**elem)
             else:
