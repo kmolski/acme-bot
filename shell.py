@@ -190,7 +190,7 @@ FILE_NAME: /[\\w\\-_. '"]+/;
 
     @commands.command(name="to-file", aliases=["tee"])
     async def to_file(self, ctx, content, file_name, *, display=True):
-        content, file_name = str(content), f"{ctx.author.name} - {file_name}"
+        content, file_name = str(content), f"{ctx.author.name}_{file_name}"
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
             await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)

@@ -10,6 +10,8 @@ from threading import Lock
 from time import time
 from urllib.parse import urlparse, parse_qs
 
+import logging
+
 import youtube_dl
 
 import discord
@@ -203,7 +205,7 @@ class MusicPlayer(MusicQueue):
 
 class MusicDownloader(youtube_dl.YoutubeDL):
 
-    FINDER_OPTIONS = {
+    DOWNLOAD_OPTIONS = {
         "format": "bestaudio/best",
         "noplaylist": True,
         "nocheckcertificate": True,
@@ -216,7 +218,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
     }
 
     def __init__(self, loop):
-        super().__init__(self.FINDER_OPTIONS)
+        super().__init__(self.DOWNLOAD_OPTIONS)
         self.loop = loop
 
     async def get_entries_by_urls(self, url_list):
@@ -257,9 +259,8 @@ def add_expire_time(entry):
     if entry["extractor"] == "youtube":
         entry["expire"] = int(query["expire"][0])
     elif entry["extractor"] == "soundcloud":
-        policy_b64 = query["Policy"][0]
-        policy_str = b64decode(policy_b64.replace("_", "="), altchars="~-")
-        policy_dict = loads(policy_str)
+        policy_b64 = query["Policy"][0].replace("_", "=")
+        policy_dict = loads(b64decode(policy_b64, altchars="~-"))
         entry["expire"] = int(
             policy_dict["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
         )
@@ -311,6 +312,7 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def join(self, ctx, *, display=True):
+        logging.info("Joining voice channel %s", ctx.voice_client.channel.id)
         if display:
             await ctx.send(
                 f"\u27A1 Joining the voice channel **{ctx.voice_client.channel.name}**."
@@ -319,8 +321,8 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel."""
+        logging.info("Leaving voice channel %s", ctx.voice_client.channel.id)
         self.__players.pop(ctx.voice_client.channel.id)
-        ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
         if display:
             await ctx.send("\u23CF Quitting the voice channel.")
@@ -546,6 +548,10 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
+                logging.info(
+                    "Creating a MusicPlayer instance for channel %s",
+                    ctx.voice_client.channel.id,
+                )
                 self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx, self)
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")

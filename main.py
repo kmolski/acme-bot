@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """The entry point for the music bot."""
 from os import environ
+import logging
+
 from discord.ext import commands
 
 from music import MusicModule
@@ -13,9 +15,11 @@ def get_token_from_env():
     try:
         return environ["DISCORD_TOKEN"]
     except KeyError:
-        raise KeyError(
-            "Please provide the login token in the DISCORD_TOKEN environment variable!"
+        logging.error(
+            "Discord API token not found! "
+            "Please provide the token in the DISCORD_TOKEN environment variable!"
         )
+        raise
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -26,11 +30,14 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 if __name__ == "__main__":
     CLIENT = commands.Bot(command_prefix="!", help_command=HelpCommand())
+    logging.basicConfig(
+        format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO
+    )
 
     @CLIENT.event
     async def on_ready():
         """Prints a message to stdout once the bot has started."""
-        print("ACME Universal Bot started!")
+        logging.info("Connection is ready.")
 
     @CLIENT.event
     async def on_command_error(ctx, error):
@@ -40,16 +47,19 @@ if __name__ == "__main__":
                 await ctx.send(f"Error: {error.original}")
             else:
                 await ctx.send(f"Error: {error}")
+        logging.exception(
+            "Exception caused by message '%s':", ctx.message.content, exc_info=error
+        )
 
     @CLIENT.event
     async def on_disconnect():
         # CLIENT.get_cog("MusicModule").pause_players()
-        print("Disconnected!")
+        logging.warning("Connection stopped, will attempt to reconnect.")
 
     @CLIENT.event
     async def on_resumed():
         # CLIENT.get_cog("MusicModule").resume_players()
-        print("Connection resumed!")
+        logging.info("Connection resumed.")
 
     CLIENT.add_cog(MusicModule(CLIENT))
     CLIENT.add_cog(ShellModule(CLIENT))
