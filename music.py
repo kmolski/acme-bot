@@ -102,17 +102,23 @@ def parse_log_entry(line):
     }
 
     matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
-    return ffmpeg_levels[matches[2]], matches[3], matches[1]
+
+    try:
+        return ffmpeg_levels[matches[2]], matches[3], matches[1]
+    except IndexError:
+        return logging.WARNING, line, "unknown"
 
 
-def parse_ffmpeg_logs(source):
+def process_ffmpeg_logs(source):
+    # Those log messages are completely normal and can be filtered out
     rejects = ["Error in the pull function", "Will reconnect at"]
+
     while True:
         # Alas, we need to perform this access to get the stderr of FFMPEG
         # pylint: disable=protected-access
-        line = source.original._process.stderr.readline().decode(errors="replace")
+        line = source.original._process.stderr.readline()
         if line:
-            level, message, module = parse_log_entry(line)
+            level, message, module = parse_log_entry(line.decode(errors="replace"))
             if all(r not in message for r in rejects):
                 logging.log(level, "In ffmpeg module '%s': %s", module, message)
         else:
@@ -210,7 +216,7 @@ class MusicPlayer(MusicQueue):
             volume=self.__volume,
         )
 
-        log_parser = Thread(target=parse_ffmpeg_logs, args=[audio], daemon=True)
+        log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
 
         self.__ctx.voice_client.play(audio, after=self.__play_next)
