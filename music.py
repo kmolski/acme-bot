@@ -6,7 +6,10 @@ from functools import partial
 from json import loads
 from math import ceil
 from random import shuffle
-from threading import Lock
+from re import match
+
+from subprocess import PIPE
+from threading import Lock, Thread
 from time import time
 from urllib.parse import urlparse, parse_qs
 
@@ -87,9 +90,40 @@ def format_queue_entry(index, entry):
     )
 
 
+def parse_log_entry(line):
+    ffmpeg_levels = {
+        "panic": logging.CRITICAL,
+        "fatal": logging.CRITICAL,
+        "error": logging.ERROR,
+        "warning": logging.WARNING,
+        "info": logging.INFO,
+        "verbose": logging.INFO,
+        "debug": logging.DEBUG,
+    }
+
+    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
+    return ffmpeg_levels[matches[2]], matches[3], matches[1]
+
+
+def parse_ffmpeg_logs(source):
+    rejects = ["Error in the pull function", "Will reconnect at"]
+    while True:
+        # Alas, we need to perform this access to get the stderr of FFMPEG
+        # pylint: disable=protected-access
+        line = source.original._process.stderr.readline().decode(errors="replace")
+        if line:
+            level, message, module = parse_log_entry(line)
+            if all(r not in message for r in rejects):
+                logging.log(level, "In ffmpeg module '%s': %s", module, message)
+        else:
+            logging.debug("Finished parsing the ffmpeg stderr output.")
+            return
+
+
 class MusicPlayer(MusicQueue):
     FFMPEG_OPTIONS = {
-        "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+        "before_options": "-reconnect 1 -reconnect_streamed 1 "
+        "-reconnect_delay_max 5 -hide_banner -loglevel +level",
         "options": "-vn -af dynaudnorm",
     }
 
@@ -100,14 +134,14 @@ class MusicPlayer(MusicQueue):
         self.__stopped = False
         self.__volume = 1.0
         self.cog = cog
-        self.loop = True
+        self.loop_queue = True
 
     def get_queue_info(self):
         entry_list = "\U0001F3BC Current queue:"
         head, tail, split = self.queue_data()
         for index, entry in enumerate(head):
             entry_list += format_queue_entry(index, entry)
-        if not self.loop and not self.on_first():
+        if not self.loop_queue and not self.on_first():
             entry_list += "\n------------------------------------\n"
         for index, entry in enumerate(tail, start=split):
             entry_list += format_queue_entry(index, entry)
@@ -170,11 +204,15 @@ class MusicPlayer(MusicQueue):
         # Update the entry, so that we get a fresh URL
         if time() + current["duration"] > current["expire"]:
             await self.cog.downloader.update_entry(current)
+
         audio = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS),
+            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
             volume=self.__volume,
         )
-        # TODO: Handle FFMPEG errors gracefully
+
+        log_parser = Thread(target=parse_ffmpeg_logs, args=[audio], daemon=True)
+        log_parser.start()
+
         self.__ctx.voice_client.play(audio, after=self.__play_next)
         await self.__ctx.send(
             "\u25B6 Playing **{title}** by {uploader}.".format(**current)
@@ -187,10 +225,9 @@ class MusicPlayer(MusicQueue):
 
     def __play_next(self, err):
         if err:
-            # TODO: Proper logging!
-            print(f"ERROR: Playback ended with {err}!")
+            logging.error(err)
             return
-        if self.on_rollover() and not self.loop and not self.__stopped:
+        if self.on_rollover() and not self.loop_queue and not self.__stopped:
             self.__stopped = True
             run_coroutine_threadsafe(
                 self.__ctx.send("The queue is empty, resume to keep playing."),
@@ -312,17 +349,19 @@ class MusicModule(commands.Cog):
 
     @commands.command()
     async def join(self, ctx, *, display=True):
-        logging.info("Joining voice channel %s", ctx.voice_client.channel.id)
         if display:
             await ctx.send(
-                f"\u27A1 Joining the voice channel **{ctx.voice_client.channel.name}**."
+                f"\u27A1 Joining voice channel **{ctx.voice_client.channel.name}**."
             )
 
     @commands.command()
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel."""
-        logging.info("Leaving voice channel %s", ctx.voice_client.channel.id)
-        self.__players.pop(ctx.voice_client.channel.id)
+        logging.info(
+            "Deleted the MusicPlayer instance for channel %s",
+            ctx.voice_client.channel.id,
+        )
+        del self.__players[ctx.voice_client.channel.id]
         await ctx.voice_client.disconnect()
         if display:
             await ctx.send("\u23CF Quitting the voice channel.")
@@ -549,7 +588,7 @@ class MusicModule(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
                 logging.info(
-                    "Creating a MusicPlayer instance for channel %s",
+                    "Created a MusicPlayer instance for channel %s",
                     ctx.voice_client.channel.id,
                 )
                 self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx, self)
