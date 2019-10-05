@@ -54,7 +54,7 @@ if __name__ == "__main__":
     @CLIENT.event
     async def on_disconnect():
         # CLIENT.get_cog("MusicModule").pause_players()
-        logging.warning("Connection stopped, will attempt to reconnect.")
+        logging.warning("Connection closed, will attempt to reconnect.")
 
     @CLIENT.event
     async def on_resumed():

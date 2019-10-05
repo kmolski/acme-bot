@@ -200,4 +200,4 @@ FILE_NAME: /[\\w\\-_. '"]+/;
 
     @commands.command()
     async def tts(self, ctx, content, **_):
-        await ctx.send(content, tts=True, delete_after=5.0)
+        await ctx.send(content, tts=True, delete_after=0.0)

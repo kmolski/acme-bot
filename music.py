@@ -5,9 +5,9 @@ from concurrent import futures
 from functools import partial
 from json import loads
 from math import ceil
+from pathlib import PurePosixPath
 from random import shuffle
 from re import match
-
 from subprocess import PIPE
 from threading import Lock, Thread
 from time import time
@@ -110,7 +110,7 @@ def parse_log_entry(line):
 
 
 def process_ffmpeg_logs(source):
-    # Those log messages are completely normal and can be filtered out
+    # These log messages are completely normal and can be filtered out
     rejects = ["Error in the pull function", "Will reconnect at"]
 
     while True:
@@ -296,19 +296,31 @@ class MusicDownloader(youtube_dl.YoutubeDL):
 
 
 def add_expire_time(entry):
-    query_str = urlparse(entry["url"]).query
-    query = parse_qs(query_str)
+    try:
+        url = urlparse(entry["url"])
 
-    if entry["extractor"] == "youtube":
-        entry["expire"] = int(query["expire"][0])
-    elif entry["extractor"] == "soundcloud":
-        policy_b64 = query["Policy"][0].replace("_", "=")
-        policy_dict = loads(b64decode(policy_b64, altchars="~-"))
-        entry["expire"] = int(
-            policy_dict["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
+        if entry["extractor"] == "youtube":
+            if url.query:
+                query = parse_qs(url.query)
+                entry["expire"] = int(query["expire"][0])
+            else:
+                path = PurePosixPath(url.path)
+                entry["expire"] = int(path.parts[5])
+
+        elif entry["extractor"] == "soundcloud":
+            query = parse_qs(url.query)
+            policy_b64 = query["Policy"][0].replace("_", "=")
+            policy = loads(b64decode(policy_b64, altchars="~-"))
+            entry["expire"] = int(
+                policy["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
+            )
+
+    except (IndexError, KeyError, ValueError):
+        # Default to 5 minutes if the expiration time cannot be found
+        entry["expire"] = time() + (5 * 60)
+        logging.warning(
+            "No expiration time found for URL, assuming 5 minutes: %s", entry["url"]
         )
-    else:
-        raise ValueError("Expected a YouTube/Soundcloud entry!")
 
 
 def assemble_menu(header, entries):
