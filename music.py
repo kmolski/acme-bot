@@ -9,7 +9,7 @@ from pathlib import PurePosixPath
 from random import shuffle
 from re import match
 from subprocess import PIPE
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from time import time
 from urllib.parse import urlparse, parse_qs
 
@@ -26,6 +26,7 @@ youtube_dl.utils.bug_reports_message = lambda: ""
 class MusicQueue:
     def __init__(self):
         self.next_offset = 1
+        self._loop = True
         self.__index = 0
         self.__playlist = []
         self.__lock = Lock()
@@ -46,6 +47,26 @@ class MusicQueue:
     def extend(self, elem_list):
         with self.__lock:
             self.__playlist.extend(elem_list)
+
+    def get_queue_info(self):
+        entry_list = "\U0001F3BC Current queue:"
+        head, tail, split = self.queue_data()
+        for index, entry in enumerate(head):
+            entry_list += format_queue_entry(index, entry)
+        if not self._loop and not self.on_first():
+            entry_list += "\n------------------------------------\n"
+        for index, entry in enumerate(tail, start=split):
+            entry_list += format_queue_entry(index, entry)
+        return entry_list
+
+    def get_queue_urls(self):
+        url_list = ""
+        head, tail, _ = self.queue_data()
+        for entry in head:
+            url_list += "{webpage_url}\n".format(**entry)
+        for entry in tail:
+            url_list += "{webpage_url}\n".format(**entry)
+        return url_list
 
     def on_first(self):
         with self.__lock:
@@ -105,7 +126,7 @@ def parse_log_entry(line):
 
     try:
         return ffmpeg_levels[matches[2]], matches[3], matches[1]
-    except IndexError:
+    except (IndexError, TypeError):
         return logging.WARNING, line, "unknown"
 
 
@@ -137,30 +158,10 @@ class MusicPlayer(MusicQueue):
         super().__init__()
         self.__ctx = ctx
         self.__lock = Lock()
+        self.__finished = Event()
         self.__stopped = False
         self.__volume = 1.0
-        self.cog = cog
-        self.loop_queue = True
-
-    def get_queue_info(self):
-        entry_list = "\U0001F3BC Current queue:"
-        head, tail, split = self.queue_data()
-        for index, entry in enumerate(head):
-            entry_list += format_queue_entry(index, entry)
-        if not self.loop_queue and not self.on_first():
-            entry_list += "\n------------------------------------\n"
-        for index, entry in enumerate(tail, start=split):
-            entry_list += format_queue_entry(index, entry)
-        return entry_list
-
-    def get_queue_urls(self):
-        url_list = ""
-        head, tail, _ = self.queue_data()
-        for entry in head:
-            url_list += "{webpage_url}\n".format(**entry)
-        for entry in tail:
-            url_list += "{webpage_url}\n".format(**entry)
-        return url_list
+        self.__cog = cog
 
     def is_busy(self):
         with self.__lock:
@@ -174,14 +175,22 @@ class MusicPlayer(MusicQueue):
         with self.__lock:
             self.next_offset = new_offset
             if self.__ctx.voice_client.is_playing():
+                self.__finished.clear()
                 self.__ctx.voice_client.stop()
+                self.__finished.wait()
+
+    def pause(self):
+        with self.__lock:
+            self.__ctx.voice_client.pause()
 
     def remove(self, offset):
         with self.__lock:
             removed = self._pop(offset)
             if offset == 0:
                 self.next_offset = 0
+                self.__finished.clear()
                 self.__ctx.voice_client.stop()
+                self.__finished.wait()
             return removed
 
     async def resume(self):
@@ -209,7 +218,7 @@ class MusicPlayer(MusicQueue):
     async def start_playing(self, current):
         # Update the entry, so that we get a fresh URL
         if time() + current["duration"] > current["expire"]:
-            await self.cog.downloader.update_entry(current)
+            await self.__cog.downloader.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
@@ -227,23 +236,26 @@ class MusicPlayer(MusicQueue):
     def stop(self):
         with self.__lock:
             self.__stopped = True
+            self.__finished.clear()
             self.__ctx.voice_client.stop()
+            self.__finished.wait()
 
     def __play_next(self, err):
         if err:
             logging.error(err)
             return
-        if self.on_rollover() and not self.loop_queue and not self.__stopped:
+        if self.on_rollover() and not self._loop and not self.__stopped:
             self.__stopped = True
             run_coroutine_threadsafe(
                 self.__ctx.send("The queue is empty, resume to keep playing."),
                 self.__ctx.bot.loop,
-            ).result()
+            ).done()
         current = self._next()
         if not self.__stopped:
             run_coroutine_threadsafe(
                 self.start_playing(current), self.__ctx.bot.loop
-            ).result()
+            ).done()
+        self.__finished.set()
 
 
 class MusicDownloader(youtube_dl.YoutubeDL):
@@ -301,12 +313,16 @@ def add_expire_time(entry):
 
         if entry["extractor"] == "youtube":
             if url.query:
+                # Usually the expiration time is in the `expire` part of the query
                 query = parse_qs(url.query)
                 entry["expire"] = int(query["expire"][0])
             else:
+                # Sometimes it's a part of the URL, not sure that it's always
+                # the 5th part since I've only seen that happen once.
                 path = PurePosixPath(url.path)
                 entry["expire"] = int(path.parts[5])
-
+        # The `Policy` part of the URL query contains a Base64-encoded JSON object
+        # with the timestamp (Statement->Condition->DateLessThan->AWS:EpochTime)
         elif entry["extractor"] == "soundcloud":
             query = parse_qs(url.query)
             policy_b64 = query["Policy"][0].replace("_", "=")
@@ -314,6 +330,8 @@ def add_expire_time(entry):
             entry["expire"] = int(
                 policy["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
             )
+        else:
+            raise ValueError("Expected a YouTube/Soundcloud entry!")
 
     except (IndexError, KeyError, ValueError):
         # Default to 5 minutes if the expiration time cannot be found
@@ -375,18 +393,19 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the channel."""
+        self.__get_player(ctx).stop()
+        del self.__players[ctx.voice_client.channel.id]
         logging.info(
-            "Deleted the MusicPlayer instance for channel %s",
+            "Deleted the MusicPlayer instance for channel %s.",
             ctx.voice_client.channel.id,
         )
-        del self.__players[ctx.voice_client.channel.id]
         await ctx.voice_client.disconnect()
         if display:
             await ctx.send("\u23CF Quitting the voice channel.")
 
     @commands.command()
     async def play(self, ctx, *query, display=True):
-        """Searches for and plays a video from YouTube."""
+        """Searches for and plays a track from YouTube."""
         query = " ".join(query)
         async with ctx.typing():
             # Get video list for query
@@ -421,7 +440,7 @@ class MusicModule(commands.Cog):
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
-        """Searches for and plays a video from Soundcloud."""
+        """Searches for and plays a track from Soundcloud."""
         query = " ".join(query)
         async with ctx.typing():
             # Get video list for query
@@ -519,7 +538,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def pause(self, ctx, *, display=True):
         """Pauses the player."""
-        ctx.voice_client.pause()
+        self.__get_player(ctx).pause()
         if display:
             await ctx.send("\u23F8 Paused.")
 
@@ -606,7 +625,7 @@ class MusicModule(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
                 logging.info(
-                    "Created a MusicPlayer instance for channel %s",
+                    "Created a MusicPlayer instance for channel %s.",
                     ctx.voice_client.channel.id,
                 )
                 self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx, self)
