@@ -23,6 +23,10 @@ def get_token_from_env():
 
 
 class HelpCommand(commands.DefaultHelpCommand):
+    """This class provides a help command that works correctly with
+    the shell interpreter."""
+
+    # Here we have to catch the "display" keyword argument and ignore it
     # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None, **_):
         return await super().command_callback(ctx, command=command)
@@ -41,6 +45,7 @@ if __name__ == "__main__":
 
     @CLIENT.event
     async def on_command_error(ctx, error):
+        """Handles exceptions raised during command execution."""
         # TODO: Make this log all exceptions (with traceback and original message)!
         if isinstance(error, commands.CommandError):
             if hasattr(error, "original"):
@@ -53,11 +58,13 @@ if __name__ == "__main__":
 
     @CLIENT.event
     async def on_disconnect():
+        """Handles the termination of connections to Discord servers."""
         # CLIENT.get_cog("MusicModule").pause_players()
         logging.warning("Connection closed, will attempt to reconnect.")
 
     @CLIENT.event
     async def on_resumed():
+        """Handles restarts of connections to Discord servers."""
         # CLIENT.get_cog("MusicModule").resume_players()
         logging.info("Connection resumed.")
 
