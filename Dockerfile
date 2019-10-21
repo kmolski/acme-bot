@@ -2,8 +2,8 @@ FROM alpine
 
 ENV DISCORD_TOKEN ""
 
-ENV DIR /opt/acme-bot
-RUN mkdir -p ${DIR}
+ENV DIR /tmp/acme-bot
+RUN mkdir -p ${DIR}/acme_bot
 
 ENV BUILD_DEPS gcc libffi-dev make musl-dev python3-dev
 ENV DEPS ffmpeg python3
@@ -17,6 +17,9 @@ RUN pip3 install -r requirements.txt
 
 RUN apk del ${BUILD_DEPS}
 
-COPY *.py ${DIR}/
+COPY *.py ${DIR}/acme_bot
+COPY music/*.py ${DIR}/acme_bot/music
 
-ENTRYPOINT ["/opt/acme-bot/main.py"]
+RUN pip3 install {DIR}
+
+ENTRYPOINT ["acme-bot"]

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The entry point for the music bot."""
 from os import environ
+from shutil import which
 import logging
 
 from discord.ext import commands
@@ -32,7 +33,7 @@ class HelpCommand(commands.DefaultHelpCommand):
         return await super().command_callback(ctx, command=command)
 
 
-if __name__ == "__main__":
+def run():
     CLIENT = commands.Bot(command_prefix="!", help_command=HelpCommand())
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO
@@ -46,15 +47,15 @@ if __name__ == "__main__":
     @CLIENT.event
     async def on_command_error(ctx, error):
         """Handles exceptions raised during command execution."""
-        # TODO: Make this log all exceptions (with traceback and original message)!
         if isinstance(error, commands.CommandError):
             if hasattr(error, "original"):
                 await ctx.send(f"Error: {error.original}")
             else:
                 await ctx.send(f"Error: {error}")
-        logging.exception(
-            "Exception caused by message '%s':", ctx.message.content, exc_info=error
-        )
+        else:
+            logging.exception(
+                "Exception caused by message '%s':", ctx.message.content, exc_info=error
+            )
 
     @CLIENT.event
     async def on_disconnect():
@@ -68,7 +69,11 @@ if __name__ == "__main__":
         # CLIENT.get_cog("MusicModule").resume_players()
         logging.info("Connection resumed.")
 
-    CLIENT.add_cog(MusicModule(CLIENT))
+    if which("ffmpeg"):
+        CLIENT.add_cog(MusicModule(CLIENT))
+    else:
+        logging.error("FFMPEG executable not found! Disabling MusicModule.")
+
     CLIENT.add_cog(ShellModule(CLIENT))
 
     CLIENT.run(get_token_from_env())

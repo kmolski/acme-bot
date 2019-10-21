@@ -26,8 +26,8 @@ def parse_log_entry(line):
         "debug": logging.DEBUG,
     }
 
-    # This regex matches (in order) the source module's name, the severity
-    # and the message of the log entry
+    # This regex matches (in order) the source module's name,
+    # the level and the message of the log entry.
     matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
 
     try:
@@ -89,7 +89,7 @@ class MusicPlayer(MusicQueue):
             if self.__ctx.voice_client.is_playing():
                 self.__finished.clear()
                 self.__ctx.voice_client.stop()
-                self.__finished.wait()  # Wait until __play_next exits
+                self.__finished.wait(timeout=1.0)  # Wait until __play_next exits
 
     def pause(self):
         """Pauses the player, locking it in the process."""
@@ -105,7 +105,7 @@ class MusicPlayer(MusicQueue):
                 self.next_offset = 0
                 self.__finished.clear()
                 self.__ctx.voice_client.stop()
-                self.__finished.wait()  # Wait until __play_next exits
+                self.__finished.wait(timeout=1.0)  # Wait until __play_next exits
             return removed
 
     async def resume(self):
@@ -158,14 +158,14 @@ class MusicPlayer(MusicQueue):
             self.__stopped = True
             self.__finished.clear()
             self.__ctx.voice_client.stop()
-            self.__finished.wait()  # Wait until __play_next exits
+            self.__finished.wait(timeout=1.0)  # Wait until __play_next exits
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""
         if err:
             logging.error(err)
             return
-        # Stop the player loop is off and it played the last song in queue
+        # Stop the if player loop is off and it played the last song in queue
         if self.on_rollover() and not self._loop and not self.__stopped:
             self.__stopped = True
             run_coroutine_threadsafe(

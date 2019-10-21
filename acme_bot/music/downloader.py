@@ -1,4 +1,4 @@
-"""This module provides a track downloading capability for the bot."""
+"""This module provides track downloader for the MusicModule."""
 from base64 import b64decode
 from functools import partial
 from json import loads
@@ -7,6 +7,7 @@ from time import time
 from urllib.parse import urlparse, parse_qs
 import logging
 
+from discord.ext import commands
 import youtube_dl
 
 youtube_dl.utils.bug_reports_message = lambda: ""
@@ -28,9 +29,9 @@ def add_expire_time(entry):
                 # the 5th part since I've only seen that happen once.
                 path = PurePosixPath(url.path)
                 entry["expire"] = int(path.parts[5])
-        # The `Policy` part of the URL query contains a Base64-encoded JSON object
-        # with the timestamp (Statement->Condition->DateLessThan->AWS:EpochTime)
         elif entry["extractor"] == "soundcloud":
+            # The `Policy` part of the URL query contains a Base64-encoded JSON object
+            # with the timestamp (Statement->Condition->DateLessThan->AWS:EpochTime)
             query = parse_qs(url.query)
             policy_b64 = query["Policy"][0].replace("_", "=")
             policy = loads(b64decode(policy_b64, altchars="~-"))
@@ -38,9 +39,9 @@ def add_expire_time(entry):
                 policy["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
             )
         else:
-            raise ValueError("Expected a YouTube/Soundcloud entry!")
+            raise commands.CommandError("Expected a YouTube/Soundcloud entry!")
 
-    except (IndexError, KeyError, ValueError):
+    except (commands.CommandError, IndexError, KeyError):
         # Default to 5 minutes if the expiration time cannot be found
         entry["expire"] = time() + (5 * 60)
         logging.warning(
@@ -73,34 +74,36 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         results = []
         for url in url_list:
             # Run the YoutubeDL function in the event loop,
-            # so that is doesn't block the whole bot
+            # so that it doesn't block the whole bot
             result = await self.loop.run_in_executor(
                 None, partial(self.extract_info, url, download=False)
             )
             if result and (result["extractor"] in ("youtube", "soundcloud")):
                 results.append(result)
         if not results:
-            raise ValueError("No tracks found for the provided URL list!")
+            raise commands.CommandError("No tracks found for the provided URL list!")
         return results
 
     async def get_entries_by_query(self, provider, query):
+        """Extracts the track entries for the given search provider and query."""
         # Run the YoutubeDL function in the event loop,
-        # so that is doesn't block the whole bot
+        # so that it doesn't block the whole bot
         results = await self.loop.run_in_executor(
             None, partial(self.extract_info, provider + query, download=False)
         )
         if not results or not results["entries"]:
-            raise ValueError("No tracks found for the provided query!")
+            raise commands.CommandError("No tracks found for the provided query!")
         # Filter out None entries
         return list(filter(None.__ne__, results["entries"]))
 
     async def update_entry(self, entry):
+        """Updates a track entry in-place with a new URL and expiration time."""
         # Run the YoutubeDL function in the event loop,
-        # so that is doesn't block the whole bot
+        # so that it doesn't block the whole bot
         result = await self.loop.run_in_executor(
             None, partial(self.extract_info, entry["webpage_url"], download=False)
         )
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
-            raise ValueError("Incorrect track URL!")
+            raise commands.CommandError("Incorrect track URL!")
         add_expire_time(result)  # Add the expiration time to the entry
         entry.update(result)  # Update the entry in-place

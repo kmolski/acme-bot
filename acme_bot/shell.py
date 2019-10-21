@@ -1,4 +1,4 @@
-"""This module provides a shell interpreter capability to the bot."""
+"""This module provides the shell interpreter capability to the bot."""
 from datetime import datetime
 from io import StringIO
 from discord import File
@@ -68,6 +68,7 @@ class Command:
         args = (
             ([ctx] if cmd.cog is None else [cmd.cog, ctx])
             + ([data] if data else [])  # Use the piped input only if it's not empty
+            # Setting "display" to false, so that the argument eval doesn't print.
             + ([await elem.eval(ctx, display=False) for elem in self.args])
         )
         result = await cmd.callback(*args, display=display)
@@ -223,8 +224,7 @@ FILE_NAME: /[\\w\\-_. '"]+/;
 
     @commands.command()
     async def pretty(self, ctx, content, file_format="", *, display=True):
-        """Prints the input data with highlighting
-        specified by the file format argument."""
+        """Prints the input data with highlighting specified by 'file_format'."""
         content = f"```{file_format}\n{content}\n```"
         if display:
             await ctx.send(content)

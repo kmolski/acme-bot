@@ -1,4 +1,4 @@
-"""This module provides a music playback capability to the bot."""
+"""This module provides the music playback capability to the bot."""
 from concurrent import futures
 import logging
 
