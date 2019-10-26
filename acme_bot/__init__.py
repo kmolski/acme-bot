@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """The entry point for the music bot."""
 from os import environ
 from shutil import which
@@ -6,8 +5,8 @@ import logging
 
 from discord.ext import commands
 
-from music import MusicModule
-from shell import ShellModule
+from .music import MusicModule
+from .shell import ShellModule
 
 
 def get_token_from_env():
@@ -27,24 +26,24 @@ class HelpCommand(commands.DefaultHelpCommand):
     """This class provides a help command that works correctly with
     the shell interpreter."""
 
-    # Here we have to catch the "display" keyword argument and ignore it
+    # Catch the "display" keyword argument and ignore it
     # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None, **_):
         return await super().command_callback(ctx, command=command)
 
 
 def run():
-    CLIENT = commands.Bot(command_prefix="!", help_command=HelpCommand())
+    client = commands.Bot(command_prefix="!", help_command=HelpCommand())
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO
     )
 
-    @CLIENT.event
+    @client.event
     async def on_ready():
         """Prints a message to stdout once the bot has started."""
         logging.info("Connection is ready.")
 
-    @CLIENT.event
+    @client.event
     async def on_command_error(ctx, error):
         """Handles exceptions raised during command execution."""
         if isinstance(error, commands.CommandError):
@@ -57,23 +56,23 @@ def run():
                 "Exception caused by message '%s':", ctx.message.content, exc_info=error
             )
 
-    @CLIENT.event
+    @client.event
     async def on_disconnect():
         """Handles the termination of connections to Discord servers."""
-        # CLIENT.get_cog("MusicModule").pause_players()
+        # client.get_cog("MusicModule").pause_players()
         logging.warning("Connection closed, will attempt to reconnect.")
 
-    @CLIENT.event
+    @client.event
     async def on_resumed():
         """Handles restarts of connections to Discord servers."""
-        # CLIENT.get_cog("MusicModule").resume_players()
+        # client.get_cog("MusicModule").resume_players()
         logging.info("Connection resumed.")
 
     if which("ffmpeg"):
-        CLIENT.add_cog(MusicModule(CLIENT))
+        client.add_cog(MusicModule(client))
     else:
         logging.error("FFMPEG executable not found! Disabling MusicModule.")
 
-    CLIENT.add_cog(ShellModule(CLIENT))
+    client.add_cog(ShellModule(client))
 
-    CLIENT.run(get_token_from_env())
+    client.run(get_token_from_env())

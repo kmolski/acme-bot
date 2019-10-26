@@ -9,6 +9,7 @@ flake8 = "*"
 black = "*"
 
 [packages]
+acme-bot = {editable = true,path = "."}
 discord-py = {extras = ["voice"],version = "*"}
 youtube-dl = "*"
 textx = "*"

@@ -13,13 +13,11 @@ RUN apk update && apk add ${BUILD_DEPS} ${DEPS}
 WORKDIR ${DIR}
 COPY requirements.txt ${DIR}/
 
-RUN pip3 install -r requirements.txt
-
-RUN apk del ${BUILD_DEPS}
-
 COPY setup.py ${DIR}
 COPY acme_bot ${DIR}/acme_bot
 
-RUN pip3 install ${DIR}
+RUN pip3 install -r requirements.txt
+
+RUN apk del ${BUILD_DEPS}
 
 ENTRYPOINT ["acme-bot"]
