@@ -64,14 +64,14 @@ class MusicPlayer(MusicQueue):
         "options": "-vn -af dynaudnorm -hide_banner -loglevel +level",
     }
 
-    def __init__(self, ctx, cog):
+    def __init__(self, ctx, downloader):
         super().__init__()
         self.__ctx = ctx
         self.__lock = Lock()  # Lock for the whole player instance
         self.__finished = Event()  # An event used to provide blocking for stop()
         self.__stopped = False
         self.__volume = 1.0
-        self.__cog = cog
+        self.__downloader = downloader
 
     def is_busy(self):
         """Checks if the player is currently playing, paused or stopped."""
@@ -136,7 +136,7 @@ class MusicPlayer(MusicQueue):
         """Async function used for starting the player."""
         # Update the entry if it would expire during playback
         if time() + current["duration"] > current["expire"]:
-            await self.__cog.downloader.update_entry(current)
+            await self.__downloader.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),

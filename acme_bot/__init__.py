@@ -1,4 +1,4 @@
-"""The entry point for the music bot."""
+"""Root module of the music bot."""
 from os import environ
 from shutil import which
 import logging
@@ -33,6 +33,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 
 def run():
+    """The entry point for the acme-bot."""
     client = commands.Bot(command_prefix="!", help_command=HelpCommand())
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO

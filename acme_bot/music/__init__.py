@@ -308,7 +308,9 @@ class MusicModule(commands.Cog):
                     "Created a MusicPlayer instance for channel %s.",
                     ctx.voice_client.channel.id,
                 )
-                self.__players[ctx.voice_client.channel.id] = MusicPlayer(ctx, self)
+                self.__players[ctx.voice_client.channel.id] = MusicPlayer(
+                    ctx, self.downloader
+                )
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 
