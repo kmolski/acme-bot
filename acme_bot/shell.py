@@ -125,12 +125,14 @@ class FileContent:
     async def eval(self, ctx, *_, display):
         """Extracts the contents of the file, printing it
         in a code block if necessary."""
-        for elem in ctx.message.attachments:
-            if elem.filename == self.name:
-                content = str(await elem.read(), errors="replace")
-                if display:
-                    await ctx.send(f"```\n{content}\n```")
-                return content
+
+        async for msg in ctx.history(limit=1000):
+            for elem in msg.attachments:
+                if elem.filename == self.name:
+                    content = str(await elem.read(), errors="replace")
+                    if display:
+                        await ctx.send(f"```\n{content}\n```")
+                    return content
 
         raise commands.CommandError("No such file!")
 

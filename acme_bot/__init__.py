@@ -33,7 +33,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 
 def run():
-    """The entry point for the acme-bot."""
+    """The entry point for acme-bot."""
     client = commands.Bot(command_prefix="!", help_command=HelpCommand())
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO
