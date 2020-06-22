@@ -94,7 +94,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
         # Filter out None entries
-        return list(filter(None.__ne__, results["entries"]))
+        return [entry for entry in results["entries"] if entry is not None]
 
     async def update_entry(self, entry):
         """Updates a track entry in-place with a new URL and expiration time."""

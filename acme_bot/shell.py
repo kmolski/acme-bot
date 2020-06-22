@@ -1,9 +1,12 @@
 """This module provides the shell interpreter capability to the bot."""
 from datetime import datetime
 from io import StringIO
+
 from discord import File
 from discord.ext import commands
 from textx import metamodel_from_str
+
+from .utils import split_message, MESSAGE_LENGTH_LIMIT
 
 
 class ExprSeq:
@@ -60,9 +63,8 @@ class Command:
         if cmd is None:
             raise commands.CommandError(f"Command '{ctx.invoked_with}' not found")
 
-        # Unfortunately there is no way to respect command
-        # checks without accessing this protected method.
-        await cmd._verify_checks(ctx)  # pylint: disable=protected-access
+        if not await cmd.can_run(ctx):
+            raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
         await cmd.call_before_hooks(ctx)
 
         args = (
@@ -122,7 +124,7 @@ class FileContent:
         self.parent = parent
         self.name = name
 
-    async def eval(self, ctx, *_, display):
+    async def eval(self, ctx, *_, **__):
         """Extracts the contents of the file, printing it
         in a code block if necessary."""
 
@@ -130,8 +132,6 @@ class FileContent:
             for elem in msg.attachments:
                 if elem.filename == self.name:
                     content = str(await elem.read(), errors="replace")
-                    if display:
-                        await ctx.send(f"```\n{content}\n```")
                     return content
 
         raise commands.CommandError("No such file!")
@@ -147,8 +147,6 @@ class ExprSubst:
     async def eval(self, ctx, *_, display):
         """Evaluates the expression sequence in the substitution."""
         result = await self.expr_seq.eval(ctx, display)
-        if display:
-            await ctx.send(f"```\n{result}\n```")
         return result
 
 
@@ -177,7 +175,7 @@ FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
-CODE_BLOCK: /```((?:\\`|[^`])*)```/;
+CODE_BLOCK: /(?ms)```((?:\\`|[^`])*)```/;
 COMMAND_NAME: /[\\w\\-]*\\b/;
 FILE_NAME: /[\\w\\-_. '"]+/;
 """
@@ -203,7 +201,8 @@ FILE_NAME: /[\\w\\-_. '"]+/;
         arguments = [str(element) for element in arguments]
         content = "".join(arguments)
         if display:
-            await ctx.send(content)
+            for chunk in split_message(content, MESSAGE_LENGTH_LIMIT):
+                await ctx.send(chunk)
         return content
 
     @commands.command(name="!", hidden=True)
@@ -229,7 +228,10 @@ FILE_NAME: /[\\w\\-_. '"]+/;
         """Prints the input data with highlighting specified by 'file_format'."""
         content = f"```{file_format}\n{content}\n```"
         if display:
-            await ctx.send(content)
+            format_str = f"```{file_format}\n{{}}\n```"
+            chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
         return content
 
     @commands.command(name="to-file", aliases=["tee"])
@@ -240,7 +242,10 @@ FILE_NAME: /[\\w\\-_. '"]+/;
             new_file = File(stream, filename=file_name)
             await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
             if display:
-                await ctx.send(f"```\n{content}\n```")
+                format_str = "```\n{}\n```"
+                chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(format_str))
+                for chunk in chunks:
+                    await ctx.send(format_str.format(chunk))
         return content
 
     @commands.command()

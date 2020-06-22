@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from .downloader import MusicDownloader, add_expire_time
 from .player import MusicPlayer
+from ..utils import split_message, MESSAGE_LENGTH_LIMIT
 
 
 def assemble_menu(header, entries):
@@ -160,7 +161,7 @@ class MusicModule(commands.Cog):
             results = await self.downloader.get_entries_by_urls(url_list.split())
             # Assemble and display menu
             menu_msg = await ctx.send(
-                assemble_menu("\u2049 Do you want to add this to the queue?", results)
+                f"\u2049 Do you want to add {len(results)} tracks to the queue?"
             )
             # Add the reactions used to confirm or cancel the action
             await menu_msg.add_reaction("\u2714")
@@ -179,20 +180,17 @@ class MusicModule(commands.Cog):
             return
 
         await menu_msg.delete()
-        message = ""
         player = self.__get_player(ctx)
         player.extend(results)  # Add the new entries to the player's queue
 
         for elem in results:
             add_expire_time(elem)  # Update the new entry with its expiration time
-            if player.is_busy():
-                message += "\n**{title}** by {uploader}".format(**elem)
-            else:
+            if not player.is_busy():
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_playing(elem)
 
-        if message and display:
-            await ctx.send("\u2795 Videos added to the queue: " + message)
+        if display:
+            await ctx.send("\u2795 {len(results)} tracks added to the queue")
 
         return url_list
 
@@ -227,7 +225,8 @@ class MusicModule(commands.Cog):
         """Displays the queue contents."""
         player = self.__get_player(ctx)
         if display:
-            await ctx.send(player.get_queue_info())
+            for chunk in split_message(player.get_queue_info(), MESSAGE_LENGTH_LIMIT):
+                await ctx.send(chunk)
         return player.get_queue_urls()
 
     @commands.command()
