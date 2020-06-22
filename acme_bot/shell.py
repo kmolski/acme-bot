@@ -125,8 +125,7 @@ class FileContent:
         self.name = name
 
     async def eval(self, ctx, *_, **__):
-        """Extracts the contents of the file, printing it
-        in a code block if necessary."""
+        """Extracts the contents of the file."""
 
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
