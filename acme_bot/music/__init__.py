@@ -190,7 +190,7 @@ class MusicModule(commands.Cog):
                 await player.start_playing(elem)
 
         if display:
-            await ctx.send("\u2795 {len(results)} tracks added to the queue")
+            await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
 
         return url_list
 

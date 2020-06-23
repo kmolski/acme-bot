@@ -223,15 +223,14 @@ FILE_NAME: /[\\w\\-_. '"]+/;
         return milliseconds
 
     @commands.command()
-    async def pretty(self, ctx, content, file_format="", *, display=True):
+    async def print(self, ctx, content, file_format="", *, display=True):
         """Prints the input data with highlighting specified by 'file_format'."""
-        content = f"```{file_format}\n{content}\n```"
         if display:
             format_str = f"```{file_format}\n{{}}\n```"
             chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(format_str))
             for chunk in chunks:
                 await ctx.send(format_str.format(chunk))
-        return content
+        return f"```{file_format}\n{content}\n```"
 
     @commands.command(name="to-file", aliases=["tee"])
     async def to_file(self, ctx, content, file_name, *, display=True):
