@@ -124,13 +124,18 @@ class FileContent:
         self.parent = parent
         self.name = name
 
-    async def eval(self, ctx, *_, **__):
+    async def eval(self, ctx, *_, display):
         """Extracts the contents of the file."""
 
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
                 if elem.filename == self.name:
                     content = str(await elem.read(), errors="replace")
+                    if display:
+                        fmt = "```\n{}\n```"
+                        chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(fmt))
+                        for chunk in chunks:
+                            await ctx.send(fmt.format(chunk))
                     return content
 
         raise commands.CommandError("No such file!")
