@@ -179,7 +179,7 @@ FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
-CODE_BLOCK: /(?ms)```((?:\\`|[^`])*)```/;
+CODE_BLOCK: /(?ms)```(?:[^\n]*?\n)?(.*?)```/;
 COMMAND_NAME: /[\\w\\-]*\\b/;
 FILE_NAME: /[\\w\\-_. '"]+/;
 """
