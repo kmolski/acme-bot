@@ -2,7 +2,7 @@
 from itertools import chain
 from textwrap import wrap
 
-MESSAGE_LENGTH_LIMIT = 2000
+MAX_MESSAGE_LENGTH = 2000
 
 
 def split_message(text, limit):

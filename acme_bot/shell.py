@@ -6,7 +6,7 @@ from discord import File
 from discord.ext import commands
 from textx import metamodel_from_str
 
-from .utils import split_message, MESSAGE_LENGTH_LIMIT
+from .utils import split_message, MAX_MESSAGE_LENGTH
 
 
 class ExprSeq:
@@ -133,7 +133,7 @@ class FileContent:
                     content = str(await elem.read(), errors="replace")
                     if display:
                         fmt = "```\n{}\n```"
-                        chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(fmt))
+                        chunks = split_message(content, MAX_MESSAGE_LENGTH - len(fmt))
                         for chunk in chunks:
                             await ctx.send(fmt.format(chunk))
                     return content
@@ -179,7 +179,7 @@ FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
-CODE_BLOCK: /(?ms)```(?:[^\n]*?\n)?(.*?)```/;
+CODE_BLOCK: /(?ms)```(?:[^\n]*\n)?(.*)```/;
 COMMAND_NAME: /[\\w\\-]*\\b/;
 FILE_NAME: /[\\w\\-_. '"]+/;
 """
@@ -205,7 +205,7 @@ FILE_NAME: /[\\w\\-_. '"]+/;
         arguments = [str(element) for element in arguments]
         content = "".join(arguments)
         if display:
-            for chunk in split_message(content, MESSAGE_LENGTH_LIMIT):
+            for chunk in split_message(content, MAX_MESSAGE_LENGTH):
                 await ctx.send(chunk)
         return content
 
@@ -232,7 +232,7 @@ FILE_NAME: /[\\w\\-_. '"]+/;
         """Prints the input data with highlighting specified by 'file_format'."""
         if display:
             format_str = f"```{file_format}\n{{}}\n```"
-            chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(format_str))
+            chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
                 await ctx.send(format_str.format(chunk))
         return f"```{file_format}\n{content}\n```"
@@ -246,7 +246,7 @@ FILE_NAME: /[\\w\\-_. '"]+/;
             await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
             if display:
                 format_str = "```\n{}\n```"
-                chunks = split_message(content, MESSAGE_LENGTH_LIMIT - len(format_str))
+                chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
                 for chunk in chunks:
                     await ctx.send(format_str.format(chunk))
         return content

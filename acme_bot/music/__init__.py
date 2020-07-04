@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from .downloader import MusicDownloader, add_expire_time
 from .player import MusicPlayer
-from ..utils import split_message, MESSAGE_LENGTH_LIMIT
+from ..utils import split_message, MAX_MESSAGE_LENGTH
 
 
 def assemble_menu(header, entries):
@@ -103,16 +103,16 @@ class MusicModule(commands.Cog):
         new = results[int(response.content)]
         add_expire_time(new)  # Update the entry with its expiration time
 
-        player = self.__get_player(ctx)
-        player.append(new)  # Add the new entry to the player's queue
+        with self.__get_player(ctx) as player:
+            player.append(new)  # Add the new entry to the player's queue
 
-        if not player.is_busy():
-            # If the player is not playing, paused or stopped, start playing
-            await player.start_playing(new)
-        elif display:
-            await ctx.send(
-                "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-            )
+            if not player.is_busy():
+                # If the player is not playing, paused or stopped, start playing
+                await player.start_player(new)
+            elif display:
+                await ctx.send(
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
+                )
 
         return new["webpage_url"]
 
@@ -139,16 +139,16 @@ class MusicModule(commands.Cog):
         new = results[int(response.content)]
         add_expire_time(new)  # Update the entry with its expiration time
 
-        player = self.__get_player(ctx)
-        player.append(new)  # Add the new entry to the player's queue
+        with self.__get_player(ctx) as player:
+            player.append(new)  # Add the new entry to the player's queue
 
-        if not player.is_busy():
-            # If the player is not playing, paused or stopped, start playing
-            await player.start_playing(new)
-        elif display:
-            await ctx.send(
-                "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-            )
+            if not player.is_busy():
+                # If the player is not playing, paused or stopped, start playing
+                await player.start_player(new)
+            elif display:
+                await ctx.send(
+                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
+                )
 
         return new["webpage_url"]
 
@@ -180,35 +180,38 @@ class MusicModule(commands.Cog):
             return
 
         await menu_msg.delete()
-        player = self.__get_player(ctx)
-        player.extend(results)  # Add the new entries to the player's queue
+        with self.__get_player(ctx) as player:
+            player.extend(results)  # Add the new entries to the player's queue
 
-        for elem in results:
-            add_expire_time(elem)  # Update the new entry with its expiration time
-            if not player.is_busy():
-                # If the player is not playing, paused or stopped, start playing
-                await player.start_playing(elem)
+            for elem in results:
+                add_expire_time(elem)  # Update the new entry with its expiration time
+                if not player.is_busy():
+                    # If the player is not playing, paused or stopped, start playing
+                    await player.start_player(elem)
 
-        if display:
-            await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
+            if display:
+                await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
 
         return url_list
 
     @commands.command()
     async def back(self, ctx, offset: int = 1, **_):
         """Plays the previous video from the queue."""
-        self.__get_player(ctx).move(-offset)
+        with self.__get_player(ctx) as player:
+            player.move(-offset)
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1, **_):
         """Plays the next video from the queue."""
-        self.__get_player(ctx).move(offset)
+        with self.__get_player(ctx) as player:
+            player.move(offset)
 
     @commands.command()
     async def loop(self, ctx, should_loop: bool, *, display=True):
         """Sets looping behaviour of the player."""
-        self.__get_player(ctx).loop = should_loop
-        msg = "on" if should_loop else "off"
+        with self.__get_player(ctx) as player:
+            player.loop = should_loop
+            msg = "on" if should_loop else "off"
         if display:
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
         return msg
@@ -216,53 +219,58 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def pause(self, ctx, *, display=True):
         """Pauses the player."""
-        self.__get_player(ctx).pause()
+        with self.__get_player(ctx) as player:
+            player.pause()
         if display:
             await ctx.send("\u23F8 Paused.")
 
     @commands.command()
     async def queue(self, ctx, *, display=True):
         """Displays the queue contents."""
-        player = self.__get_player(ctx)
-        if display:
-            for chunk in split_message(player.get_queue_info(), MESSAGE_LENGTH_LIMIT):
-                await ctx.send(chunk)
-        return player.get_queue_urls()
+        with self.__get_player(ctx) as player:
+            if display:
+                for chunk in split_message(player.get_queue_info(), MAX_MESSAGE_LENGTH):
+                    await ctx.send(chunk)
+            return player.get_queue_urls()
 
     @commands.command()
     async def resume(self, ctx, *, display=True):
         """Resumes the player."""
-        msg = await self.__get_player(ctx).resume()
-        if msg and display:
-            await ctx.send(msg)
+        with self.__get_player(ctx) as player:
+            msg = await player.resume()
+            if msg and display:
+                await ctx.send(msg)
 
     @commands.command()
     async def shuffle(self, ctx, *, display=True):
         """Shuffles the queue contents."""
-        self.__get_player(ctx).shuffle()
+        with self.__get_player(ctx) as player:
+            player.shuffle()
         if display:
             await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
     async def clear(self, ctx, *, display=True):
         """Deletes the queue contents."""
-        player = self.__get_player(ctx)
-        player.stop()
-        player.clear()
+        with self.__get_player(ctx) as player:
+            player.stop()
+            player.clear()
         if display:
             await ctx.send("\u2716 Queue cleared.")
 
     @commands.command()
     async def stop(self, ctx, *, display=True):
         """Stops the player."""
-        self.__get_player(ctx).stop()
+        with self.__get_player(ctx) as player:
+            player.stop()
         if display:
             await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
         """Changes the volume of the player."""
-        self.__get_player(ctx).set_volume(volume)
+        with self.__get_player(ctx) as player:
+            player.set_volume(volume)
         if display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return str(volume)
@@ -270,26 +278,26 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def current(self, ctx, *, display=True):
         """Displays information about the current track."""
-        current = self.__get_player(ctx).current()
-        if display:
-            await ctx.send(
-                "\u25B6 Playing **{title}** by {uploader} now.\n{webpage_url}".format(
-                    **current
+        with self.__get_player(ctx) as player:
+            current = player.current()
+            if display:
+                await ctx.send(
+                    "\u25B6 Playing **{title}** by {uploader} now."
+                    "\n{webpage_url}".format(**current)
                 )
-            )
-        return current["webpage_url"]
+            return current["webpage_url"]
 
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
         """Removes a track from the queue."""
-        removed = self.__get_player(ctx).remove(offset)
-        if display:
-            await ctx.send(
-                "\u2796 **{title}** by {uploader} removed from the playlist.".format(
-                    **removed
+        with self.__get_player(ctx) as player:
+            removed = player.remove(offset)
+            if display:
+                await ctx.send(
+                    "\u2796 **{title}** by {uploader} "
+                    "removed from the playlist.".format(**removed)
                 )
-            )
-        return removed["webpage_url"]
+            return removed["webpage_url"]
 
     @join.before_invoke
     @play.before_invoke
