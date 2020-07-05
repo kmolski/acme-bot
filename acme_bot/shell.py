@@ -158,18 +158,18 @@ class ShellModule(commands.Cog):
     """This module is responsible for interpreting
     complex commands and manipulating text."""
 
-    GRAMMAR = """
+    GRAMMAR = r"""
 ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
 
 ExprComp: exprs=Expr ('|'- exprs=Command)* ;
 
-Expr: Command | StrLiteral | FileContent | ExprSubst;
+Expr: Command | FileContent | ExprSubst | StrLiteral;
 
 Command: name=COMMAND_NAME args*=Argument;
 
-Argument: IntLiteral | BoolLiteral | StrLiteral | FileContent | ExprSubst;
+Argument: IntLiteral | BoolLiteral | FileContent | ExprSubst | StrLiteral;
 
-StrLiteral: value=STRING | value=CODE_BLOCK;
+StrLiteral: value=STRING | value=CODE_BLOCK | value = UNQUOTED_WORD;
 
 IntLiteral: value=INT;
 
@@ -179,9 +179,10 @@ FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
-CODE_BLOCK: /(?ms)```(?:[^\n]*\n)?(.*)```/;
-COMMAND_NAME: /[\\w\\-]*\\b/;
-FILE_NAME: /[\\w\\-_. '"]+/;
+CODE_BLOCK: /(?ms)```(?:[^`\n]*\n)?(.*?)```/;
+COMMAND_NAME: /[\w\\-]+\b/;
+FILE_NAME: /[\w\\-_. '"]+/;
+UNQUOTED_WORD: /(\S+)\b/;
 """
 
     META_MODEL = metamodel_from_str(
