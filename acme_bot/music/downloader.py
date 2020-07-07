@@ -1,7 +1,7 @@
 """This module provides track downloader for the MusicModule."""
 from base64 import b64decode
-from functools import partial
 from json import loads
+from multiprocessing import Process, Queue
 from pathlib import PurePosixPath
 from time import time
 from urllib.parse import urlparse, parse_qs
@@ -69,15 +69,29 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         super().__init__(self.DOWNLOAD_OPTIONS)
         self.loop = loop
 
+    def __start_extractor_subprocess(self, url):
+        """Start YoutubeDL.extract_info in a separate Python process"""
+        result_queue = Queue()
+        process = Process(
+            target=lambda q, url: q.put(self.extract_info(url, download=False)),
+            args=(result_queue, url),
+        )
+        process.start()
+        return result_queue, process
+
     async def get_entries_by_urls(self, url_list):
         """Extracts the track entries from the given URLs."""
+        handles = []
         results = []
         for url in url_list:
-            # Run the YoutubeDL function in the event loop,
-            # so that it doesn't block the whole bot
-            result = await self.loop.run_in_executor(
-                None, partial(self.extract_info, url, download=False)
-            )
+            # Run the YoutubeDL functions in a separate Python process,
+            # so that it may be run in parallel to the rest of the bot
+            handles.append(self.__start_extractor_subprocess(url))
+
+        for (result_queue, process) in handles:
+            result = await self.loop.run_in_executor(None, result_queue.get)
+            process.join()
+
             if result and (result["extractor"] in ("youtube", "soundcloud")):
                 results.append(result)
         if not results:
@@ -86,11 +100,12 @@ class MusicDownloader(youtube_dl.YoutubeDL):
 
     async def get_entries_by_query(self, provider, query):
         """Extracts the track entries for the given search provider and query."""
-        # Run the YoutubeDL function in the event loop,
-        # so that it doesn't block the whole bot
-        results = await self.loop.run_in_executor(
-            None, partial(self.extract_info, provider + query, download=False)
-        )
+        # Run the YoutubeDL function in a separate Python process,
+        # so that it may be run in parallel to the rest of the bot
+        result_queue, process = self.__start_extractor_subprocess(provider + query)
+        results = await self.loop.run_in_executor(None, result_queue.get)
+        process.join()
+
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
         # Filter out None entries
@@ -98,11 +113,12 @@ class MusicDownloader(youtube_dl.YoutubeDL):
 
     async def update_entry(self, entry):
         """Updates a track entry in-place with a new URL and expiration time."""
-        # Run the YoutubeDL function in the event loop,
-        # so that it doesn't block the whole bot
-        result = await self.loop.run_in_executor(
-            None, partial(self.extract_info, entry["webpage_url"], download=False)
-        )
+        # Run the YoutubeDL function in a separate Python process,
+        # so that it may be run in parallel to the rest of the bot
+        result_queue, process = self.__start_extractor_subprocess(entry["webpage_url"])
+        result = await self.loop.run_in_executor(None, result_queue.get)
+        process.join()
+
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
             raise commands.CommandError("Incorrect track URL!")
         add_expire_time(result)  # Add the expiration time to the entry
