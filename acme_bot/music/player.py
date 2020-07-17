@@ -1,5 +1,6 @@
 """This module provides a music player for the bot."""
 from asyncio import run_coroutine_threadsafe
+from enum import Enum, auto
 from re import match
 from subprocess import PIPE
 from threading import Semaphore, Thread
@@ -56,6 +57,15 @@ def process_ffmpeg_logs(source):
             return
 
 
+class PlayerState(Enum):
+    """This enum represents the current state of MusicPlayer."""
+
+    IDLE = auto()
+    PLAYING = auto()
+    PAUSED = auto()
+    STOPPED = auto()
+
+
 class MusicPlayer(MusicQueue):
     """This class provides a music player with a queue and some common controls."""
 
@@ -68,7 +78,7 @@ class MusicPlayer(MusicQueue):
         super().__init__()
         self.__ctx = ctx
         self.__sem = Semaphore()
-        self.__stopped = False
+        self.__state = PlayerState.IDLE
         self.__volume = 1.0
         self.__downloader = downloader
 
@@ -80,13 +90,18 @@ class MusicPlayer(MusicQueue):
         self.__sem.release()
         return False
 
-    def is_busy(self):
-        """Checks if the player is currently playing, paused or stopped."""
-        return (
-            self.__ctx.voice_client.is_playing()
-            or self.__ctx.voice_client.is_paused()
-            or self.__stopped
-        )
+    @property
+    def state(self):
+        """Provides external access to the state field."""
+        return self.__state
+
+    def clear(self):
+        """Stops the player and clears the playlist."""
+        self.__state = PlayerState.IDLE
+        self.__ctx.voice_client.stop()
+        removed = self.get_queue_urls()
+        self._clear()
+        return removed
 
     def move(self, new_offset):
         """Moves to the track pointed at by the offset."""
@@ -95,7 +110,8 @@ class MusicPlayer(MusicQueue):
             self.__ctx.voice_client.stop()
 
     def pause(self):
-        """Pauses the player, locking it in the process."""
+        """Pauses the player."""
+        self.__state = PlayerState.PAUSED
         self.__ctx.voice_client.pause()
 
     def remove(self, offset):
@@ -105,21 +121,22 @@ class MusicPlayer(MusicQueue):
         if offset == 0:
             self.next_offset = 0
             self.__ctx.voice_client.stop()
-        return removed
+        return removed["webpage_url"]
 
     async def resume(self):
-        """Resumes the player, even if it's stopped."""
-        if self.__ctx.voice_client.is_paused():
+        """Resumes the player."""
+        if self.__state == PlayerState.PAUSED:
+            self.__state = PlayerState.PLAYING
             self.__ctx.voice_client.resume()
             return "\u25B6 Playing **{title}** by {uploader}.".format(**self.current())
-        if self.__stopped:
-            self.__stopped = False
+        if self.__state == PlayerState.STOPPED:
+            self.__state = PlayerState.PLAYING
             await self.start_player(self.current())
         else:
             raise commands.CommandError("This player is not paused!")
 
     def set_volume(self, volume):
-        """Set the volume of the player."""
+        """Sets the volume of the player."""
         if volume in range(0, 101):
             self.__volume = volume / 100
             if self.__ctx.voice_client.source:
@@ -142,6 +159,8 @@ class MusicPlayer(MusicQueue):
         log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
 
+        self.__state = PlayerState.PLAYING
+
         self.__ctx.voice_client.play(audio, after=self.__play_next)
         await self.__ctx.send(
             "\u25B6 Playing **{title}** by {uploader}.".format(**current)
@@ -149,7 +168,7 @@ class MusicPlayer(MusicQueue):
 
     def stop(self):
         """Stop the player."""
-        self.__stopped = True
+        self.__state = PlayerState.STOPPED
         self.__ctx.voice_client.stop()
 
     def __play_next(self, err):
@@ -159,15 +178,16 @@ class MusicPlayer(MusicQueue):
                 logging.error(err)
                 return
             # Stop the if player loop is off and it played the last song in queue
-            if self.on_rollover() and not self._loop and not self.__stopped:
-                self.__stopped = True
+            if self.should_stop() and self.__state == PlayerState.PLAYING:
+                self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
                     self.__ctx.send("The queue is empty, resume to keep playing."),
                     self.__ctx.bot.loop,
                 )
-            # Advance the queue whether the player is stopped or not
-            current = self._next()
-            if not self.__stopped:
+            # Advance the queue if it's not empty
+            if not self.is_empty():
+                current = self._next()
+            if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
                 run_coroutine_threadsafe(
                     self.start_player(current), self.__ctx.bot.loop
                 )

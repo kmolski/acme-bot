@@ -69,8 +69,8 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         super().__init__(self.DOWNLOAD_OPTIONS)
         self.loop = loop
 
-    def __start_extractor_subprocess(self, url):
-        """Start YoutubeDL.extract_info in a separate Python process"""
+    def __start_extractor_process(self, url):
+        """Start YoutubeDL.extract_info in a separate Python process."""
         result_queue = Queue()
         process = Process(
             target=lambda q, url: q.put(self.extract_info(url, download=False)),
@@ -86,7 +86,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         for url in url_list:
             # Run the YoutubeDL functions in a separate Python process,
             # so that it may be run in parallel to the rest of the bot
-            handles.append(self.__start_extractor_subprocess(url))
+            handles.append(self.__start_extractor_process(url))
 
         for (result_queue, process) in handles:
             result = await self.loop.run_in_executor(None, result_queue.get)
@@ -102,7 +102,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         """Extracts the track entries for the given search provider and query."""
         # Run the YoutubeDL function in a separate Python process,
         # so that it may be run in parallel to the rest of the bot
-        result_queue, process = self.__start_extractor_subprocess(provider + query)
+        result_queue, process = self.__start_extractor_process(provider + query)
         results = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
 
@@ -115,7 +115,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         """Updates a track entry in-place with a new URL and expiration time."""
         # Run the YoutubeDL function in a separate Python process,
         # so that it may be run in parallel to the rest of the bot
-        result_queue, process = self.__start_extractor_subprocess(entry["webpage_url"])
+        result_queue, process = self.__start_extractor_process(entry["webpage_url"])
         result = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
 

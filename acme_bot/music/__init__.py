@@ -5,7 +5,7 @@ import logging
 from discord.ext import commands
 
 from .downloader import MusicDownloader, add_expire_time
-from .player import MusicPlayer
+from .player import MusicPlayer, PlayerState
 from ..utils import split_message, MAX_MESSAGE_LENGTH
 
 
@@ -73,7 +73,7 @@ class MusicModule(commands.Cog):
         self.__get_player(ctx).stop()
         del self.__players[ctx.voice_client.channel.id]
         logging.info(
-            "Deleted the MusicPlayer instance for channel %s.",
+            "Deleted the MusicPlayer instance for Channel ID %s.",
             ctx.voice_client.channel.id,
         )
         await ctx.voice_client.disconnect()
@@ -106,7 +106,7 @@ class MusicModule(commands.Cog):
         with self.__get_player(ctx) as player:
             player.append(new)  # Add the new entry to the player's queue
 
-            if not player.is_busy():
+            if player.state == PlayerState.IDLE:
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
             elif display:
@@ -142,7 +142,7 @@ class MusicModule(commands.Cog):
         with self.__get_player(ctx) as player:
             player.append(new)  # Add the new entry to the player's queue
 
-            if not player.is_busy():
+            if not player.state == PlayerState.IDLE:
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
             elif display:
@@ -185,7 +185,7 @@ class MusicModule(commands.Cog):
 
             for elem in results:
                 add_expire_time(elem)  # Update the new entry with its expiration time
-                if not player.is_busy():
+                if not player.state == PlayerState.IDLE:
                     # If the player is not playing, paused or stopped, start playing
                     await player.start_player(elem)
 
@@ -253,10 +253,10 @@ class MusicModule(commands.Cog):
     async def clear(self, ctx, *, display=True):
         """Deletes the queue contents."""
         with self.__get_player(ctx) as player:
-            player.stop()
-            player.clear()
-        if display:
-            await ctx.send("\u2716 Queue cleared.")
+            removed = player.clear()
+            if display:
+                await ctx.send("\u2716 Queue cleared.")
+            return removed
 
     @commands.command()
     async def stop(self, ctx, *, display=True):
@@ -297,7 +297,7 @@ class MusicModule(commands.Cog):
                     "\u2796 **{title}** by {uploader} "
                     "removed from the playlist.".format(**removed)
                 )
-            return removed["webpage_url"]
+            return removed
 
     @join.before_invoke
     @play.before_invoke
@@ -312,7 +312,7 @@ class MusicModule(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
                 logging.info(
-                    "Created a MusicPlayer instance for channel %s.",
+                    "Created a MusicPlayer instance for Channel ID %s.",
                     ctx.voice_client.channel.id,
                 )
                 self.__players[ctx.voice_client.channel.id] = MusicPlayer(
@@ -321,17 +321,11 @@ class MusicModule(commands.Cog):
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 
-    @back.before_invoke
     @clear.before_invoke
-    @current.before_invoke
-    @forward.before_invoke
     @leave.before_invoke
     @loop.before_invoke
     @pause.before_invoke
-    @queue.before_invoke
-    @remove.before_invoke
     @resume.before_invoke
-    @shuffle.before_invoke
     @stop.before_invoke
     async def ensure_voice_or_fail(self, ctx):
         """Ensures that the author of the message is in a voice channel,
@@ -339,3 +333,16 @@ class MusicModule(commands.Cog):
         """
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
+
+    @back.before_invoke
+    @current.before_invoke
+    @forward.before_invoke
+    @queue.before_invoke
+    @remove.before_invoke
+    @shuffle.before_invoke
+    async def ensure_voice_and_non_empty_queue(self, ctx):
+        """Ensures that the author of the message is in a voice channel,
+        a MusicPlayer for that channel exists and the queue is not empty."""
+        await self.ensure_voice_or_fail(ctx)
+        if self.__get_player(ctx).is_empty():
+            raise commands.CommandError("The queue is empty!")

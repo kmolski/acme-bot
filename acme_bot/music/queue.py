@@ -28,11 +28,6 @@ class MusicQueue:
         """Adds a single new element to the queue."""
         self.__playlist.append(new_elem)
 
-    def clear(self):
-        """Removes all elements from the queue."""
-        self.__playlist.clear()
-        self.__index = 0  # Set the index to 0, as there is nothing in the queue
-
     def current(self):
         """Returns the current track."""
         return self.__playlist[self.__index]
@@ -68,12 +63,17 @@ class MusicQueue:
         """Checks whether the current element is the first one."""
         return self.__index == 0
 
-    def on_rollover(self):
+    def is_empty(self):
+        """Checks whether the playlist is empty."""
+        return not self.__playlist
+
+    def should_stop(self):
         """Checks whether the current element is the last one."""
         return (
             self.__playlist
             and self.next_offset == 1
             and self.__index >= len(self.__playlist) - 1
+            and not self._loop
         )
 
     def queue_data(self):
@@ -88,6 +88,11 @@ class MusicQueue:
     def shuffle(self):
         """Shuffles the elements of the queue."""
         shuffle(self.__playlist)
+
+    def _clear(self):
+        """Removes all elements from the queue."""
+        self.__playlist.clear()
+        self.__index = 0  # Set the index to 0, as there is nothing in the queue
 
     def _next(self):
         """Returns the next entry based on the offset."""

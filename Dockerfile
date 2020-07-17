@@ -8,7 +8,7 @@ RUN mkdir -p ${DIR}
 ENV BUILD_DEPS gcc libffi-dev make musl-dev python3-dev
 ENV DEPS ffmpeg python3
 
-RUN apk update && apk add ${BUILD_DEPS} ${DEPS}
+RUN apk update && apk add --no-cache ${BUILD_DEPS} ${DEPS}
 
 WORKDIR ${DIR}
 COPY requirements.txt ${DIR}/
