@@ -42,18 +42,19 @@ def process_ffmpeg_logs(source):
     it to the bot's log accordingly."""
     # These log messages are completely normal and can be filtered out
     rejects = ["Error in the pull function", "Will reconnect at"]
+    # Alas, we need to perform this access to get the FFMPEG process
+    # pylint: disable=protected-access
+    process = source.original._process
 
     while True:
-        # Alas, we need to perform this access to get the stderr of FFMPEG
-        # pylint: disable=protected-access
-        line = source.original._process.stderr.readline()
+        line = process.stderr.readline()
         if line:
             level, message, module = parse_log_entry(line.decode(errors="replace"))
             # Redirect to the bot's log only if the message is not in the rejects
             if all(r not in message for r in rejects):
                 logging.log(level, "In ffmpeg module '%s': %s", module, message)
         else:
-            logging.debug("Finished parsing the ffmpeg stderr output.")
+            logging.debug("Finished parsing ffmpeg logs for process %s.", process.pid)
             return
 
 
@@ -158,6 +159,7 @@ class MusicPlayer(MusicQueue):
         # Start the log parser thread
         log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
+        logging.debug("Started the ffmpeg log processing thread.")
 
         self.__state = PlayerState.PLAYING
 

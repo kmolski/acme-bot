@@ -142,7 +142,7 @@ class MusicModule(commands.Cog):
         with self.__get_player(ctx) as player:
             player.append(new)  # Add the new entry to the player's queue
 
-            if not player.state == PlayerState.IDLE:
+            if player.state == PlayerState.IDLE:
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
             elif display:
@@ -180,19 +180,31 @@ class MusicModule(commands.Cog):
             return
 
         await menu_msg.delete()
+        if display:
+            await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
+
         with self.__get_player(ctx) as player:
             player.extend(results)  # Add the new entries to the player's queue
 
             for elem in results:
                 add_expire_time(elem)  # Update the new entry with its expiration time
-                if not player.state == PlayerState.IDLE:
+                if player.state == PlayerState.IDLE:
                     # If the player is not playing, paused or stopped, start playing
                     await player.start_player(elem)
 
-            if display:
-                await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
-
         return url_list
+
+    @commands.command(name="playlist-url")
+    async def playlist_url(self, ctx, url_list, *, display=True):
+        """Extracts track URLs from the given playlists."""
+        url_list = str(url_list)
+        async with ctx.typing():
+            # Get the tracks from the given URL list
+            results = await self.downloader.get_entries_by_urls(url_list.split())
+        if display:
+            await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
+
+        return "\n".join((entry["webpage_url"] for entry in results))
 
     @commands.command()
     async def back(self, ctx, offset: int = 1, **_):
@@ -304,7 +316,7 @@ class MusicModule(commands.Cog):
     @play_snd.before_invoke
     @play_url.before_invoke
     @volume.before_invoke
-    async def ensure_voice_or_join(self, ctx):
+    async def __ensure_voice_or_join(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         otherwise joins the author's voice channel.
         """
@@ -327,7 +339,7 @@ class MusicModule(commands.Cog):
     @pause.before_invoke
     @resume.before_invoke
     @stop.before_invoke
-    async def ensure_voice_or_fail(self, ctx):
+    async def __ensure_voice_or_fail(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         otherwise throws an exception that prevents the command from executing.
         """
@@ -340,9 +352,9 @@ class MusicModule(commands.Cog):
     @queue.before_invoke
     @remove.before_invoke
     @shuffle.before_invoke
-    async def ensure_voice_and_non_empty_queue(self, ctx):
+    async def __ensure_voice_and_non_empty_queue(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         a MusicPlayer for that channel exists and the queue is not empty."""
-        await self.ensure_voice_or_fail(ctx)
+        await self.__ensure_voice_or_fail(ctx)
         if self.__get_player(ctx).is_empty():
             raise commands.CommandError("The queue is empty!")

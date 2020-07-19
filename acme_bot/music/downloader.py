@@ -77,6 +77,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
             args=(result_queue, url),
         )
         process.start()
+        logging.debug("Started extractor process for URL %s, PID %s.", url, process.pid)
         return result_queue, process
 
     async def get_entries_by_urls(self, url_list):
@@ -91,9 +92,16 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         for (result_queue, process) in handles:
             result = await self.loop.run_in_executor(None, result_queue.get)
             process.join()
+            logging.debug("Extractor process (PID %s) finished.", process.pid)
 
-            if result and (result["extractor"] in ("youtube", "soundcloud")):
+            if result is None:
+                continue
+
+            if result["extractor"] in ("youtube", "soundcloud"):
                 results.append(result)
+            elif result["extractor"] in ("youtube:playlist", "soundcloud:playlist"):
+                results.extend(result["entries"])
+
         if not results:
             raise commands.CommandError("No tracks found for the provided URL list!")
         return results
@@ -105,6 +113,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         result_queue, process = self.__start_extractor_process(provider + query)
         results = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
+        logging.debug("Extractor process (PID %s) finished.", process.pid)
 
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
@@ -118,6 +127,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         result_queue, process = self.__start_extractor_process(entry["webpage_url"])
         result = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
+        logging.debug("Extractor process (PID %s) finished.", process.pid)
 
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
             raise commands.CommandError("Incorrect track URL!")
