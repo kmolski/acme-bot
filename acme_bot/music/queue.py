@@ -1,18 +1,5 @@
 """This module provides a track queue for the MusicPlayer."""
-from math import ceil
 from random import shuffle
-
-
-def format_queue_entry(index, entry):
-    """This function formats a queue entry with the duration
-    in the MM:SS format."""
-    # The entry duration from YTDL is not always an integer
-    duration = ceil(entry["duration"])
-
-    minutes, seconds = duration // 60, duration % 60
-    return "\n{}. **{title}** - {uploader} - {}:{:02}".format(
-        index, minutes, seconds, **entry
-    )
 
 
 class MusicQueue:
@@ -36,29 +23,6 @@ class MusicQueue:
         """Appends a list of new elements to the queue."""
         self.__playlist.extend(elem_list)
 
-    def get_queue_info(self):
-        """Creates a list containing the queue's entries, their title,
-        author and duration."""
-        entry_list = "\U0001F3BC Current queue:"
-        head, tail, split = self.queue_data()
-        for index, entry in enumerate(head):
-            entry_list += format_queue_entry(index, entry)
-        if not self._loop and not self.on_first():
-            entry_list += "\n------------------------------------\n"
-        for index, entry in enumerate(tail, start=split):
-            entry_list += format_queue_entry(index, entry)
-        return entry_list
-
-    def get_queue_urls(self):
-        """Creates a list containing the URLs of the entries in the queue."""
-        url_list = ""
-        head, tail, _ = self.queue_data()
-        for entry in head:
-            url_list += "{webpage_url}\n".format(**entry)
-        for entry in tail:
-            url_list += "{webpage_url}\n".format(**entry)
-        return url_list
-
     def on_first(self):
         """Checks whether the current element is the first one."""
         return self.__index == 0
@@ -68,7 +32,7 @@ class MusicQueue:
         return not self.__playlist
 
     def should_stop(self):
-        """Checks whether the current element is the last one."""
+        """Checks whether the current element is the last one and looping is off."""
         return (
             self.__playlist
             and self.next_offset == 1

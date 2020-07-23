@@ -54,7 +54,7 @@ def process_ffmpeg_logs(source):
             if all(r not in message for r in rejects):
                 logging.log(level, "In ffmpeg module '%s': %s", module, message)
         else:
-            logging.debug("Finished parsing ffmpeg logs for process %s.", process.pid)
+            logging.debug("Log processing for ffmpeg process %s finished.", process.pid)
             return
 
 
@@ -100,9 +100,7 @@ class MusicPlayer(MusicQueue):
         """Stops the player and clears the playlist."""
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
-        removed = self.get_queue_urls()
         self._clear()
-        return removed
 
     def move(self, new_offset):
         """Moves to the track pointed at by the offset."""
@@ -159,7 +157,7 @@ class MusicPlayer(MusicQueue):
         # Start the log parser thread
         log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
-        logging.debug("Started the ffmpeg log processing thread.")
+        logging.debug("Started ffmpeg log processing thread.")
 
         self.__state = PlayerState.PLAYING
 

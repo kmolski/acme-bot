@@ -1,5 +1,7 @@
 """This module provides the music playback capability to the bot."""
 from concurrent import futures
+from itertools import chain
+from math import ceil
 import logging
 
 from discord.ext import commands
@@ -45,6 +47,40 @@ def pred_confirm(ctx, menu_msg):
         )
 
     return pred
+
+
+def get_entry_duration(entry):
+    """Returns the duration of an YTDL entry as a tuple of (minutes, seconds)"""
+    # The entry duration from YTDL is not always an integer
+    duration = ceil(entry["duration"])
+    return duration // 60, duration % 60
+
+
+def display_entry(entry_data):
+    """This function displays an entry with the duration in the MM:SS format."""
+    minutes, seconds = get_entry_duration(entry_data[1])
+    return "{}. **{title}** - {uploader} - {}:{:02}".format(
+        entry_data[0], minutes, seconds, **entry_data[1]
+    )
+
+
+def export_entry(entry):
+    """This function exports an entry string with the URL, title and duration."""
+    minutes, seconds = get_entry_duration(entry)
+    return "{webpage_url}    {title} - {}:{:02}".format(minutes, seconds, **entry)
+
+
+def format_entry_lists(fmt, *iterables, init=[]):
+    """Exports many lists of entries using the given formatting function."""
+    for entry in chain.from_iterable(iterables):
+        init.append(fmt(entry))
+    init.append("")
+    return "\n".join(init)
+
+
+def extract_urls(urls):
+    """Strips entry strings from their title and duration, leaving the URL."""
+    return (line.split()[0] for line in urls.split("\n") if line)
 
 
 class MusicModule(commands.Cog):
@@ -114,7 +150,7 @@ class MusicModule(commands.Cog):
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
 
-        return new["webpage_url"]
+        return export_entry(new)
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
@@ -150,7 +186,7 @@ class MusicModule(commands.Cog):
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
 
-        return new["webpage_url"]
+        return export_entry(new)
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, url_list, *, display=True):
@@ -158,7 +194,7 @@ class MusicModule(commands.Cog):
         url_list = str(url_list)
         async with ctx.typing():
             # Get the tracks from the given URL list
-            results = await self.downloader.get_entries_by_urls(url_list.split())
+            results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
             # Assemble and display menu
             menu_msg = await ctx.send(
                 f"\u2049 Do you want to add {len(results)} tracks to the queue?"
@@ -192,7 +228,7 @@ class MusicModule(commands.Cog):
                     # If the player is not playing, paused or stopped, start playing
                     await player.start_player(elem)
 
-        return url_list
+        return format_entry_lists(export_entry, results)
 
     @commands.command(name="playlist-url")
     async def playlist_url(self, ctx, url_list, *, display=True):
@@ -200,11 +236,11 @@ class MusicModule(commands.Cog):
         url_list = str(url_list)
         async with ctx.typing():
             # Get the tracks from the given URL list
-            results = await self.downloader.get_entries_by_urls(url_list.split())
+            results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
         if display:
             await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
 
-        return "\n".join((entry["webpage_url"] for entry in results))
+        return format_entry_lists(export_entry, results)
 
     @commands.command()
     async def back(self, ctx, offset: int = 1, **_):
@@ -240,10 +276,18 @@ class MusicModule(commands.Cog):
     async def queue(self, ctx, *, display=True):
         """Displays the queue contents."""
         with self.__get_player(ctx) as player:
+            head, tail, split = player.queue_data()
             if display:
-                for chunk in split_message(player.get_queue_info(), MAX_MESSAGE_LENGTH):
+                queue_info = format_entry_lists(
+                    display_entry,
+                    enumerate(head),
+                    ["\n-----------------------------------"] * (not player.on_first()),
+                    enumerate(tail, start=split),
+                    init=["\U0001F3BC Current queue:"],
+                )
+                for chunk in split_message(queue_info, MAX_MESSAGE_LENGTH):
                     await ctx.send(chunk)
-            return player.get_queue_urls()
+            return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
     async def resume(self, ctx, *, display=True):
@@ -265,10 +309,11 @@ class MusicModule(commands.Cog):
     async def clear(self, ctx, *, display=True):
         """Deletes the queue contents."""
         with self.__get_player(ctx) as player:
-            removed = player.clear()
+            head, tail, _ = player.queue_data()
+            player.clear()
             if display:
                 await ctx.send("\u2716 Queue cleared.")
-            return removed
+            return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
     async def stop(self, ctx, *, display=True):
@@ -297,7 +342,7 @@ class MusicModule(commands.Cog):
                     "\u25B6 Playing **{title}** by {uploader} now."
                     "\n{webpage_url}".format(**current)
                 )
-            return current["webpage_url"]
+            return export_entry(current)
 
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
