@@ -70,12 +70,13 @@ def export_entry(entry):
     return "{webpage_url}    {title} - {}:{:02}".format(minutes, seconds, **entry)
 
 
-def format_entry_lists(fmt, *iterables, init=[]):
+def format_entry_lists(fmt, *iterables, init=None):
     """Exports many lists of entries using the given formatting function."""
+    lines = [init] * (init is not None)
     for entry in chain.from_iterable(iterables):
-        init.append(fmt(entry))
-    init.append("")
-    return "\n".join(init)
+        lines.append(fmt(entry))
+    lines.append("")
+    return "\n".join(lines)
 
 
 def extract_urls(urls):
@@ -106,7 +107,9 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def leave(self, ctx, *, display=True):
         """Removes the bot from the user's current voice channel."""
-        self.__get_player(ctx).stop()
+        with self.__get_player(ctx) as player:
+            player.stop()
+            head, tail, _ = player.queue_data()
         del self.__players[ctx.voice_client.channel.id]
         logging.info(
             "Deleted the MusicPlayer instance for Channel ID %s.",
@@ -115,6 +118,7 @@ class MusicModule(commands.Cog):
         await ctx.voice_client.disconnect()
         if display:
             await ctx.send("\u23CF Quitting the voice channel.")
+        return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
     async def play(self, ctx, *query, display=True):
@@ -281,9 +285,8 @@ class MusicModule(commands.Cog):
                 queue_info = format_entry_lists(
                     display_entry,
                     enumerate(head),
-                    ["\n-----------------------------------"] * (not player.on_first()),
                     enumerate(tail, start=split),
-                    init=["\U0001F3BC Current queue:"],
+                    init="\U0001F3BC Current queue:",
                 )
                 for chunk in split_message(queue_info, MAX_MESSAGE_LENGTH):
                     await ctx.send(chunk)
@@ -354,7 +357,7 @@ class MusicModule(commands.Cog):
                     "\u2796 **{title}** by {uploader} "
                     "removed from the playlist.".format(**removed)
                 )
-            return removed
+            return export_entry(removed)
 
     @join.before_invoke
     @play.before_invoke

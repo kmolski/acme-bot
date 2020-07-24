@@ -120,7 +120,7 @@ class MusicPlayer(MusicQueue):
         if offset == 0:
             self.next_offset = 0
             self.__ctx.voice_client.stop()
-        return removed["webpage_url"]
+        return removed
 
     async def resume(self):
         """Resumes the player."""
