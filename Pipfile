@@ -4,12 +4,12 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+acme-bot = {editable = true,path = "."}
 black = "*"
 flake8 = "*"
 pylint = "*"
 
 [packages]
-acme-bot = {editable = true,path = "."}
 discord-py = {extras = ["voice"],version = "*"}
 textx = "*"
 youtube-dl = "*"
