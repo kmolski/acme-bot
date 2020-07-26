@@ -6,9 +6,9 @@ import logging
 
 from discord.ext import commands
 
-from .downloader import MusicDownloader, add_expire_time
-from .player import MusicPlayer, PlayerState
-from ..utils import split_message, MAX_MESSAGE_LENGTH
+from acme_bot.music.downloader import MusicDownloader, add_expire_time
+from acme_bot.music.player import MusicPlayer, PlayerState
+from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
 
 
 def assemble_menu(header, entries):

@@ -11,7 +11,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from .queue import MusicQueue
+from acme_bot.music.queue import MusicQueue
 
 
 def parse_log_entry(line):

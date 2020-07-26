@@ -6,7 +6,7 @@ from discord import File
 from discord.ext import commands
 from textx import metamodel_from_str
 
-from .utils import split_message, MAX_MESSAGE_LENGTH
+from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
 
 
 class ExprSeq:
@@ -126,7 +126,6 @@ class FileContent:
 
     async def eval(self, ctx, *_, display):
         """Extracts the contents of the file."""
-
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
                 if elem.filename == self.name:
@@ -251,6 +250,12 @@ UNQUOTED_WORD: /(\S+)\b/;
                 for chunk in chunks:
                     await ctx.send(format_str.format(chunk))
         return content
+
+    @commands.command()
+    async def open(self, ctx, filename, *, display=True):
+        """Reads the contents of a file with the specified filename."""
+        file_content = FileContent(None, filename)
+        return await file_content.eval(ctx, display=display)
 
     @commands.command()
     async def tts(self, ctx, content, **_):

@@ -5,8 +5,8 @@ import logging
 
 from discord.ext import commands
 
-from .music import MusicModule
-from .shell import ShellModule
+from acme_bot.music import MusicModule
+from acme_bot.shell import ShellModule
 
 
 def get_token_from_env():
