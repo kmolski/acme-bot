@@ -12,7 +12,7 @@ setuptools.setup(
     # long_description=long_description,
     # long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
-    install_requires=["discord", "textx", "youtube_dl"],
+    install_requires=["discord.py", "textx", "youtube_dl"],
     entry_points={"console_scripts": "acme-bot=acme_bot:run"},
     python_requires='>=3.7',
 )

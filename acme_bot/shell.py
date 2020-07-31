@@ -56,12 +56,12 @@ class Command:
         self.name = name
         self.args = args
 
-    async def eval(self, ctx, data, *, display):
+    async def eval(self, ctx, pipe, *, display):
         """Executes a command by evaluating its arguments, and calling its callback
         using the data piped in from the previous expression."""
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
-            raise commands.CommandError(f"Command '{ctx.invoked_with}' not found")
+            raise commands.CommandError(f"Command '{self.name}' not found")
 
         if not await cmd.can_run(ctx):
             raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
@@ -69,7 +69,7 @@ class Command:
 
         args = (
             ([ctx] if cmd.cog is None else [cmd.cog, ctx])
-            + ([data] if data else [])  # Use the piped input only if it's not empty
+            + ([pipe] if pipe else [])  # Use the piped input only if it's not empty
             # Setting "display" to false, so that the argument eval doesn't print.
             + ([await elem.eval(ctx, display=False) for elem in self.args])
         )
@@ -202,8 +202,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
         """Joins its arguments together into a single string."""
-        arguments = [str(element) for element in arguments]
-        content = "".join(arguments)
+        content = "".join(str(arg) for arg in arguments)
         if display:
             for chunk in split_message(content, MAX_MESSAGE_LENGTH):
                 await ctx.send(chunk)
