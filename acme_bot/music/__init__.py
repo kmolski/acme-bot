@@ -87,6 +87,8 @@ def extract_urls(urls):
 class MusicModule(commands.Cog):
     """This module is responsible for playing music and managing playlists."""
 
+    ACTION_TIMEOUT = 30.0
+
     def __init__(self, bot):
         self.bot = bot
         self.downloader = MusicDownloader(bot.loop)
@@ -134,7 +136,7 @@ class MusicModule(commands.Cog):
 
         try:
             response = await self.bot.wait_for(
-                "message", check=pred_select(ctx, results), timeout=30.0
+                "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
             )
         except futures.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
@@ -170,7 +172,7 @@ class MusicModule(commands.Cog):
 
         try:
             response = await self.bot.wait_for(
-                "message", check=pred_select(ctx, results), timeout=30.0
+                "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
             )
         except futures.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
@@ -193,9 +195,9 @@ class MusicModule(commands.Cog):
         return export_entry(new)
 
     @commands.command(name="play-url")
-    async def play_url(self, ctx, url_list, *, display=True):
+    async def play_url(self, ctx, *urls, display=True):
         """Plays a YouTube/Soundcloud track from the given URL."""
-        url_list = str(url_list)
+        url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
             results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
@@ -209,7 +211,9 @@ class MusicModule(commands.Cog):
 
         try:
             response, _ = await self.bot.wait_for(
-                "reaction_add", check=pred_confirm(ctx, menu_msg), timeout=30.0
+                "reaction_add",
+                check=pred_confirm(ctx, menu_msg),
+                timeout=self.ACTION_TIMEOUT,
             )
         except futures.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
@@ -235,9 +239,9 @@ class MusicModule(commands.Cog):
         return format_entry_lists(export_entry, results)
 
     @commands.command(name="playlist-url")
-    async def playlist_url(self, ctx, url_list, *, display=True):
+    async def playlist_url(self, ctx, *urls, display=True):
         """Extracts track URLs from the given playlists."""
-        url_list = str(url_list)
+        url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
             results = await self.downloader.get_entries_by_urls(extract_urls(url_list))

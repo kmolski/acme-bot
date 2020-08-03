@@ -82,12 +82,10 @@ class MusicDownloader(youtube_dl.YoutubeDL):
 
     async def get_entries_by_urls(self, url_list):
         """Extracts the track entries from the given URLs."""
-        handles = []
+        # Run the YoutubeDL functions in separate Python processes,
+        # so that they may be run in parallel to the rest of the bot
+        handles = [self.__start_extractor_process(url) for url in url_list]
         results = []
-        for url in url_list:
-            # Run the YoutubeDL functions in a separate Python process,
-            # so that it may be run in parallel to the rest of the bot
-            handles.append(self.__start_extractor_process(url))
 
         for (result_queue, process) in handles:
             result = await self.loop.run_in_executor(None, result_queue.get)
