@@ -1,12 +1,37 @@
 """This module provides the shell interpreter capability to the bot."""
 from datetime import datetime
 from io import StringIO
+from shutil import which
+
+import asyncio
+import re
 
 from discord import File
 from discord.ext import commands
 from textx import metamodel_from_str
 
 from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
+
+
+def validate_options(args, regex):
+    for arg in args:
+        if not regex.fullmatch(arg):
+            raise commands.CommandError(f"Argument {arg} is not allowed.")
+
+
+async def execute_system_cmd(name, *args, stdin=None):
+    stdin = stdin.encode() if stdin else None
+    proc = await asyncio.create_subprocess_exec(
+        name,
+        *args,
+        stdin=asyncio.subprocess.PIPE if stdin else None,
+        stdout=asyncio.subprocess.PIPE,
+    )
+
+    (stdout, _) = await proc.communicate(stdin)
+    await proc.wait()
+
+    return str(stdout, errors="replace")
 
 
 class ExprSeq:
@@ -199,6 +224,9 @@ UNQUOTED_WORD: /(\S+)\b/;
         use_regexp_group=True,
     )
 
+    __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]*")
+    __UNITS_ARGS = re.compile(r"[\w\. ]*")
+
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
         """Joins its arguments together into a single string."""
@@ -263,3 +291,46 @@ UNQUOTED_WORD: /(\S+)\b/;
         """Makes the bot send a text-to-speech message with the given content."""
         content = str(content)
         await ctx.send(content, tts=True, delete_after=0.0)
+
+    @commands.command(aliases=["grep"], enabled=which("grep"))
+    async def filter(self, ctx, data, patterns, *opts, display=True):
+        data, patterns = str(data), str(patterns)
+
+        opts = [str(option) for option in opts]
+        validate_options(opts, self.__GREP_ARGS)
+
+        patterns = "\n".join(p for p in patterns.split("\n") if p)
+
+        output = (
+            await execute_system_cmd(
+                "grep", "--color=never", "-e", patterns, *opts, "--", "-", stdin=data,
+            )
+        )[:-1]
+
+        if display:
+            await ctx.send(
+                "\U0001F4D1 Matched {} lines.".format(len(output.split("\n")))
+            )
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output
+
+    @commands.command(aliases=["uni"], enabled=which("units"))
+    async def units(self, ctx, *arguments, display=True):
+        arguments = [str(arg) for arg in arguments]
+        validate_options(arguments, self.__UNITS_ARGS)
+
+        from_unit, to_unit = " ".join(arguments[:-1]), arguments[-1]
+
+        output = (
+            await execute_system_cmd(
+                "units", "--verbose", "--one-line", from_unit, to_unit
+            )
+        ).strip()
+
+        if display:
+            await ctx.send(f"\U0001F9EE {output}.")
+        return output

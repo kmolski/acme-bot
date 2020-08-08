@@ -7,7 +7,7 @@ RUN mkdir -p ${DIR}
 WORKDIR ${DIR}
 
 ENV BUILD_DEPS gcc libffi-dev make musl-dev python3-dev
-ENV DEPS ffmpeg python3 py3-pip py3-wheel
+ENV DEPS ffmpeg grep python3 py3-pip py3-wheel units
 
 COPY requirements.txt ${DIR}/
 
