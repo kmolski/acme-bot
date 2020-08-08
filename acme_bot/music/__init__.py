@@ -125,7 +125,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def play(self, ctx, *query, display=True):
         """Searches for and plays a track from YouTube."""
-        query = " ".join(query)
+        query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
             results = await self.downloader.get_entries_by_query("ytsearch10:", query)
@@ -161,7 +161,7 @@ class MusicModule(commands.Cog):
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
         """Searches for and plays a track from Soundcloud."""
-        query = " ".join(query)
+        query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
             results = await self.downloader.get_entries_by_query("scsearch10:", query)
@@ -253,22 +253,25 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def back(self, ctx, offset: int = 1, **_):
         """Plays the previous video from the queue."""
+        offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command()
     async def forward(self, ctx, offset: int = 1, **_):
         """Plays the next video from the queue."""
+        offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
     async def loop(self, ctx, should_loop: bool, *, display=True):
         """Sets looping behaviour of the player."""
+        should_loop = bool(should_loop)
         with self.__get_player(ctx) as player:
             player.loop = should_loop
-            msg = "on" if should_loop else "off"
         if display:
+            msg = "on" if should_loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
         return msg
 
@@ -333,6 +336,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
         """Changes the volume of the player."""
+        volume = int(volume)
         with self.__get_player(ctx) as player:
             player.set_volume(volume)
         if display:
@@ -354,6 +358,7 @@ class MusicModule(commands.Cog):
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
         """Removes a track from the queue."""
+        offset = int(offset)
         with self.__get_player(ctx) as player:
             removed = player.remove(offset)
             if display:

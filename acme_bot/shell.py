@@ -170,7 +170,7 @@ Argument: IntLiteral | BoolLiteral | FileContent | ExprSubst | StrLiteral;
 
 StrLiteral: value=STRING | value=CODE_BLOCK | value = UNQUOTED_WORD;
 
-IntLiteral: value=INT;
+IntLiteral: value=NUMBER;
 
 BoolLiteral: value=BOOL;
 
@@ -184,7 +184,7 @@ FILE_NAME: /[\w\-. '\"]+/;
 UNQUOTED_WORD: /(\S+)\b/;
 """
 
-    META_MODEL = metamodel_from_str(
+    __META_MODEL = metamodel_from_str(
         GRAMMAR,
         classes=[
             ExprSeq,
@@ -211,7 +211,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     @commands.command(name="!", hidden=True)
     async def eval(self, ctx, *, command):
         """Interprets and executes the given command."""
-        model = self.META_MODEL.model_from_str(command)
+        model = self.__META_MODEL.model_from_str(command)
         await model.eval(ctx)
 
     @commands.command()
@@ -229,6 +229,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     @commands.command()
     async def print(self, ctx, content, file_format="", *, display=True):
         """Prints the input data with highlighting specified by 'file_format'."""
+        content = str(content)
         if display:
             format_str = f"```{file_format}\n{{}}\n```"
             chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
@@ -251,12 +252,14 @@ UNQUOTED_WORD: /(\S+)\b/;
         return content
 
     @commands.command()
-    async def open(self, ctx, filename, *, display=True):
+    async def open(self, ctx, file_name, *, display=True):
         """Reads the contents of a file with the specified filename."""
-        file_content = FileContent(None, filename)
+        file_name = str(file_name)
+        file_content = FileContent(None, file_name)
         return await file_content.eval(ctx, display=display)
 
     @commands.command()
     async def tts(self, ctx, content, **_):
         """Makes the bot send a text-to-speech message with the given content."""
+        content = str(content)
         await ctx.send(content, tts=True, delete_after=0.0)
