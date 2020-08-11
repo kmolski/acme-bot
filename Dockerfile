@@ -8,6 +8,7 @@ WORKDIR ${DIR}
 
 ENV BUILD_DEPS gcc libffi-dev make musl-dev python3-dev
 ENV DEPS ffmpeg grep python3 py3-pip py3-wheel units
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 
 COPY requirements.txt ${DIR}/
 

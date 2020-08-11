@@ -298,7 +298,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         opts = [str(option) for option in opts]
         validate_options(opts, self.__GREP_ARGS)
-
+        # Filter out empty lines that produce all-matching patterns.
         patterns = "\n".join(p for p in patterns.split("\n") if p)
 
         output = (
@@ -306,6 +306,7 @@ UNQUOTED_WORD: /(\S+)\b/;
                 "grep", "--color=never", "-e", patterns, *opts, "--", "-", stdin=data,
             )
         )[:-1]
+        # ^^^ Get rid of the trailing newline from grep.
 
         if display:
             await ctx.send(
