@@ -14,9 +14,11 @@ from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
 
 
 def validate_options(args, regex):
+    """Validates each argument in args against the provided regex.
+    If any argument does not match fully, a CommandError is raised."""
     for arg in args:
         if not regex.fullmatch(arg):
-            raise commands.CommandError(f"Argument {arg} is not allowed.")
+            raise commands.CommandError(f"Argument `{arg}` is not allowed.")
 
 
 async def execute_system_cmd(name, *args, stdin=None):
@@ -224,8 +226,8 @@ UNQUOTED_WORD: /(\S+)\b/;
         use_regexp_group=True,
     )
 
-    __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]*")
-    __UNITS_ARGS = re.compile(r"[\w\. ]*")
+    __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
+    __UNITS_ARGS = re.compile(r"[\w\. ]+")
 
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
