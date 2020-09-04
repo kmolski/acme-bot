@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM debian:stable
 
 ENV DISCORD_TOKEN ""
 ENV DIR /tmp/acme-bot
@@ -6,15 +6,17 @@ ENV DIR /tmp/acme-bot
 RUN mkdir -p ${DIR}
 WORKDIR ${DIR}
 
-ENV BUILD_DEPS gcc libffi-dev make musl-dev python3-dev
-ENV DEPS ffmpeg grep python3 py3-pip py3-wheel units
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+ENV BUILD_DEPS libffi-dev python3-dev python3-wheel
+ENV DEPS ffmpeg grep python3 python3-pip python3-setuptools units
 
 COPY requirements.txt ${DIR}/
 
-RUN apk add --no-cache ${BUILD_DEPS} ${DEPS} \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ${BUILD_DEPS} ${DEPS} \
     && pip3 install --no-cache-dir -r requirements.txt \
-    && apk del ${BUILD_DEPS}
+    && apt-get purge -y --auto-remove ${BUILD_DEPS} \
+    && apt-get clean \
+    && rm -rf -- /var/lib/apt/lists/*
 
 COPY setup.py ${DIR}/
 COPY acme_bot ${DIR}/acme_bot
