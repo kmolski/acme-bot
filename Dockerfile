@@ -6,7 +6,7 @@ ENV DIR /tmp/acme-bot
 RUN mkdir -p ${DIR}
 WORKDIR ${DIR}
 
-ENV BUILD_DEPS libffi-dev python3-dev python3-wheel
+ENV BUILD_DEPS gcc libffi-dev make python3-dev python3-wheel
 ENV DEPS ffmpeg grep python3 python3-pip python3-setuptools units
 
 COPY requirements.txt ${DIR}/
