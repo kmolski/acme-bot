@@ -137,7 +137,7 @@ class BoolLiteral:
 
     def __init__(self, parent, value):
         self.parent = parent
-        self.value = value
+        self.value = value.lower() in ("yes", "true", "enable", "on")
 
     async def eval(self, *_, **__):
         """Evaluates the boolean literal."""
@@ -199,12 +199,13 @@ StrLiteral: value=STRING | value=CODE_BLOCK | value = UNQUOTED_WORD;
 
 IntLiteral: value=NUMBER;
 
-BoolLiteral: value=BOOL;
+BoolLiteral: value=BOOLEAN;
 
 FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
+BOOLEAN: /(?i)(yes|true|enable|on|no|false|disable|off)/;
 CODE_BLOCK: /(?ms)```(?:[^`\n]*\n)?(.*?)```/;
 COMMAND_NAME: /[\w\-]+\b/;
 FILE_NAME: /[\w\-. '\"]+/;
@@ -293,6 +294,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         """Makes the bot send a text-to-speech message with the given content."""
         content = str(content)
         await ctx.send(content, tts=True, delete_after=0.0)
+        return content
 
     @commands.command(aliases=["grep"], enabled=which("grep"))
     async def filter(self, ctx, data, patterns, *opts, display=True):

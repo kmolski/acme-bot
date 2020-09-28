@@ -62,7 +62,7 @@ class MusicQueue:
         """Returns the next entry based on the offset."""
         self.__index = (self.__index + self.next_offset) % len(self.__playlist)
         self.next_offset = 1  # Set the next_offset back to 1
-        return self.__playlist[self.__index]
+        return self.current()
 
     def _pop(self, offset):
         """Removes an entry from the queue."""
