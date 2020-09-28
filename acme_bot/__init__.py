@@ -29,6 +29,7 @@ class HelpCommand(commands.DefaultHelpCommand):
     # Catch the "display" keyword argument and ignore it
     # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None, **_):
+        self.context = ctx
         return await super().command_callback(ctx, command=command)
 
 
