@@ -205,7 +205,7 @@ FileContent: '['- name=FILE_NAME ']'- ;
 
 ExprSubst: '('- expr_seq=ExprSeq ')'- ;
 
-BOOLEAN: /(?i)(yes|true|enable|on|no|false|disable|off)/;
+BOOLEAN: /(?i)(yes|true|enable|on|no|false|disable|off)\b/;
 CODE_BLOCK: /(?ms)```(?:[^`\n]*\n)?(.*?)```/;
 COMMAND_NAME: /[\w\-]+\b/;
 FILE_NAME: /[\w\-. '\"]+/;
