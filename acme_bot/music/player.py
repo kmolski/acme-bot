@@ -14,6 +14,25 @@ from discord.ext import commands
 from acme_bot.music.queue import MusicQueue
 
 
+class FFmpegAudioSource(discord.FFmpegPCMAudio):
+    __ACCEPTABLE_RETURN_CODES = [-9, 0]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def cleanup(self):
+        proc = self._process
+        super().cleanup()
+
+        if proc and proc.returncode not in self.__ACCEPTABLE_RETURN_CODES:
+            msg = (
+                f"ffmpeg process {proc.pid} terminated with"
+                f" unacceptable return code of {proc.returncode}."
+            )
+            logging.error(msg)
+            raise ChildProcessError(msg)
+
+
 def parse_log_entry(line):
     """This function parses a single line of the FFMPEG's stderr output
     and extracts information about the message."""
@@ -150,7 +169,7 @@ class MusicPlayer(MusicQueue):
             await self.__downloader.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
+            FFmpegAudioSource(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
             volume=self.__volume,
         )
 
