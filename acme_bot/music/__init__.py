@@ -250,15 +250,15 @@ class MusicModule(commands.Cog):
 
         return format_entry_lists(export_entry, results)
 
-    @commands.command()
-    async def back(self, ctx, offset: int = 1, **_):
+    @commands.command(aliases=["prev"])
+    async def previous(self, ctx, offset: int = 1, **_):
         """Plays the previous video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(-offset)
 
-    @commands.command()
-    async def forward(self, ctx, offset: int = 1, **_):
+    @commands.command(aliases=["next"])
+    async def skip(self, ctx, offset: int = 1, **_):
         """Plays the next video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
@@ -403,12 +403,12 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
 
-    @back.before_invoke
     @current.before_invoke
-    @forward.before_invoke
+    @previous.before_invoke
     @queue.before_invoke
     @remove.before_invoke
     @shuffle.before_invoke
+    @skip.before_invoke
     async def __ensure_voice_and_non_empty_queue(self, ctx):
         """Ensures that the author of the message is in a voice channel,
         a MusicPlayer for that channel exists and the queue is not empty."""
