@@ -342,12 +342,13 @@ UNQUOTED_WORD: /(\S+)\b/;
         return output
 
     @commands.command(aliases=["tai"], enabled=which("tail"))
-    async def tail(self, ctx, data, *opts, display=True):
-        data, opts = str(data), [str(option) for option in opts]
-        validate_options(opts, self.__HEAD_TAIL_ARGS)
+    async def tail(self, ctx, data, line_count=10, display=True):
+        data, line_count = str(data), int(line_count)
 
-        output = (await execute_system_cmd("tail", *opts, "--", "-", stdin=data))[:-1]
-        # ---------------------------- Get rid of the trailing newline from tail. ^^^
+        output = (
+            await execute_system_cmd("tail", "-n", str(line_count), "-", stdin=data)
+        )[:-1]
+        # ^^^ Get rid of the trailing newline from tail.
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
@@ -359,12 +360,13 @@ UNQUOTED_WORD: /(\S+)\b/;
         return output
 
     @commands.command(aliases=["hea"], enabled=which("head"))
-    async def head(self, ctx, data, *opts, display=True):
-        data, opts = str(data), [str(option) for option in opts]
-        validate_options(opts, self.__HEAD_TAIL_ARGS)
+    async def head(self, ctx, data, line_count=10, display=True):
+        data, line_count = str(data), int(line_count)
 
-        output = (await execute_system_cmd("head", *opts, "--", "-", stdin=data))[:-1]
-        # ---------------------------- Get rid of the trailing newline from head. ^^^
+        output = (
+            await execute_system_cmd("head", "-n", str(line_count), "-", stdin=data)
+        )[:-1]
+        # ^^^ Get rid of the trailing newline from head.
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
@@ -374,3 +376,15 @@ UNQUOTED_WORD: /(\S+)\b/;
                 await ctx.send(format_str.format(chunk))
 
         return output
+
+    @commands.command(aliases=["lin"], enabled=(head.enabled and tail.enabled))
+    async def lines(self, ctx, data, start, end, display=True):
+        start, end = int(start) - 1, int(end)
+        if start > end:
+            raise commands.CommandError(
+                f"Argument `start` = {start} must be lower than `end` = {end}."
+            )
+
+        return await self.tail(
+            ctx, await self.head(ctx, data, end, display=False), end - start, display
+        )
