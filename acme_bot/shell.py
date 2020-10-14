@@ -21,6 +21,10 @@ def validate_options(args, regex):
             raise commands.CommandError(f"Argument `{arg}` is not allowed.")
 
 
+def trim_double_newline(string):
+    return string if string[-2:] != "\n\n" else string[:-1]
+
+
 async def execute_system_cmd(name, *args, stdin=None):
     stdin = stdin.encode() if stdin else None
     proc = await asyncio.create_subprocess_exec(
@@ -306,12 +310,11 @@ UNQUOTED_WORD: /(\S+)\b/;
         # Filter out empty lines that produce all-matching patterns.
         patterns = "\n".join(p for p in patterns.split("\n") if p)
 
-        output = (
+        output = trim_double_newline(
             await execute_system_cmd(
-                "grep", "--color=never", "-e", patterns, *opts, "--", "-", stdin=data,
+                "grep", "--color=never", "-e", patterns, *opts, "--", "-", stdin=data
             )
-        )[:-1]
-        # ^^^ Get rid of the trailing newline from grep.
+        )
 
         if display:
             await ctx.send(
@@ -345,10 +348,9 @@ UNQUOTED_WORD: /(\S+)\b/;
     async def tail(self, ctx, data, line_count=10, display=True):
         data, line_count = str(data), int(line_count)
 
-        output = (
+        output = trim_double_newline(
             await execute_system_cmd("tail", "-n", str(line_count), "-", stdin=data)
-        )[:-1]
-        # ^^^ Get rid of the trailing newline from tail.
+        )
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
@@ -363,10 +365,9 @@ UNQUOTED_WORD: /(\S+)\b/;
     async def head(self, ctx, data, line_count=10, display=True):
         data, line_count = str(data), int(line_count)
 
-        output = (
+        output = trim_double_newline(
             await execute_system_cmd("head", "-n", str(line_count), "-", stdin=data)
-        )[:-1]
-        # ^^^ Get rid of the trailing newline from head.
+        )
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
