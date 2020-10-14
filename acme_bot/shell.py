@@ -228,6 +228,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     )
 
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
+    __HEAD_TAIL_ARGS = re.compile(r"-[0-9cn]+")
     __UNITS_ARGS = re.compile(r"[\w\. ]+")
 
     @commands.command(aliases=["cat"])
@@ -338,4 +339,38 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         if display:
             await ctx.send(f"\U0001F9EE {output}.")
+        return output
+
+    @commands.command(aliases=["tai"], enabled=which("tail"))
+    async def tail(self, ctx, data, *opts, display=True):
+        data, opts = str(data), [str(option) for option in opts]
+        validate_options(opts, self.__HEAD_TAIL_ARGS)
+
+        output = await execute_system_cmd("tail", *opts, "--", "-", stdin=data)[:-1]
+        # -------------------------- Get rid of the trailing newline from tail. ^^^
+
+        if display:
+            await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output
+
+    @commands.command(aliases=["hea"], enabled=which("head"))
+    async def head(self, ctx, data, *opts, display=True):
+        data, opts = str(data), [str(option) for option in opts]
+        validate_options(opts, self.__HEAD_TAIL_ARGS)
+
+        output = await execute_system_cmd("head", *opts, "--", "-", stdin=data)[:-1]
+        # -------------------------- Get rid of the trailing newline from head. ^^^
+
+        if display:
+            await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
         return output
