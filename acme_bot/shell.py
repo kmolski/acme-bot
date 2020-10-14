@@ -346,8 +346,8 @@ UNQUOTED_WORD: /(\S+)\b/;
         data, opts = str(data), [str(option) for option in opts]
         validate_options(opts, self.__HEAD_TAIL_ARGS)
 
-        output = await execute_system_cmd("tail", *opts, "--", "-", stdin=data)[:-1]
-        # -------------------------- Get rid of the trailing newline from tail. ^^^
+        output = (await execute_system_cmd("tail", *opts, "--", "-", stdin=data))[:-1]
+        # ---------------------------- Get rid of the trailing newline from tail. ^^^
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
@@ -363,8 +363,8 @@ UNQUOTED_WORD: /(\S+)\b/;
         data, opts = str(data), [str(option) for option in opts]
         validate_options(opts, self.__HEAD_TAIL_ARGS)
 
-        output = await execute_system_cmd("head", *opts, "--", "-", stdin=data)[:-1]
-        # -------------------------- Get rid of the trailing newline from head. ^^^
+        output = (await execute_system_cmd("head", *opts, "--", "-", stdin=data))[:-1]
+        # ---------------------------- Get rid of the trailing newline from head. ^^^
 
         if display:
             await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
