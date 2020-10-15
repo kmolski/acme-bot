@@ -22,10 +22,15 @@ def validate_options(args, regex):
 
 
 def trim_double_newline(string):
+    """Trims down double newlines at the end of the string, such that
+    'abc\n\n' becomes 'abc\n', but 'abc\n' is still 'abc\n'."""
     return string if string[-2:] != "\n\n" else string[:-1]
 
 
 async def execute_system_cmd(name, *args, stdin=None):
+    """Executes a system command and communicates with the process.
+    The `stdin` argument is encoded and passed into the standard input.
+    Therefore, it must be convertible into a `bytes` object."""
     stdin = stdin.encode() if stdin else None
     proc = await asyncio.create_subprocess_exec(
         name,
@@ -246,13 +251,13 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(name="!", hidden=True)
     async def eval(self, ctx, *, command):
-        """Interprets and executes the given command."""
+        """Interpret and execute the given command."""
         model = self.__META_MODEL.model_from_str(command)
         await model.eval(ctx)
 
     @commands.command()
     async def ping(self, ctx, *, display=True):
-        """Measures the time it takes to communicate with the Discord servers."""
+        """Measure the time it takes to communicate with the Discord servers."""
         start = datetime.now()
         # Adding a reaction is not done until the bot receives a response
         # from the Discord servers, so it can be used to measure the time.
@@ -264,7 +269,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command()
     async def print(self, ctx, content, file_format="", *, display=True):
-        """Prints the input data with highlighting specified by 'file_format'."""
+        """Print the input data with highlighting specified by 'file_format'."""
         content = str(content)
         if display:
             format_str = f"```{file_format}\n{{}}\n```"
@@ -275,7 +280,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(name="to-file", aliases=["tee"])
     async def to_file(self, ctx, content, file_name, *, display=True):
-        """Redirects the input data to a new file with the specified filename."""
+        """Redirect the input data to a new file with the specified filename."""
         content, file_name = str(content), f"{ctx.author.name}_{file_name}"
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
@@ -289,20 +294,22 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command()
     async def open(self, ctx, file_name, *, display=True):
-        """Reads the contents of a file with the specified filename."""
+        """Read the contents of a file with the specified filename."""
         file_name = str(file_name)
         file_content = FileContent(None, file_name)
         return await file_content.eval(ctx, display=display)
 
     @commands.command()
     async def tts(self, ctx, content, **_):
-        """Makes the bot send a text-to-speech message with the given content."""
+        """Send a text-to-speech message with the given content."""
         content = str(content)
         await ctx.send(content, tts=True, delete_after=0.0)
         return content
 
-    @commands.command(aliases=["grep"], enabled=which("grep"))
-    async def filter(self, ctx, data, patterns, *opts, display=True):
+    @commands.command(enabled=which("grep"))
+    async def grep(self, ctx, data, patterns, *opts, display=True):
+        """Print the lines of `data` that match one or more of the specified patterns.
+        Additionally, a subset of `grep` arguments can be supplied as `opts`."""
         data, patterns = str(data), str(patterns)
 
         opts = [str(option) for option in opts]
@@ -317,9 +324,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if display:
-            await ctx.send(
-                "\U0001F4D1 Matched {} lines.".format(len(output.split("\n")))
-            )
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -329,6 +333,8 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(aliases=["uni"], enabled=which("units"))
     async def units(self, ctx, *arguments, display=True):
+        """Convert between units. The initial arguments describe the input unit,
+        and the last argument describes the output unit."""
         arguments = [str(arg) for arg in arguments]
         validate_options(arguments, self.__UNITS_ARGS)
 
@@ -346,6 +352,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(aliases=["tai"], enabled=which("tail"))
     async def tail(self, ctx, data, line_count=10, display=True):
+        """Take the last `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
         output = trim_double_newline(
@@ -353,7 +360,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if display:
-            await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -363,6 +369,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(aliases=["hea"], enabled=which("head"))
     async def head(self, ctx, data, line_count=10, display=True):
+        """Take the first `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
         output = trim_double_newline(
@@ -370,7 +377,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if display:
-            await ctx.send("\U0001F4C4 Got {} lines.".format(len(output.split("\n"))))
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -380,10 +386,11 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command(aliases=["lin"], enabled=(head.enabled and tail.enabled))
     async def lines(self, ctx, data, start, end, display=True):
+        """Take lines from the specified line range (`start-end`) of the input."""
         start, end = int(start) - 1, int(end)
         if start > end:
             raise commands.CommandError(
-                f"Argument `start` = {start} must be lower than `end` = {end}."
+                f"Argument `start` = {start} must not be greater than `end` = {end}."
             )
 
         return await self.tail(
