@@ -49,6 +49,10 @@ def add_expire_time(entry):
         )
 
 
+def filter_not_none(iterable):
+    return [entry for entry in iterable if entry is not None]
+
+
 class MusicDownloader(youtube_dl.YoutubeDL):
     """This class extracts and updates information about music tracks
     that are found by a query or by their URLs."""
@@ -98,7 +102,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
             if result["extractor"] in ("youtube", "soundcloud"):
                 results.append(result)
             elif result["extractor"] in ("youtube:playlist", "soundcloud:playlist"):
-                results.extend(result["entries"])
+                results.extend(filter_not_none(result["entries"]))
 
         if not results:
             raise commands.CommandError("No tracks found for the provided URL list!")
@@ -116,7 +120,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
         # Filter out None entries
-        return [entry for entry in results["entries"] if entry is not None]
+        return filter_not_none(results["entries"])
 
     async def update_entry(self, entry):
         """Updates a track entry in-place with a new URL and expiration time."""
