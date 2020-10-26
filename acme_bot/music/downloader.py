@@ -1,5 +1,6 @@
 """This module provides track downloader for the MusicModule."""
 from base64 import b64decode
+from itertools import islice, chain
 from json import loads
 from multiprocessing import Process, Queue
 from pathlib import PurePosixPath
@@ -49,6 +50,14 @@ def add_expire_time(entry):
         )
 
 
+def chunks(it, size):
+    while True:
+        chunk = tuple(islice(it, size))
+        if not chunk:
+            break
+        yield chunk
+
+
 def filter_not_none(iterable):
     return [entry for entry in iterable if entry is not None]
 
@@ -69,6 +78,8 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         "source_address": "0.0.0.0",
     }
 
+    __PROCESS_COUNT = 4
+
     def __init__(self, loop):
         super().__init__(self.DOWNLOAD_OPTIONS)
         self.loop = loop
@@ -88,7 +99,10 @@ class MusicDownloader(youtube_dl.YoutubeDL):
         """Extracts the track entries from the given URLs."""
         # Run the YoutubeDL functions in separate Python processes,
         # so that they may be run in parallel to the rest of the bot
-        handles = [self.__start_extractor_process(url) for url in url_list]
+        handles = chain.from_iterable(
+            # URLs are processed in groups of `self.__PROCESS_COUNT` elements at a time
+            chunks(map(self.__start_extractor_process, url_list), self.__PROCESS_COUNT)
+        )
         results = []
 
         for (result_queue, process) in handles:
@@ -98,7 +112,6 @@ class MusicDownloader(youtube_dl.YoutubeDL):
 
             if result is None:
                 continue
-
             if result["extractor"] in ("youtube", "soundcloud"):
                 results.append(result)
             elif result["extractor"] in ("youtube:playlist", "soundcloud:playlist"):
