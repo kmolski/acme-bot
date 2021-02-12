@@ -238,7 +238,6 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
     __HEAD_TAIL_ARGS = re.compile(r"-[0-9cn]+")
-    __UNITS_ARGS = re.compile(r"[\w\. ]+")
 
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
@@ -336,13 +335,11 @@ UNQUOTED_WORD: /(\S+)\b/;
         """Convert between units. The initial arguments describe the input unit,
         and the last argument describes the output unit."""
         arguments = [str(arg) for arg in arguments]
-        validate_options(arguments, self.__UNITS_ARGS)
-
         from_unit, to_unit = " ".join(arguments[:-1]), arguments[-1]
 
         output = (
             await execute_system_cmd(
-                "units", "--verbose", "--one-line", from_unit, to_unit
+                "units", "--verbose", "--one-line", "--", from_unit, to_unit
             )
         ).strip()
 
