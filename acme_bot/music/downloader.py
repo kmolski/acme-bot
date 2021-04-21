@@ -79,6 +79,12 @@ class MusicDownloader(youtube_dl.YoutubeDL):
     }
 
     __PROCESS_COUNT = 4
+    __ALLOWED_URL_EXTRACTORS = (
+        "youtube:playlist",
+        "youtube:tab",
+        "soundcloud:playlist",
+        "soundcloud:set",
+    )
 
     def __init__(self, loop):
         super().__init__(self.DOWNLOAD_OPTIONS)
@@ -114,7 +120,7 @@ class MusicDownloader(youtube_dl.YoutubeDL):
                 continue
             if result["extractor"] in ("youtube", "soundcloud"):
                 results.append(result)
-            elif result["extractor"] in ("youtube:playlist", "soundcloud:playlist"):
+            elif result["extractor"] in self.__ALLOWED_URL_EXTRACTORS:
                 results.extend(filter_not_none(result["entries"]))
 
         if not results:

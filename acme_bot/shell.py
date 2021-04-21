@@ -237,7 +237,6 @@ UNQUOTED_WORD: /(\S+)\b/;
     )
 
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
-    __HEAD_TAIL_ARGS = re.compile(r"-[0-9cn]+")
 
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):
@@ -284,11 +283,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
             await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
-            if display:
-                format_str = "```\n{}\n```"
-                chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
-                for chunk in chunks:
-                    await ctx.send(format_str.format(chunk))
         return content
 
     @commands.command()
