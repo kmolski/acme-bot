@@ -98,6 +98,8 @@ class Command:
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
             raise commands.CommandError(f"Command '{self.name}' not found")
+        else:
+            ctx.command = cmd
 
         if not await cmd.can_run(ctx):
             raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
@@ -106,7 +108,7 @@ class Command:
         args = (
             ([ctx] if cmd.cog is None else [cmd.cog, ctx])
             + ([pipe] if pipe else [])  # Use the piped input only if it's not empty
-            # Setting "display" to false, so that the argument eval doesn't print.
+            # Set "display" to false, so that the argument eval doesn't print.
             + ([await elem.eval(ctx, display=False) for elem in self.args])
         )
         result = await cmd.callback(*args, display=display)
@@ -221,7 +223,7 @@ FILE_NAME: /[\w\-. '\"]+/;
 UNQUOTED_WORD: /(\S+)\b/;
 """
 
-    __META_MODEL = metamodel_from_str(
+    META_MODEL = metamodel_from_str(
         GRAMMAR,
         classes=[
             ExprSeq,
@@ -246,12 +248,6 @@ UNQUOTED_WORD: /(\S+)\b/;
             for chunk in split_message(content, MAX_MESSAGE_LENGTH):
                 await ctx.send(chunk)
         return content
-
-    @commands.command(name="!", hidden=True)
-    async def eval(self, ctx, *, command):
-        """Interpret and execute the given command."""
-        model = self.__META_MODEL.model_from_str(command)
-        await model.eval(ctx)
 
     @commands.command()
     async def ping(self, ctx, *, display=True):
@@ -296,7 +292,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     async def tts(self, ctx, content, **_):
         """Send a text-to-speech message with the given content."""
         content = str(content)
-        await ctx.send(content, tts=True, delete_after=0.0)
+        await ctx.send(content, tts=True, delete_after=8.0)
         return content
 
     @commands.command(enabled=which("grep"))
