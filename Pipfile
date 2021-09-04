@@ -12,7 +12,7 @@ pylint = "*"
 [packages]
 discord-py = {extras = ["voice"],version = "*"}
 textx = "*"
-youtube-dl = "*"
+youtube_dl = "*"
 
 [requires]
 python_version = "3.8"
