@@ -9,9 +9,9 @@ from urllib.parse import urlparse, parse_qs
 import logging
 
 from discord.ext import commands
-import youtube_dl
+import yt_dlp
 
-youtube_dl.utils.bug_reports_message = lambda: ""
+yt_dlp.utils.bug_reports_message = lambda: ""
 
 
 def add_expire_time(entry):
@@ -62,7 +62,7 @@ def filter_not_none(iterable):
     return [entry for entry in iterable if entry is not None]
 
 
-class MusicDownloader(youtube_dl.YoutubeDL):
+class MusicDownloader(yt_dlp.YoutubeDL):
     """This class extracts and updates information about music tracks
     that are found by a query or by their URLs."""
 
