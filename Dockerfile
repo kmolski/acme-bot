@@ -11,12 +11,13 @@ ENV BUILD_DEPS="build-essential curl libffi-dev python3-dev"
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ${BUILD_DEPS}
 RUN pip install poetry
+RUN python -m venv /venv
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev --no-root
+RUN . /venv/bin/activate && poetry install --no-dev --no-root
 
 COPY . .
-RUN poetry build
+RUN . /venv/bin/activate && poetry build
 
 FROM base AS final
 
@@ -26,7 +27,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf -- /var/lib/apt/lists/*
 
+COPY --from=builder /venv /venv
 COPY --from=builder /app/dist .
-RUN pip install *.whl
+RUN . /venv/bin/activate && pip install *.whl
 
 ENTRYPOINT ["acme-bot"]
