@@ -32,4 +32,4 @@ COPY --from=builder /app/dist .
 RUN . /venv/bin/activate && pip install *.whl
 
 COPY docker-entrypoint.sh ./
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
