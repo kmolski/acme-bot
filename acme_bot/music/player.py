@@ -135,9 +135,11 @@ class MusicPlayer(MusicQueue):
     def remove(self, offset):
         """Removes a track from the player's queue."""
         removed = self._pop(offset)
-        # If the track that is playing got removed, start playing the next one.
-        if offset == 0:
+        if offset == 0: # If the current track got removed, start playing the next one.
             self.next_offset = 0
+            self.__ctx.voice_client.stop()
+        if self.is_empty(): # If the queue is now empty, stop the player.
+            self.__state = PlayerState.IDLE
             self.__ctx.voice_client.stop()
         return removed
 
