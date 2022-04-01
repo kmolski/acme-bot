@@ -10,6 +10,8 @@ python = "^3.8"
 textX = "^2.3.0"
 yt-dlp = "^2022.2.4"
 
+aio-pika = {version = "^7.1.1", optional = true}
+
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"
 flake8 = "^4.0.1"
@@ -17,6 +19,9 @@ pylint = "^2.12.2"
 
 [tool.poetry.scripts]
 acme-bot = "acme_bot:run"
+
+[tool.poetry.extras]
+external-control = ["aio-pika"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
