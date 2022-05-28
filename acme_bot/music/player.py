@@ -94,13 +94,15 @@ class MusicPlayer(MusicQueue):
         "options": "-vn -af dynaudnorm -hide_banner -loglevel +level",
     }
 
-    def __init__(self, ctx, downloader):
+    def __init__(self, ctx, downloader, access_code):
         super().__init__()
         self.__ctx = ctx
         self.__sem = Semaphore()
         self.__state = PlayerState.IDLE
         self.__volume = 1.0
         self.__downloader = downloader
+
+        self.access_code = access_code
 
     def __enter__(self):
         self.__sem.acquire()
@@ -135,10 +137,10 @@ class MusicPlayer(MusicQueue):
     def remove(self, offset):
         """Removes a track from the player's queue."""
         removed = self._pop(offset)
-        if offset == 0: # If the current track got removed, start playing the next one.
+        if offset == 0:  # If the current track got removed, start playing the next one.
             self.next_offset = 0
             self.__ctx.voice_client.stop()
-        if self.is_empty(): # If the queue is now empty, stop the player.
+        if self.is_empty():  # If the queue is now empty, stop the player.
             self.__state = PlayerState.IDLE
             self.__ctx.voice_client.stop()
         return removed
