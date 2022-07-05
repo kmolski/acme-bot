@@ -49,6 +49,21 @@ def run():
         logging.error("FFMPEG executable not found! Disabling MusicModule.")
 
     client.add_cog(ShellModule(client))
+
+    try:
+        from acme_bot.external_control import ExternalControlModule
+
+        message_queue_uri = environ["MESSAGE_QUEUE_URI"]
+        client.add_cog(ExternalControlModule(client, message_queue_uri))
+    except ModuleNotFoundError:
+        logging.info("External control not available! Disabling ExternalControlModule.")
+    except KeyError:
+        logging.error(
+            "Message queue URI not found! "
+            "Please provide the address in the MESSAGE_QUEUE_URI environment variable!"
+        )
+        raise
+
     @client.event
     async def on_ready():
         """Prints a message to stdout once the bot has started."""
