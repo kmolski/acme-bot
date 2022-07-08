@@ -1,3 +1,4 @@
+"""Configuration management"""
 import logging
 from dataclasses import dataclass
 from os import environ
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 
 @dataclass
 class ConfigProperty:
+    """Configuration property loaded from environment variables or config files"""
     ALL = {}
 
     key: str
@@ -18,6 +20,7 @@ class ConfigProperty:
 
     @classmethod
     def assert_required(cls):
+        """Assert that all required config properties are set."""
         missing = [p for p in cls.ALL.values() if p.required and p.key not in environ]
         if missing:
             raise ValueError(
@@ -39,6 +42,7 @@ LOG_LEVEL = ConfigProperty("LOG_LEVEL", "Log message level", True, logging.getLe
 
 
 def load_config(config_path=None):
+    """Load configuration from the default and user-specified config files."""
     load_dotenv(join(dirname(__file__), "default.conf"))
     if config_path is not None:
         load_dotenv(config_path)
