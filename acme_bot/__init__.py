@@ -1,26 +1,14 @@
 """Root module of the music bot."""
-from os import environ
-from shutil import which
+import argparse
 import logging
+from shutil import which
 
 from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
+from acme_bot.config import COMMAND_PREFIX, LOG_LEVEL, DISCORD_TOKEN, load_config
 from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
-
-
-def get_token_from_env():
-    """Returns the Discord API token from an environment variable,
-    or fails if it doesn't exist."""
-    try:
-        return environ["DISCORD_TOKEN"]
-    except KeyError:
-        logging.error(
-            "Discord API token not found! "
-            "Please provide the token in the DISCORD_TOKEN environment variable!"
-        )
-        raise
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -38,9 +26,17 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 def run():
     """The entry point for acme-bot."""
-    client = commands.Bot(command_prefix="!", help_command=HelpCommand())
+    parser = argparse.ArgumentParser(description="Launch the ACME Universal Bot.")
+    parser.add_argument(
+        "-c", "--config", metavar="FILE", help="path to bot configuration file"
+    )
+
+    args = vars(parser.parse_args())
+    load_config(args.get("config"))
+
+    client = commands.Bot(command_prefix=COMMAND_PREFIX(), help_command=HelpCommand())
     logging.basicConfig(
-        format="[%(asctime)s] %(levelname)s: %(message)s", level=logging.INFO
+        format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
     )
 
     if which("ffmpeg"):
@@ -129,4 +125,4 @@ def run():
         ctx = await client.get_context(message)
         await eval_command(ctx)
 
-    client.run(get_token_from_env())
+    client.run(DISCORD_TOKEN())

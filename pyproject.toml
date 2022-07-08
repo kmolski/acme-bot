@@ -2,11 +2,12 @@
 name = "acme-bot"
 version = "0.1.0"
 description = "Discord bot with Unix shell-inspired commands"
-authors = ["kmolski <starfighter413@gmail.com>"]
+authors = ["kmolski <krzysztof.molski29@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
 "discord.py" = {version = "^1.7.3", extras = ["voice"]}
+python-dotenv = "^0.20.0"
 textX = "^2.3.0"
 yt-dlp = "^2022.2.4"
 
