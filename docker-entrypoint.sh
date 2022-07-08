@@ -1,3 +1,3 @@
 #!/bin/sh
 
-. /venv/bin/activate && acme-bot
+. /venv/bin/activate && acme-bot "$@"
