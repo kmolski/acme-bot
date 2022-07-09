@@ -33,11 +33,8 @@ class MusicQueue:
 
     def should_stop(self):
         """Checks whether the current element is the last one and looping is off."""
-        return (
-            self.__playlist
-            and self.next_offset == 1
-            and self.__index >= len(self.__playlist) - 1
-            and not self._loop
+        return self.is_empty() or (
+            self.__index + self.next_offset >= len(self.__playlist) and not self._loop
         )
 
     def queue_data(self):
