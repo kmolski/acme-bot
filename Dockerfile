@@ -14,7 +14,7 @@ RUN pip install poetry
 RUN python -m venv /venv
 
 COPY pyproject.toml poetry.lock ./
-RUN . /venv/bin/activate && poetry install --no-dev --no-root
+RUN . /venv/bin/activate && poetry install --no-dev --no-root --extras external-control
 
 COPY . .
 RUN . /venv/bin/activate && poetry build
