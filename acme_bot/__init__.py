@@ -1,6 +1,7 @@
 """Root module of the music bot."""
 import argparse
 import logging
+from importlib.util import find_spec
 from shutil import which
 
 from discord.ext import commands
@@ -15,6 +16,7 @@ from acme_bot.config import (
 )
 from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
+from acme_bot.external_control import ExternalControlModule
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -50,14 +52,12 @@ def run():
     else:
         logging.error("FFMPEG executable not found! Disabling MusicModule.")
 
-    client.add_cog(ShellModule(client))
-
-    try:
-        from acme_bot.external_control import ExternalControlModule
-
+    if find_spec("aio_pika"):
         client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
-    except ModuleNotFoundError:
+    else:
         logging.info("External control not available! Disabling ExternalControlModule.")
+
+    client.add_cog(ShellModule(client))
 
     @client.event
     async def on_ready():

@@ -2,8 +2,6 @@ import json
 import logging
 from asyncio import run_coroutine_threadsafe
 
-import aio_pika
-
 from discord.ext import commands
 
 from acme_bot import MusicModule
@@ -14,9 +12,13 @@ class ExternalControlModule(commands.Cog):
         self.bot = bot
         self.music_module = bot.get_cog(MusicModule.__name__)
 
-        run_coroutine_threadsafe(self.__respond_to_messages(uri), self.bot.loop)
+        run_coroutine_threadsafe(self.__process_messages(uri), self.bot.loop)
 
-    async def __respond_to_messages(self, uri):
+    async def __process_messages(self, uri):
+        # Import aio_pika only if the cog is constructed
+        # pylint: disable=import-outside-toplevel
+        import aio_pika
+
         logging.info("Connecting to AMQP broker at '%s.'", uri)
         connection = await aio_pika.connect_robust(uri)
         async with connection:
