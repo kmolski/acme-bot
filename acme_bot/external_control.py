@@ -25,25 +25,25 @@ class ExternalControlModule(commands.Cog):
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
                     async with message.process():
-                        logging.info("Processing message '%s'", message.body)
+                        logging.info("Processing message %s", message.body)
 
                         try:
                             message_dict = json.loads(message.body)
 
-                            message_type = message_dict["type"]
+                            operation = message_dict["op"]
                             access_code = message_dict["code"]
 
                             player = self.music_module.players_by_code[access_code]
-                            if message_type == "resume":
+                            if operation == "resume":
                                 await player.resume()
-                            elif message_type == "pause":
+                            elif operation == "pause":
                                 player.pause()
-                            elif message_type == "stop":
+                            elif operation == "stop":
                                 player.stop()
 
                         except (json.JSONDecodeError, KeyError) as exc:
                             logging.exception(
-                                "Exception caused by message '%s':",
+                                "Exception caused by message %s:",
                                 message.body,
                                 exc_info=exc,
                             )

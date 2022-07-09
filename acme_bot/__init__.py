@@ -6,7 +6,13 @@ from shutil import which
 from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
-from acme_bot.config import COMMAND_PREFIX, LOG_LEVEL, DISCORD_TOKEN, load_config
+from acme_bot.config import (
+    COMMAND_PREFIX,
+    LOG_LEVEL,
+    DISCORD_TOKEN,
+    load_config,
+    RABBITMQ_URI,
+)
 from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
 
@@ -49,16 +55,9 @@ def run():
     try:
         from acme_bot.external_control import ExternalControlModule
 
-        message_queue_uri = environ["MESSAGE_QUEUE_URI"]
-        client.add_cog(ExternalControlModule(client, message_queue_uri))
+        client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
     except ModuleNotFoundError:
         logging.info("External control not available! Disabling ExternalControlModule.")
-    except KeyError:
-        logging.error(
-            "Message queue URI not found! "
-            "Please provide the address in the MESSAGE_QUEUE_URI environment variable!"
-        )
-        raise
 
     @client.event
     async def on_ready():
