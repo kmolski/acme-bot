@@ -1,5 +1,2 @@
-[MESSAGES CONTROL]
-disable=bad-continuation
-
 [DESIGN]
 min-public-methods=1
