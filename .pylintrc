@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=bad-continuation
+disable=consider-using-f-string
 
 [DESIGN]
 min-public-methods=1

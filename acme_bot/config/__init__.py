@@ -3,7 +3,8 @@ import logging
 from dataclasses import dataclass
 from os import environ
 from os.path import dirname, join
-from typing import Callable, Any
+from typing import Any
+from collections.abc import Callable
 
 from dotenv import load_dotenv
 
@@ -13,7 +14,6 @@ class ConfigProperty:
     """Configuration property loaded from environment variables or config files"""
 
     key: str
-    description: str
     constructor: Callable[[str], Any]
 
     def __call__(self):
@@ -28,10 +28,10 @@ class ConfigProperty:
             raise
 
 
-COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", "Command prefix", str)
-DISCORD_TOKEN = ConfigProperty("DISCORD_TOKEN", "Discord API token", str)
-LOG_LEVEL = ConfigProperty("LOG_LEVEL", "Log message level", logging.getLevelName)
-RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", "RabbitMQ URI", str)
+COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", str)
+DISCORD_TOKEN = ConfigProperty("DISCORD_TOKEN", str)
+LOG_LEVEL = ConfigProperty("LOG_LEVEL", logging.getLevelName)
+RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", str)
 
 
 def load_config(config_path=None):
