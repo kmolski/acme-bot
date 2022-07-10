@@ -1,2 +1,5 @@
+[MESSAGES CONTROL]
+disable=consider-using-f-string
+
 [DESIGN]
 min-public-methods=1

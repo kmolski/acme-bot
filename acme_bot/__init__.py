@@ -1,14 +1,22 @@
 """Root module of the music bot."""
 import argparse
 import logging
+from importlib.util import find_spec
 from shutil import which
 
 from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
-from acme_bot.config import COMMAND_PREFIX, LOG_LEVEL, DISCORD_TOKEN, load_config
+from acme_bot.config import (
+    COMMAND_PREFIX,
+    LOG_LEVEL,
+    DISCORD_TOKEN,
+    load_config,
+    RABBITMQ_URI,
+)
 from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
+from acme_bot.external_control import ExternalControlModule
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -43,6 +51,11 @@ def run():
         client.add_cog(MusicModule(client))
     else:
         logging.error("FFMPEG executable not found! Disabling MusicModule.")
+
+    if find_spec("aio_pika"):
+        client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
+    else:
+        logging.info("External control not available! Disabling ExternalControlModule.")
 
     client.add_cog(ShellModule(client))
 
@@ -90,14 +103,14 @@ def run():
             except (
                 commands.CommandError,  # Explicitly thrown command errors
                 TextXSyntaxError,  # Shell syntax errors
-                TypeError,  # Type mismatch errors, mostly incorrect function args
+                TypeError,  # Type mismatch errors (incorrect command args)
             ) as exc:
                 client.dispatch("command_error", ctx, exc)
-            # Catch the remaining exceptions and log them for later analysis
+            # Log the unhandled exceptions for later analysis
             # pylint: disable=broad-except
             except Exception as error:
                 logging.exception(
-                    "Exception caused by message '%s':",
+                    "Unhandled exception caused by message '%s':",
                     ctx.message.content,
                     exc_info=error,
                 )

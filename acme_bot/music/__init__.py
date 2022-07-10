@@ -1,8 +1,10 @@
 """This module provides the music playback capability to the bot."""
+import string
 from concurrent import futures
 from itertools import chain
 from math import ceil
 import logging
+from random import choices
 
 from discord.ext import commands
 
@@ -93,10 +95,16 @@ class MusicModule(commands.Cog):
         self.bot = bot
         self.downloader = MusicDownloader(bot.loop)
         self.__players = {}
+        self.players_by_code = {}
 
     def __get_player(self, ctx):
         """Returns a MusicPlayer instance for the channel in the current context."""
         return self.__players[ctx.voice_client.channel.id]
+
+    def __generate_access_code(self):
+        while code := "".join(choices(string.digits, k=6)):
+            if code not in self.players_by_code:
+                return code
 
     @commands.command()
     async def join(self, ctx, *, display=True):
@@ -112,6 +120,7 @@ class MusicModule(commands.Cog):
         with self.__get_player(ctx) as player:
             player.stop()
             head, tail, _ = player.queue_data()
+            del self.players_by_code[player.access_code]
         del self.__players[ctx.voice_client.channel.id]
         logging.info(
             "Deleted the MusicPlayer instance for Channel ID %s.",
@@ -380,13 +389,22 @@ class MusicModule(commands.Cog):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
+
+                access_code = self.__generate_access_code()
+                await ctx.send(
+                    f"\U0001F5DD The access code for this player is {access_code}."
+                )
+
+                channel_id = ctx.voice_client.channel.id
                 logging.info(
-                    "Created a MusicPlayer instance for Channel ID %s.",
-                    ctx.voice_client.channel.id,
+                    "Created a MusicPlayer instance with access code %s for Channel ID %s.",
+                    access_code,
+                    channel_id,
                 )
-                self.__players[ctx.voice_client.channel.id] = MusicPlayer(
-                    ctx, self.downloader
-                )
+
+                player = MusicPlayer(ctx, self.downloader, access_code)
+                self.__players[channel_id] = player
+                self.players_by_code[access_code] = player
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 

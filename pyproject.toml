@@ -8,16 +8,21 @@ authors = ["kmolski <krzysztof.molski29@gmail.com>"]
 python = "^3.8"
 "discord.py" = {version = "^1.7.3", extras = ["voice"]}
 python-dotenv = "^0.20.0"
-textX = "^2.3.0"
-yt-dlp = "^2022.2.4"
+textX = "^3.0.0"
+yt-dlp = "^2022.6.29"
+
+aio-pika = {version = "^8.0.3", optional = true}
 
 [tool.poetry.dev-dependencies]
-black = "^22.1.0"
+black = "^22.6.0"
 flake8 = "^4.0.1"
-pylint = "^2.12.2"
+pylint = "^2.12.4"
 
 [tool.poetry.scripts]
 acme-bot = "acme_bot:run"
+
+[tool.poetry.extras]
+external-control = ["aio-pika"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
