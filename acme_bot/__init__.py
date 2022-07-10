@@ -103,14 +103,14 @@ def run():
             except (
                 commands.CommandError,  # Explicitly thrown command errors
                 TextXSyntaxError,  # Shell syntax errors
-                TypeError,  # Type mismatch errors, mostly incorrect function args
+                TypeError,  # Type mismatch errors (incorrect command args)
             ) as exc:
                 client.dispatch("command_error", ctx, exc)
-            # Catch the remaining exceptions and log them for later analysis
+            # Log the unhandled exceptions for later analysis
             # pylint: disable=broad-except
             except Exception as error:
                 logging.exception(
-                    "Exception caused by message '%s':",
+                    "Unhandled exception caused by message '%s':",
                     ctx.message.content,
                     exc_info=error,
                 )

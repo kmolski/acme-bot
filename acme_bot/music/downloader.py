@@ -15,8 +15,7 @@ yt_dlp.utils.bug_reports_message = lambda: ""
 
 
 def add_expire_time(entry):
-    """This function updates the entry with its expiration time
-    (which is kept as a Unix timestamp)."""
+    """Update the entry with its expiration time (kept as a Unix timestamp)."""
     try:
         url = urlparse(entry["url"])
 
@@ -50,9 +49,9 @@ def add_expire_time(entry):
         )
 
 
-def chunks(it, size):
+def chunks(iterable, size):
     while True:
-        chunk = tuple(islice(it, size))
+        chunk = tuple(islice(iterable, size))
         if not chunk:
             break
         yield chunk
