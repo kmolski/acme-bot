@@ -15,7 +15,7 @@ from acme_bot.music.queue import MusicQueue
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
-    __ACCEPTABLE_RETURN_CODES = [-9, 0]
+    __SUCCESSFUL_RETURN_CODES = [-9, 0]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,10 +24,10 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
         proc = self._process
         super().cleanup()
 
-        if proc and proc.returncode not in self.__ACCEPTABLE_RETURN_CODES:
+        if proc and proc.returncode not in self.__SUCCESSFUL_RETURN_CODES:
             msg = (
                 f"ffmpeg process {proc.pid} terminated with"
-                f" unacceptable return code of {proc.returncode}."
+                f" return code of {proc.returncode}."
             )
             logging.error(msg)
             raise ChildProcessError(msg)
@@ -118,7 +118,8 @@ class MusicPlayer(MusicQueue):
         return self.__state
 
     def clear(self):
-        """Stops the player and clears the playlist."""
+        """Stop the player and clear the playlist."""
+        self._clear()
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
         self._clear()
@@ -208,9 +209,8 @@ class MusicPlayer(MusicQueue):
                     self.__ctx.bot.loop,
                 )
             # Advance the queue if it's not empty
-            if not self.is_empty():
-                current = self._next()
             if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
+                current = self._next()
                 run_coroutine_threadsafe(
                     self.start_player(current), self.__ctx.bot.loop
                 )
