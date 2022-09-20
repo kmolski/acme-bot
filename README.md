@@ -31,8 +31,8 @@ To use this method, the [Poetry](https://python-poetry.org) build tool is requir
 2. Run the following in the project directory:
 
     ```console
-   $ poetry install
-   $ poetry run acme-bot -c <CONFIG FILE>
+    $ poetry install
+    $ poetry run acme-bot -c <CONFIG FILE>
     ```
 
 Dependencies
@@ -41,3 +41,4 @@ Dependencies
 License
 -------
 
+[GNU Affero General Public License v3](https://opensource.org/licenses/AGPL-3.0)

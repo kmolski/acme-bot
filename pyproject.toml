@@ -2,21 +2,22 @@
 name = "acme-bot"
 version = "0.1.0"
 description = "Discord bot with Unix shell-inspired commands"
+license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-"discord.py" = {version = "^1.7.3", extras = ["voice"]}
-python-dotenv = "^0.20.0"
+"discord.py" = {version = "^2.0.1", extras = ["voice"]}
+python-dotenv = "^0.21.0"
 textX = "^3.0.0"
-yt-dlp = "^2022.6.29"
+yt-dlp = "^2022.9.1"
 
 aio-pika = {version = "^8.0.3", optional = true}
 
 [tool.poetry.dev-dependencies]
-black = "^22.6.0"
-flake8 = "^4.0.1"
-pylint = "^2.12.4"
+black = "^22.8.0"
+flake8 = "^5.0.4"
+pylint = "^2.15.0"
 
 [tool.poetry.scripts]
 acme-bot = "acme_bot:run"

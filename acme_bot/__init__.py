@@ -4,6 +4,7 @@ import logging
 from importlib.util import find_spec
 from shutil import which
 
+from discord import Intents
 from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
@@ -17,6 +18,7 @@ from acme_bot.config import (
 from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
 from acme_bot.external_control import ExternalControlModule
+from acme_bot.version_info import VersionInfoModule
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -42,22 +44,32 @@ def run():
     args = vars(parser.parse_args())
     load_config(args.get("config"))
 
-    client = commands.Bot(command_prefix=COMMAND_PREFIX(), help_command=HelpCommand())
+    intents = Intents.default()
+    intents.message_content = True
+    client = commands.Bot(
+        command_prefix=COMMAND_PREFIX(), help_command=HelpCommand(), intents=intents
+    )
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
     )
 
-    if which("ffmpeg"):
-        client.add_cog(MusicModule(client))
-    else:
-        logging.error("FFMPEG executable not found! Disabling MusicModule.")
+    async def load_cogs():
+        if which("ffmpeg"):
+            await client.add_cog(MusicModule(client))
+        else:
+            logging.error("FFMPEG executable not found! Disabling MusicModule.")
 
-    if find_spec("aio_pika"):
-        client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
-    else:
-        logging.info("External control not available! Disabling ExternalControlModule.")
+        if find_spec("aio_pika"):
+            await client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
+        else:
+            logging.info(
+                "External control not available! Disabling ExternalControlModule."
+            )
 
-    client.add_cog(ShellModule(client))
+        await client.add_cog(ShellModule(client))
+        await client.add_cog(VersionInfoModule(client))
+
+    client.setup_hook = load_cogs
 
     @client.event
     async def on_ready():
