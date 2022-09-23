@@ -31,7 +31,7 @@ def pred_select(ctx, results):
             msg.channel == ctx.channel
             and msg.author == ctx.author
             and msg.content.isnumeric()
-            and int(msg.content) in range(0, len(results))
+            and (0 <= int(msg.content) < len(results))
         )
 
     return pred
@@ -89,6 +89,7 @@ def extract_urls(urls):
 class MusicModule(commands.Cog):
     """This module is responsible for playing music and managing playlists."""
 
+    ACCESS_CODE_LENGTH = 6
     ACTION_TIMEOUT = 30.0
 
     def __init__(self, bot):
@@ -102,7 +103,7 @@ class MusicModule(commands.Cog):
         return self.__players[ctx.voice_client.channel.id]
 
     def __generate_access_code(self):
-        while code := "".join(choices(string.digits, k=6)):
+        while code := "".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH)):
             if code not in self.players_by_code:
                 return code
 
@@ -387,8 +388,8 @@ class MusicModule(commands.Cog):
         otherwise joins the author's voice channel.
         """
         if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
+            if author_voice := ctx.author.voice:
+                await author_voice.channel.connect()
 
                 access_code = self.__generate_access_code()
                 await ctx.send(

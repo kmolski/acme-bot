@@ -160,10 +160,10 @@ class MusicPlayer(MusicQueue):
 
     def set_volume(self, volume):
         """Sets the volume of the player."""
-        if volume in range(0, 101):
+        if 0 <= volume <= 100:
             self.__volume = volume / 100
-            if self.__ctx.voice_client.source:
-                self.__ctx.voice_client.source.volume = volume / 100
+            if source := self.__ctx.voice_client.source:
+                source.volume = self.__volume
         else:
             raise commands.CommandError("Incorrect volume value!")
 

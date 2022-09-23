@@ -34,7 +34,7 @@ def add_expire_time(entry):
             # with the timestamp (Statement->Condition->DateLessThan->AWS:EpochTime)
             query = parse_qs(url.query)
             policy_b64 = query["Policy"][0].replace("_", "=")
-            policy = loads(b64decode(policy_b64, altchars="~-"))
+            policy = loads(b64decode(policy_b64, altchars=b"~-"))
             entry["expire"] = int(
                 policy["Statement"][0]["Condition"]["DateLessThan"]["AWS:EpochTime"]
             )
@@ -50,10 +50,7 @@ def add_expire_time(entry):
 
 
 def chunks(iterable, size):
-    while True:
-        chunk = tuple(islice(iterable, size))
-        if not chunk:
-            break
+    while chunk := tuple(islice(iterable, size)):
         yield chunk
 
 

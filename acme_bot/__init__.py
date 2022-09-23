@@ -80,7 +80,7 @@ def run():
     async def on_command_error(ctx, error):
         """Handles exceptions raised during command execution."""
         if isinstance(error, commands.CommandError) and hasattr(error, "original"):
-            await ctx.send(f"Error: {error.original}.")
+            await ctx.send(f"Error: {error.original}")
         elif isinstance(error, TextXSyntaxError):
             await ctx.send(f"Syntax error: {error.message}")
         elif isinstance(error, TypeError):
@@ -108,7 +108,7 @@ def run():
     async def eval_command(ctx):
         if ctx.invoked_with:
             message = ctx.message.content
-            command = message.lstrip(ctx.prefix)
+            command = message.removeprefix(ctx.prefix)
             try:
                 model = ShellModule.META_MODEL.model_from_str(command.strip())
                 await model.eval(ctx)

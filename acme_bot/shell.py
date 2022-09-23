@@ -98,9 +98,8 @@ class Command:
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
             raise commands.CommandError(f"Command '{self.name}' not found")
-        else:
-            ctx.command = cmd
 
+        ctx.command = cmd
         if not await cmd.can_run(ctx):
             raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
         await cmd.call_before_hooks(ctx)
