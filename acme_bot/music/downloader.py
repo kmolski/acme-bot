@@ -98,9 +98,8 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         return result_queue, process
 
     async def get_entries_by_urls(self, url_list):
-        """Extracts the track entries from the given URLs."""
-        # Run the YoutubeDL functions in separate Python processes,
-        # so that they may be run in parallel to the rest of the bot
+        """Extract the track entries from the given URLs."""
+        # Run the extraction in parallel processes
         handles = chain.from_iterable(
             # URLs are processed in groups of `self.__PROCESS_COUNT` elements at a time
             chunks(map(self.__start_extractor_process, url_list), self.__PROCESS_COUNT)
@@ -124,9 +123,8 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         return results
 
     async def get_entries_by_query(self, provider, query):
-        """Extracts the track entries for the given search provider and query."""
-        # Run the YoutubeDL function in a separate Python process,
-        # so that it may be run in parallel to the rest of the bot
+        """Extract the track entries for the given search provider and query."""
+        # Run the extraction in parallel processes
         result_queue, process = self.__start_extractor_process(provider + query)
         results = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
@@ -138,9 +136,8 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         return filter_not_none(results["entries"])
 
     async def update_entry(self, entry):
-        """Updates a track entry in-place with a new URL and expiration time."""
-        # Run the YoutubeDL function in a separate Python process,
-        # so that it may be run in parallel to the rest of the bot
+        """Update a track entry in-place with a new URL and expiration time."""
+        # Run the extraction in parallel processes
         result_queue, process = self.__start_extractor_process(entry["webpage_url"])
         result = await self.loop.run_in_executor(None, result_queue.get)
         process.join()

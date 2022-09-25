@@ -6,7 +6,9 @@ MAX_MESSAGE_LENGTH = 2000
 
 
 def split_message(text, limit):
-    """Split a message into chunks of the specified maximum length."""
+    """Split a message into chunks with the specified maximum length.
+    Lines longer than the limit are wrapped and split across chunks."""
+
     lines = chain.from_iterable(
         # Only wrap lines longer than the limit, so that empty lines are preserved.
         wrap(line, limit) if len(line) > limit else [line]

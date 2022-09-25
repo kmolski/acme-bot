@@ -1,4 +1,5 @@
-"""This module provides version & license information commands to the bot."""
+"""Version & license information commands."""
+from dataclasses import dataclass
 from importlib.metadata import version
 from os.path import dirname, join
 
@@ -8,6 +9,7 @@ from acme_bot.autoloader import CogFactory, autoloaded
 
 
 def get_commit_info_from_module():
+    """Read the commit hash and date from the `commit.txt` file in this directory."""
     try:
         path = join(dirname(__file__), "commit.txt")
         with open(path, encoding="utf-8") as info_file:
@@ -19,12 +21,15 @@ def get_commit_info_from_module():
 
 @dataclass
 class BuildInfo:
+    """Information about the current build of the application."""
+
     version_number: str
     commit_hash: str
     commit_date: str
 
     @property
     def github_link(self):
+        """Return a link to the source code of the current build, hosted on GitHub."""
         return f"https://github.com/kmolski/acme-bot/tree/{self.commit_hash}"
 
 
@@ -61,7 +66,7 @@ The source code of this build is available here: {}.
 
     @commands.command(aliases=["ver"])
     async def version(self, ctx, display=True):
-        """Display the version of the bot instance and the link to its source code."""
+        """Print the bot version and a link to its source code."""
 
         if display:
             content = self.MESSAGE_TEMPLATE.format(

@@ -15,8 +15,7 @@ from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
 
 
 def assemble_menu(header, entries):
-    """This function creates a menu with the given header
-    and information about the queue entries."""
+    """Create a menu with the given header and information about the queue entries."""
     menu = header
     for index, entry in enumerate(entries):
         menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
@@ -24,8 +23,7 @@ def assemble_menu(header, entries):
 
 
 def pred_select(ctx, results):
-    """This function creates a predicate function for use
-    with wait_for and selections from a list."""
+    """Create a predicate function for use with wait_for and selections from a list."""
 
     def pred(msg):
         return (
@@ -39,8 +37,7 @@ def pred_select(ctx, results):
 
 
 def pred_confirm(ctx, menu_msg):
-    """This function creates a predicate function for use
-    with wait_for and confirmations."""
+    """Create a predicate function for use with wait_for and confirmations."""
 
     def pred(resp, user):
         return (
@@ -53,14 +50,13 @@ def pred_confirm(ctx, menu_msg):
 
 
 def get_entry_duration(entry):
-    """Returns the duration of an YTDL entry as a tuple of (minutes, seconds)"""
-    # The entry duration from YTDL is not always an integer
-    duration = ceil(entry["duration"])
+    """Return the duration of an YTDL entry as a tuple of (minutes, seconds)"""
+    duration = ceil(entry["duration"])  # The YTDL duration is not always an integer
     return duration // 60, duration % 60
 
 
 def display_entry(entry_data):
-    """This function displays an entry with the duration in the MM:SS format."""
+    """Display an entry with the duration in MM:SS format."""
     minutes, seconds = get_entry_duration(entry_data[1])
     return "{}. **{title}** - {uploader} - {}:{:02}".format(
         entry_data[0], minutes, seconds, **entry_data[1]
@@ -68,13 +64,13 @@ def display_entry(entry_data):
 
 
 def export_entry(entry):
-    """This function exports an entry string with the URL, title and duration."""
+    """Export an entry string with the URL, title and duration."""
     minutes, seconds = get_entry_duration(entry)
     return "{webpage_url}    {title} - {}:{:02}".format(minutes, seconds, **entry)
 
 
 def format_entry_lists(fmt, *iterables, init=None):
-    """Exports many lists of entries using the given formatting function."""
+    """Export entry iterables using the given formatting function."""
     lines = [init] * (init is not None)
     for entry in chain.from_iterable(iterables):
         lines.append(fmt(entry))
@@ -83,7 +79,7 @@ def format_entry_lists(fmt, *iterables, init=None):
 
 
 def extract_urls(urls):
-    """Strips entry strings from their title and duration, leaving the URL."""
+    """Strip entry strings from their title and duration, leaving the URL."""
     return (line.split()[0] for line in urls.split("\n") if line)
 
 
@@ -106,7 +102,7 @@ class MusicModule(commands.Cog, CogFactory):
         return cls(bot, downloader)
 
     def __get_player(self, ctx):
-        """Returns a MusicPlayer instance for the channel in the current context."""
+        """Return a MusicPlayer instance for the channel in the current context."""
         return self.__players[ctx.voice_client.channel.id]
 
     def __generate_access_code(self):
@@ -116,7 +112,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def join(self, ctx, *, display=True):
-        """Makes the bot join the user's current voice channel."""
+        """Join the sender's current voice channel."""
         if display:
             await ctx.send(
                 f"\u27A1 Joining voice channel **{ctx.voice_client.channel.name}**."
@@ -124,7 +120,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def leave(self, ctx, *, display=True):
-        """Removes the bot from the user's current voice channel."""
+        """Leave the sender's current voice channel."""
         with self.__get_player(ctx) as player:
             player.stop()
             head, tail, _ = player.queue_data()
@@ -141,7 +137,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def play(self, ctx, *query, display=True):
-        """Searches for and plays a track from YouTube."""
+        """Search for and play a track from YouTube."""
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
@@ -177,7 +173,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command(name="play-snd")
     async def play_snd(self, ctx, *query, display=True):
-        """Searches for and plays a track from Soundcloud."""
+        """Search for and play a track from Soundcloud."""
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
@@ -213,7 +209,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command(name="play-url")
     async def play_url(self, ctx, *urls, display=True):
-        """Plays a YouTube/Soundcloud track from the given URL."""
+        """Play a YouTube/Soundcloud track from the given URL."""
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
@@ -257,7 +253,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command(name="playlist-url")
     async def playlist_url(self, ctx, *urls, display=True):
-        """Extracts track URLs from the given playlists."""
+        """Extract track URLs from the given playlists."""
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
@@ -269,21 +265,21 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command(aliases=["prev"])
     async def previous(self, ctx, offset: int = 1, **_):
-        """Plays the previous video from the queue."""
+        """Play the previous video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx, offset: int = 1, **_):
-        """Plays the next video from the queue."""
+        """Play the next video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
     async def loop(self, ctx, should_loop: bool, *, display=True):
-        """Sets looping behaviour of the player."""
+        """Set the looping behaviour of the player."""
         should_loop = bool(should_loop)
         with self.__get_player(ctx) as player:
             player.loop = should_loop
@@ -294,7 +290,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def pause(self, ctx, *, display=True):
-        """Pauses the player."""
+        """Pause the player."""
         with self.__get_player(ctx) as player:
             player.pause()
         if display:
@@ -302,7 +298,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def queue(self, ctx, *, display=True):
-        """Displays the queue contents."""
+        """Display the queue contents."""
         with self.__get_player(ctx) as player:
             head, tail, split = player.queue_data()
             if display:
@@ -318,7 +314,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def resume(self, ctx, *, display=True):
-        """Resumes the player."""
+        """Resume the player."""
         with self.__get_player(ctx) as player:
             msg = await player.resume()
             if msg and display:
@@ -326,7 +322,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def shuffle(self, ctx, *, display=True):
-        """Shuffles the queue contents."""
+        """Shuffle the queue contents."""
         with self.__get_player(ctx) as player:
             player.shuffle()
         if display:
@@ -334,7 +330,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def clear(self, ctx, *, display=True):
-        """Deletes the queue contents."""
+        """Delete the queue contents."""
         with self.__get_player(ctx) as player:
             head, tail, _ = player.queue_data()
             player.clear()
@@ -344,7 +340,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def stop(self, ctx, *, display=True):
-        """Stops the player."""
+        """Stop the player."""
         with self.__get_player(ctx) as player:
             player.stop()
         if display:
@@ -352,7 +348,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def volume(self, ctx, volume: int, *, display=True):
-        """Changes the volume of the player."""
+        """Change the volume of the player."""
         volume = int(volume)
         with self.__get_player(ctx) as player:
             player.set_volume(volume)
@@ -362,7 +358,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def current(self, ctx, *, display=True):
-        """Displays information about the current track."""
+        """Display information about the current track."""
         with self.__get_player(ctx) as player:
             current = player.current()
             if display:
@@ -374,7 +370,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def remove(self, ctx, offset: int, *, display=True):
-        """Removes a track from the queue."""
+        """Remove a track from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             removed = player.remove(offset)
@@ -391,9 +387,9 @@ class MusicModule(commands.Cog, CogFactory):
     @play_url.before_invoke
     @volume.before_invoke
     async def __ensure_voice_or_join(self, ctx):
-        """Ensures that the author of the message is in a voice channel,
-        otherwise joins the author's voice channel.
-        """
+        """Ensure that the sender is in a voice channel,
+        otherwise join the sender's voice channel."""
+
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
                 await author_voice.channel.connect()
@@ -405,7 +401,8 @@ class MusicModule(commands.Cog, CogFactory):
 
                 channel_id = ctx.voice_client.channel.id
                 logging.info(
-                    "Created a MusicPlayer instance with access code %s for Channel ID %s.",
+                    "Created a MusicPlayer instance with "
+                    "access code %s for Channel ID %s.",
                     access_code,
                     channel_id,
                 )
@@ -423,9 +420,9 @@ class MusicModule(commands.Cog, CogFactory):
     @resume.before_invoke
     @stop.before_invoke
     async def __ensure_voice_or_fail(self, ctx):
-        """Ensures that the author of the message is in a voice channel,
-        otherwise throws an exception that prevents the command from executing.
-        """
+        """Ensure that the sender is in a voice channel, or throw
+        an exception that prevents the command from executing."""
+
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
 
@@ -436,8 +433,9 @@ class MusicModule(commands.Cog, CogFactory):
     @shuffle.before_invoke
     @skip.before_invoke
     async def __ensure_voice_and_non_empty_queue(self, ctx):
-        """Ensures that the author of the message is in a voice channel,
-        a MusicPlayer for that channel exists and the queue is not empty."""
+        """Ensure that the sender is in a voice channel, a MusicPlayer
+        for that channel exists and the queue is not empty."""
+
         await self.__ensure_voice_or_fail(ctx)
         if self.__get_player(ctx).is_empty():
             raise commands.CommandError("The queue is empty!")
