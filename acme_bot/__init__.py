@@ -1,29 +1,26 @@
-"""Root module of the music bot."""
-import argparse
+"""Top-level module of acme-bot."""
 import logging
-from importlib.util import find_spec
-from shutil import which
+from argparse import ArgumentParser
+from importlib import import_module
+from pkgutil import iter_modules
+from sys import modules
 
 from discord import Intents
 from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
+from acme_bot.autoloader import get_autoloaded_cogs
 from acme_bot.config import (
     COMMAND_PREFIX,
     LOG_LEVEL,
     DISCORD_TOKEN,
     load_config,
-    RABBITMQ_URI,
 )
-from acme_bot.music import MusicModule
 from acme_bot.shell import ShellModule
-from acme_bot.external_control import ExternalControlModule
-from acme_bot.version_info import VersionInfoModule
 
 
 class HelpCommand(commands.DefaultHelpCommand):
-    """This class provides a help command that works correctly with
-    the shell interpreter."""
+    """The default help command modified to work with the shell interpreter."""
 
     # Catch the "display" keyword argument and ignore it
     # pylint: disable=arguments-differ
@@ -36,7 +33,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 def run():
     """The entry point for acme-bot."""
-    parser = argparse.ArgumentParser(description="Launch the ACME Universal Bot.")
+    parser = ArgumentParser(description="Launch the ACME Universal Bot.")
     parser.add_argument(
         "-c", "--config", metavar="FILE", help="path to bot configuration file"
     )
@@ -53,21 +50,16 @@ def run():
         format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
     )
 
+    def import_submodules():
+        current_module = modules[__name__]
+        for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
+            import_module(module_name)
+
     async def load_cogs():
-        if which("ffmpeg"):
-            await client.add_cog(MusicModule(client))
-        else:
-            logging.error("FFMPEG executable not found! Disabling MusicModule.")
-
-        if find_spec("aio_pika"):
-            await client.add_cog(ExternalControlModule(client, RABBITMQ_URI()))
-        else:
-            logging.info(
-                "External control not available! Disabling ExternalControlModule."
-            )
-
-        await client.add_cog(ShellModule(client))
-        await client.add_cog(VersionInfoModule(client))
+        import_submodules()
+        for module_class in get_autoloaded_cogs():
+            if module_class.is_available():
+                await module_class.load(client)
 
     client.setup_hook = load_cogs
 

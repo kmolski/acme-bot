@@ -8,9 +8,10 @@ from random import choices
 
 from discord.ext import commands
 
+from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.music.downloader import MusicDownloader, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
-from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
+from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
 
 
 def assemble_menu(header, entries):
@@ -86,17 +87,23 @@ def extract_urls(urls):
     return (line.split()[0] for line in urls.split("\n") if line)
 
 
-class MusicModule(commands.Cog):
+@autoloaded
+class MusicModule(commands.Cog, CogFactory):
     """This module is responsible for playing music and managing playlists."""
 
     ACCESS_CODE_LENGTH = 6
     ACTION_TIMEOUT = 30.0
 
-    def __init__(self, bot):
+    def __init__(self, bot, downloader):
         self.bot = bot
-        self.downloader = MusicDownloader(bot.loop)
+        self.downloader = downloader
         self.__players = {}
         self.players_by_code = {}
+
+    @classmethod
+    def create_cog(cls, bot):
+        downloader = MusicDownloader(bot.loop)
+        return cls(bot, downloader)
 
     def __get_player(self, ctx):
         """Returns a MusicPlayer instance for the channel in the current context."""

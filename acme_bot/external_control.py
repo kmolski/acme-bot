@@ -2,25 +2,41 @@ import json
 import logging
 from asyncio import run_coroutine_threadsafe
 
+import aio_pika
 from discord.ext import commands
 
-from acme_bot import MusicModule
+from acme_bot.config import RABBITMQ_URI
+from acme_bot.music import MusicModule
+from acme_bot.autoloader import CogFactory, autoloaded
 
 
-class ExternalControlModule(commands.Cog):
-    def __init__(self, bot, uri):
+@autoloaded
+class ExternalControlModule(commands.Cog, CogFactory):
+    def __init__(self, bot, music_module, uri):
         self.bot = bot
-        self.music_module = bot.get_cog(MusicModule.__name__)
+        self.music_module = music_module
+        self.uri = uri
 
-        run_coroutine_threadsafe(self.__process_messages(uri), self.bot.loop)
+    @classmethod
+    def is_available(cls):
+        if RABBITMQ_URI.get() is None:
+            logging.info(
+                "RABBITMQ_URI config property not found. "
+                "Disabling ExternalControlModule."
+            )
+            return False
 
-    async def __process_messages(self, uri):
-        # Import aio_pika only if the cog is constructed
-        # pylint: disable=import-outside-toplevel
-        import aio_pika
+        return True
 
-        logging.info("Connecting to AMQP broker at '%s.'", uri)
-        connection = await aio_pika.connect_robust(uri)
+    @classmethod
+    def create_cog(cls, bot):
+        cog = cls(bot, bot.get_cog(MusicModule.__name__), RABBITMQ_URI())
+        run_coroutine_threadsafe(cog.__process_messages(), bot.loop)
+        return cog
+
+    async def __process_messages(self):
+        logging.info("Connecting to AMQP broker at '%s.'", self.uri)
+        connection = await aio_pika.connect_robust(self.uri)
         async with connection:
             channel = await connection.channel()
             queue = await channel.declare_queue("music_player", auto_delete=True)

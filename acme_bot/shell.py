@@ -10,7 +10,8 @@ from discord import File
 from discord.ext import commands
 from textx import metamodel_from_str
 
-from acme_bot.utils import split_message, MAX_MESSAGE_LENGTH
+from acme_bot.autoloader import CogFactory, autoloaded
+from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
 
 
 def validate_options(args, regex):
@@ -190,7 +191,8 @@ class ExprSubst:
         return result
 
 
-class ShellModule(commands.Cog):
+@autoloaded
+class ShellModule(commands.Cog, CogFactory):
     """This module is responsible for interpreting
     complex commands and manipulating text."""
 
@@ -238,6 +240,10 @@ UNQUOTED_WORD: /(\S+)\b/;
     )
 
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
+
+    @classmethod
+    def create_cog(cls, bot):
+        return cls()
 
     @commands.command(aliases=["cat"])
     async def concat(self, ctx, *arguments, display=True):

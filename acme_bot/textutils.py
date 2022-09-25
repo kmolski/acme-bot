@@ -1,4 +1,4 @@
-"""Utility functions used by other modules."""
+"""Text utility functions used by other modules."""
 from itertools import chain
 from textwrap import wrap
 
@@ -6,7 +6,7 @@ MAX_MESSAGE_LENGTH = 2000
 
 
 def split_message(text, limit):
-    """Splits a long message into chunks that are limited in length."""
+    """Split a message into chunks of the specified maximum length."""
     lines = chain.from_iterable(
         # Only wrap lines longer than the limit, so that empty lines are preserved.
         wrap(line, limit) if len(line) > limit else [line]

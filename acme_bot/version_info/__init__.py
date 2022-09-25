@@ -4,48 +4,72 @@ from os.path import dirname, join
 
 from discord.ext import commands
 
-
-def get_version_number():
-    return version("acme-bot")
+from acme_bot.autoloader import CogFactory, autoloaded
 
 
-def get_commit_info():
+def get_commit_info_from_module():
     try:
         path = join(dirname(__file__), "commit.txt")
-        with open(path) as info_file:
-            return info_file.read().strip()
+        with open(path, encoding="utf-8") as info_file:
+            commit_hash, commit_date = info_file.read().strip().split()
+            return commit_hash, commit_date
     except OSError:
-        return "commit info unavailable"
+        return None, None
 
 
-def get_github_link():
-    return f"https://github.com/kmolski/acme-bot/tree/{get_commit_info().split()[0]}"
+@dataclass
+class BuildInfo:
+    version_number: str
+    commit_hash: str
+    commit_date: str
+
+    @property
+    def github_link(self):
+        return f"https://github.com/kmolski/acme-bot/tree/{self.commit_hash}"
 
 
-class VersionInfoModule(commands.Cog):
-    """This module provides version & license information commands."""
+@autoloaded
+class VersionInfoModule(commands.Cog, CogFactory):
+    """Version & license information commands."""
 
     COPYRIGHT_INFO = "\n".join(["Copyright (C) 2019-2022  Krzysztof Molski"])
 
-    VERSION_INFO = f"""
-acme-bot {get_version_number()} ({get_commit_info()})
-{COPYRIGHT_INFO}
+    MESSAGE_TEMPLATE = """
+acme-bot {} ({} {})
+{}
 
 This program is free software: you can redistribute it and/or modify it under the terms
 of the GNU Affero General Public License as published by the Free Software Foundation,
 either version 3 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 See the GNU Affero General Public License for more details.
 
-The source code of this build is available here: {get_github_link()}.
+The source code of this build is available here: {}.
 """
+
+    def __init__(self, build_info):
+        self.build_info = build_info
+
+    @classmethod
+    def create_cog(cls, bot):
+        version_number = version("acme-bot")
+        commit_hash, commit_date = get_commit_info_from_module()
+        build_info = BuildInfo(version_number, commit_hash, commit_date)
+        return cls(build_info)
 
     @commands.command(aliases=["ver"])
     async def version(self, ctx, display=True):
         """Display the version of the bot instance and the link to its source code."""
 
         if display:
-            await ctx.send(self.VERSION_INFO)
-        return get_version_number()
+            content = self.MESSAGE_TEMPLATE.format(
+                self.build_info.version_number,
+                self.build_info.commit_hash or "commit info not available",
+                self.build_info.commit_date or "",
+                self.COPYRIGHT_INFO,
+                self.build_info.github_link,
+            )
+            await ctx.send(content)
+        return self.build_info.version_number
