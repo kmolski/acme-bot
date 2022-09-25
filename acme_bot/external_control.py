@@ -12,13 +12,19 @@ from acme_bot.autoloader import CogFactory, autoloaded
 
 @autoloaded
 class ExternalControlModule(commands.Cog, CogFactory):
-    def __init__(self, bot, music_module, uri):
+    def __init__(self, bot, uri, music_module):
         self.bot = bot
-        self.music_module = music_module
         self.uri = uri
+        self.music_module = music_module
 
     @classmethod
     def is_available(cls):
+        if not MusicModule.is_available():
+            logging.info(
+                "MusicModule could not be loaded. Disabling ExternalControlModule."
+            )
+            return False
+
         if RABBITMQ_URI.get() is None:
             logging.info(
                 "RABBITMQ_URI config property not found. "
@@ -30,12 +36,12 @@ class ExternalControlModule(commands.Cog, CogFactory):
 
     @classmethod
     def create_cog(cls, bot):
-        cog = cls(bot, bot.get_cog(MusicModule.__name__), RABBITMQ_URI())
-        run_coroutine_threadsafe(cog.__process_messages(), bot.loop)
-        return cog
+        ext_control = cls(bot, RABBITMQ_URI(), bot.get_cog(MusicModule.__name__))
+        run_coroutine_threadsafe(ext_control.__process_messages(), bot.loop)
+        return ext_control
 
     async def __process_messages(self):
-        logging.info("Connecting to AMQP broker at '%s.'", self.uri)
+        logging.info("Connecting to AMQP broker at '%s'.", self.uri)
         connection = await aio_pika.connect_robust(self.uri)
         async with connection:
             channel = await connection.channel()

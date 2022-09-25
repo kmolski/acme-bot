@@ -5,6 +5,7 @@ from itertools import chain
 from math import ceil
 import logging
 from random import choices
+from shutil import which
 
 from discord.ext import commands
 
@@ -95,6 +96,14 @@ class MusicModule(commands.Cog, CogFactory):
         self.downloader = downloader
         self.__players = {}
         self.players_by_code = {}
+
+    @classmethod
+    def is_available(cls):
+        if which("ffmpeg") is None:
+            logging.error("FFMPEG executable not found! Disabling MusicModule.")
+            return False
+
+        return True
 
     @classmethod
     def create_cog(cls, bot):
