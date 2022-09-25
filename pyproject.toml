@@ -4,6 +4,7 @@ version = "0.1-dev"
 description = "Discord bot with Unix shell-inspired commands"
 license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
+repository = "https://github.com/kmolski/acme-bot"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -13,11 +14,17 @@ python-dotenv = "^0.21.0"
 textX = "^3.0.0"
 yt-dlp = "^2022.9.1"
 
-[tool.poetry.group.dev.dependencies]
+[tool.poetry.group.test.dependencies]
+pytest = "^7.1.3"
+
+[tool.poetry.group.lint.dependencies]
 black = "^22.8.0"
 flake8 = "^5.0.4"
 pylint = "^2.15.3"
-pytest = "^7.1.3"
+
+[tool.poetry.build]
+script = "commit_info.py"
+generate-setup-file = false
 
 [tool.poetry.scripts]
 acme-bot = "acme_bot:run"

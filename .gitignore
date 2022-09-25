@@ -105,3 +105,6 @@ venv.bak/
 
 # VSCode workspace
 .vscode/
+
+# Commit info file
+acme_bot/version_info/commit.txt
