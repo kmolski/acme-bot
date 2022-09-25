@@ -7,6 +7,7 @@ from os.path import dirname, join
 from typing import Any
 
 from dotenv import load_dotenv
+from yarl import URL
 
 
 def load_config(config_path=None):
@@ -44,7 +45,7 @@ class ConfigProperty:
 
 # Credentials
 DISCORD_TOKEN = ConfigProperty("DISCORD_TOKEN", str)
-RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", str)
+RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", URL)
 
 # Command subsystem
 COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", str)
