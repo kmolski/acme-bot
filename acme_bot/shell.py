@@ -1,4 +1,5 @@
 """This module provides the shell interpreter capability to the bot."""
+from copy import copy
 from datetime import datetime
 from io import StringIO
 from shutil import which
@@ -53,12 +54,12 @@ class ExprSeq:
         self.parent = parent
         self.expr_comps = expr_comps
 
-    async def eval(self, ctx, display=True):
+    async def eval(self, ctx):
         """Evaluates an expression sequence by evaluating its components and
         concatenating their return values."""
         result = ""
         for elem in self.expr_comps:
-            ret = await elem.eval(ctx, display)
+            ret = await elem.eval(ctx)
             if ret is not None:
                 result += ret
         return result
@@ -71,16 +72,18 @@ class ExprComp:
         self.parent = parent
         self.exprs = exprs
 
-    async def eval(self, ctx, display):
+    async def eval(self, ctx):
         """Evaluates an expression composition by evaluating the components and
         passing the return value of the previous expression to the input of the
         following commands."""
         data, result = "", ""
         end = len(self.exprs) - 1
         for index, elem in enumerate(self.exprs):
-            # The "display" keyword argument controls printing messages to the chat.
+            # The display property controls printing messages to the chat.
             # It is only true if this expression is the last one being evaluated.
-            result = await elem.eval(ctx, data, display=display and (index == end))
+            temp_ctx = copy(ctx)
+            temp_ctx.display = ctx.display and (index == end)
+            result = await elem.eval(temp_ctx, data)
             data = result
         return result
 
@@ -93,7 +96,7 @@ class Command:
         self.name = name
         self.args = args
 
-    async def eval(self, ctx, pipe, *, display):
+    async def eval(self, ctx, pipe):
         """Executes a command by evaluating its arguments, and calling its callback
         using the data piped in from the previous expression."""
         cmd = ctx.bot.get_command(self.name)
@@ -105,13 +108,15 @@ class Command:
             raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
         await cmd.call_before_hooks(ctx)
 
+        # Set display property to false so that argument eval doesn't print.
+        temp_ctx = copy(ctx)
+        temp_ctx.display = False
         args = (
             ([ctx] if cmd.cog is None else [cmd.cog, ctx])
             + ([pipe] if pipe else [])  # Use the piped input only if it's not empty
-            # Set "display" to false, so that the argument eval doesn't print.
-            + ([await elem.eval(ctx, display=False) for elem in self.args])
+            + ([await elem.eval(temp_ctx) for elem in self.args])
         )
-        result = await cmd.callback(*args, display=display)
+        result = await cmd.callback(*args)
 
         await cmd.call_after_hooks(ctx)
         return result
@@ -124,9 +129,9 @@ class StrLiteral:
         self.parent = parent
         self.value = value
 
-    async def eval(self, ctx, *_, display):
+    async def eval(self, ctx):
         """Evaluates the string literal, printing it in a code block if necessary."""
-        if display:
+        if ctx.display:
             await ctx.send(f"```\n{self.value}\n```")
         return self.value
 
@@ -162,13 +167,13 @@ class FileContent:
         self.parent = parent
         self.name = name
 
-    async def eval(self, ctx, *_, display):
+    async def eval(self, ctx):
         """Extracts the contents of the file."""
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
                 if elem.filename == self.name:
                     content = str(await elem.read(), errors="replace")
-                    if display:
+                    if ctx.display:
                         fmt = "```\n{}\n```"
                         chunks = split_message(content, MAX_MESSAGE_LENGTH - len(fmt))
                         for chunk in chunks:
@@ -185,9 +190,9 @@ class ExprSubst:
         self.parent = parent
         self.expr_seq = expr_seq
 
-    async def eval(self, ctx, *_, display):
+    async def eval(self, ctx):
         """Evaluates the expression sequence in the substitution."""
-        result = await self.expr_seq.eval(ctx, display)
+        result = await self.expr_seq.eval(ctx)
         return result
 
 
@@ -246,31 +251,31 @@ UNQUOTED_WORD: /(\S+)\b/;
         return cls()
 
     @commands.command(aliases=["cat"])
-    async def concat(self, ctx, *arguments, display=True):
+    async def concat(self, ctx, *arguments):
         """Joins its arguments together into a single string."""
         content = "".join(str(arg) for arg in arguments)
-        if display:
+        if ctx.display:
             for chunk in split_message(content, MAX_MESSAGE_LENGTH):
                 await ctx.send(chunk)
         return content
 
     @commands.command()
-    async def ping(self, ctx, *, display=True):
+    async def ping(self, ctx):
         """Measure the time it takes to communicate with the Discord servers."""
         start = datetime.now()
         # Adding a reaction is not done until the bot receives a response
         # from the Discord servers, so it can be used to measure the time.
         await ctx.message.add_reaction("\U0001F3D3")
         milliseconds = str((datetime.now() - start).microseconds // 1000)
-        if display:
+        if ctx.display:
             await ctx.send(f"\U0001F4A8 Meep meep! **{milliseconds} ms**.")
         return milliseconds
 
     @commands.command()
-    async def print(self, ctx, content, file_format="", *, display=True):
+    async def print(self, ctx, content, file_format=""):
         """Print the input data with highlighting specified by 'file_format'."""
         content = str(content)
-        if display:
+        if ctx.display:
             format_str = f"```{file_format}\n{{}}\n```"
             chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -278,7 +283,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         return f"```{file_format}\n{content}\n```"
 
     @commands.command(name="to-file", aliases=["tee"])
-    async def to_file(self, ctx, content, file_name, *, display=True):
+    async def to_file(self, ctx, content, file_name):
         """Redirect the input data to a new file with the specified filename."""
         content, file_name = str(content), f"{ctx.author.name}_{file_name}"
         with StringIO(content) as stream:
@@ -287,21 +292,21 @@ UNQUOTED_WORD: /(\S+)\b/;
         return content
 
     @commands.command()
-    async def open(self, ctx, file_name, *, display=True):
+    async def open(self, ctx, file_name):
         """Read the contents of a file with the specified filename."""
         file_name = str(file_name)
         file_content = FileContent(None, file_name)
-        return await file_content.eval(ctx, display=display)
+        return await file_content.eval(ctx)
 
     @commands.command()
-    async def tts(self, ctx, content, **_):
+    async def tts(self, ctx, content):
         """Send a text-to-speech message with the given content."""
         content = str(content)
         await ctx.send(content, tts=True, delete_after=8.0)
         return content
 
     @commands.command(enabled=which("grep"))
-    async def grep(self, ctx, data, patterns, *opts, display=True):
+    async def grep(self, ctx, data, patterns, *opts):
         """Print the lines of `data` that match one or more of the specified patterns.
         Additionally, a subset of `grep` arguments can be supplied as `opts`."""
         data, patterns = str(data), str(patterns)
@@ -317,7 +322,7 @@ UNQUOTED_WORD: /(\S+)\b/;
             )
         )
 
-        if display:
+        if ctx.display:
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -326,7 +331,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         return output
 
     @commands.command(aliases=["uni"], enabled=which("units"))
-    async def units(self, ctx, *arguments, display=True):
+    async def units(self, ctx, *arguments):
         """Convert between units. The initial arguments describe the input unit,
         and the last argument describes the output unit."""
         arguments = [str(arg) for arg in arguments]
@@ -338,12 +343,12 @@ UNQUOTED_WORD: /(\S+)\b/;
             )
         ).strip()
 
-        if display:
+        if ctx.display:
             await ctx.send(f"\U0001F9EE {output}.")
         return output
 
     @commands.command(aliases=["tai"], enabled=which("tail"))
-    async def tail(self, ctx, data, line_count=10, display=True):
+    async def tail(self, ctx, data, line_count=10):
         """Take the last `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
@@ -351,7 +356,7 @@ UNQUOTED_WORD: /(\S+)\b/;
             await execute_system_cmd("tail", "-n", str(line_count), "-", stdin=data)
         )
 
-        if display:
+        if ctx.display:
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -360,7 +365,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         return output
 
     @commands.command(aliases=["hea"], enabled=which("head"))
-    async def head(self, ctx, data, line_count=10, display=True):
+    async def head(self, ctx, data, line_count=10):
         """Take the first `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
@@ -368,7 +373,7 @@ UNQUOTED_WORD: /(\S+)\b/;
             await execute_system_cmd("head", "-n", str(line_count), "-", stdin=data)
         )
 
-        if display:
+        if ctx.display:
             format_str = "```\n{}\n```"
             chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
             for chunk in chunks:
@@ -377,7 +382,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         return output
 
     @commands.command(aliases=["lin"], enabled=(head.enabled and tail.enabled))
-    async def lines(self, ctx, data, start, end, display=True):
+    async def lines(self, ctx, data, start, end):
         """Take lines from the specified line range (`start-end`) of the input."""
         start, end = int(start) - 1, int(end)
         if start > end:
@@ -385,6 +390,4 @@ UNQUOTED_WORD: /(\S+)\b/;
                 f"Argument `start` = {start} must not be greater than `end` = {end}."
             )
 
-        return await self.tail(
-            ctx, await self.head(ctx, data, end, display=False), end - start, display
-        )
+        return await self.tail(ctx, await self.head(ctx, data, end), end - start)

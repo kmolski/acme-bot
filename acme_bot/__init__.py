@@ -126,6 +126,7 @@ def run():
         if message.author.bot:
             return
         ctx = await client.get_context(message)
+        ctx.display = True
         await eval_command(ctx)
 
     client.run(DISCORD_TOKEN())

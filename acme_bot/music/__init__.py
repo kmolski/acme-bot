@@ -128,7 +128,7 @@ class MusicModule(commands.Cog, CogFactory):
             )
 
     @commands.command()
-    async def leave(self, ctx, *, display=True):
+    async def leave(self, ctx):
         """Leave the sender's current voice channel."""
         with self.__get_player(ctx) as player:
             player.stop()
@@ -140,12 +140,12 @@ class MusicModule(commands.Cog, CogFactory):
             ctx.voice_client.channel.id,
         )
         await ctx.voice_client.disconnect()
-        if display:
+        if ctx.display:
             await ctx.send("\u23CF Quitting the voice channel.")
         return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
-    async def play(self, ctx, *query, display=True):
+    async def play(self, ctx, *query):
         """Search for and play a track from YouTube."""
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
@@ -173,7 +173,7 @@ class MusicModule(commands.Cog, CogFactory):
             if player.state == PlayerState.IDLE:
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
-            elif display:
+            elif ctx.display:
                 await ctx.send(
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
@@ -181,7 +181,7 @@ class MusicModule(commands.Cog, CogFactory):
         return export_entry(new)
 
     @commands.command(name="play-snd")
-    async def play_snd(self, ctx, *query, display=True):
+    async def play_snd(self, ctx, *query):
         """Search for and play a track from Soundcloud."""
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
@@ -209,7 +209,7 @@ class MusicModule(commands.Cog, CogFactory):
             if player.state == PlayerState.IDLE:
                 # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
-            elif display:
+            elif ctx.display:
                 await ctx.send(
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
@@ -217,7 +217,7 @@ class MusicModule(commands.Cog, CogFactory):
         return export_entry(new)
 
     @commands.command(name="play-url")
-    async def play_url(self, ctx, *urls, display=True):
+    async def play_url(self, ctx, *urls):
         """Play a YouTube/Soundcloud track from the given URL."""
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
@@ -246,7 +246,7 @@ class MusicModule(commands.Cog, CogFactory):
             return
 
         await menu_msg.delete()
-        if display:
+        if ctx.display:
             await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
 
         with self.__get_player(ctx) as player:
@@ -261,56 +261,56 @@ class MusicModule(commands.Cog, CogFactory):
         return format_entry_lists(export_entry, results)
 
     @commands.command(name="playlist-url")
-    async def playlist_url(self, ctx, *urls, display=True):
+    async def playlist_url(self, ctx, *urls):
         """Extract track URLs from the given playlists."""
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
             results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
-        if display:
+        if ctx.display:
             await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
 
         return format_entry_lists(export_entry, results)
 
     @commands.command(aliases=["prev"])
-    async def previous(self, ctx, offset: int = 1, **_):
+    async def previous(self, ctx, offset: int = 1):
         """Play the previous video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command(aliases=["next"])
-    async def skip(self, ctx, offset: int = 1, **_):
+    async def skip(self, ctx, offset: int = 1):
         """Play the next video from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
-    async def loop(self, ctx, should_loop: bool, *, display=True):
+    async def loop(self, ctx, should_loop: bool):
         """Set the looping behaviour of the player."""
         should_loop = bool(should_loop)
         with self.__get_player(ctx) as player:
             player.loop = should_loop
-        if display:
+        if ctx.display:
             msg = "on" if should_loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
         return msg
 
     @commands.command()
-    async def pause(self, ctx, *, display=True):
+    async def pause(self, ctx):
         """Pause the player."""
         with self.__get_player(ctx) as player:
             player.pause()
-        if display:
+        if ctx.display:
             await ctx.send("\u23F8 Paused.")
 
     @commands.command()
-    async def queue(self, ctx, *, display=True):
+    async def queue(self, ctx):
         """Display the queue contents."""
         with self.__get_player(ctx) as player:
             head, tail, split = player.queue_data()
-            if display:
+            if ctx.display:
                 queue_info = format_entry_lists(
                     display_entry,
                     enumerate(head),
@@ -322,55 +322,55 @@ class MusicModule(commands.Cog, CogFactory):
             return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
-    async def resume(self, ctx, *, display=True):
+    async def resume(self, ctx):
         """Resume the player."""
         with self.__get_player(ctx) as player:
             msg = await player.resume()
-            if msg and display:
+            if msg and ctx.display:
                 await ctx.send(msg)
 
     @commands.command()
-    async def shuffle(self, ctx, *, display=True):
+    async def shuffle(self, ctx):
         """Shuffle the queue contents."""
         with self.__get_player(ctx) as player:
             player.shuffle()
-        if display:
+        if ctx.display:
             await ctx.send("\U0001F500 Queue shuffled.")
 
     @commands.command()
-    async def clear(self, ctx, *, display=True):
+    async def clear(self, ctx):
         """Delete the queue contents."""
         with self.__get_player(ctx) as player:
             head, tail, _ = player.queue_data()
             player.clear()
-            if display:
+            if ctx.display:
                 await ctx.send("\u2716 Queue cleared.")
             return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
-    async def stop(self, ctx, *, display=True):
+    async def stop(self, ctx):
         """Stop the player."""
         with self.__get_player(ctx) as player:
             player.stop()
-        if display:
+        if ctx.display:
             await ctx.send("\u23F9 Stopped.")
 
     @commands.command()
-    async def volume(self, ctx, volume: int, *, display=True):
+    async def volume(self, ctx, volume: int):
         """Change the volume of the player."""
         volume = int(volume)
         with self.__get_player(ctx) as player:
             player.set_volume(volume)
-        if display:
+        if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return str(volume)
 
     @commands.command()
-    async def current(self, ctx, *, display=True):
+    async def current(self, ctx):
         """Display information about the current track."""
         with self.__get_player(ctx) as player:
             current = player.current()
-            if display:
+            if ctx.display:
                 await ctx.send(
                     "\u25B6 Playing **{title}** by {uploader} now."
                     "\n{webpage_url}".format(**current)
@@ -378,12 +378,12 @@ class MusicModule(commands.Cog, CogFactory):
             return export_entry(current)
 
     @commands.command()
-    async def remove(self, ctx, offset: int, *, display=True):
+    async def remove(self, ctx, offset: int):
         """Remove a track from the queue."""
         offset = int(offset)
         with self.__get_player(ctx) as player:
             removed = player.remove(offset)
-            if display:
+            if ctx.display:
                 await ctx.send(
                     "\u2796 **{title}** by {uploader} "
                     "removed from the playlist.".format(**removed)

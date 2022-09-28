@@ -65,10 +65,10 @@ The source code of this build is available here: {}.
         return cls(build_info)
 
     @commands.command(aliases=["ver"])
-    async def version(self, ctx, display=True):
+    async def version(self, ctx):
         """Print the bot version and a link to its source code."""
 
-        if display:
+        if ctx.display:
             content = self.MESSAGE_TEMPLATE.format(
                 self.build_info.version_number,
                 self.build_info.commit_hash or "commit info not available",
