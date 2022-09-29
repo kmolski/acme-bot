@@ -41,10 +41,10 @@ def run():
     args = vars(parser.parse_args())
     load_config(args.get("config"))
 
-    intents = Intents.default()
-    intents.message_content = True
     client = commands.Bot(
-        command_prefix=COMMAND_PREFIX(), help_command=HelpCommand(), intents=intents
+        command_prefix=COMMAND_PREFIX(),
+        help_command=HelpCommand(),
+        intents=Intents.all(),
     )
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
@@ -78,12 +78,12 @@ def run():
         elif isinstance(error, TypeError):
             command = ctx.command
             await ctx.send(
-                f"Error: {error}.\n"
+                f"Error: {error}\n"
                 f"Command usage: `{command.qualified_name} {command.signature}`\n"
                 f"For more information, refer to `!help {command.name}`."
             )
         else:
-            await ctx.send(f"Error: {error}.")
+            await ctx.send(f"Error: {error}")
 
     @client.event
     async def on_disconnect():

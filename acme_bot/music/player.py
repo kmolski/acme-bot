@@ -113,6 +113,11 @@ class MusicPlayer(MusicQueue):
         return False
 
     @property
+    def channel_id(self):
+        """Provides external access to the player's voice channel ID."""
+        return self.__ctx.voice_client.channel.id
+
+    @property
     def state(self):
         """Provides external access to the state field."""
         return self.__state
@@ -194,6 +199,11 @@ class MusicPlayer(MusicQueue):
         """Stop the player."""
         self.__state = PlayerState.STOPPED
         self.__ctx.voice_client.stop()
+
+    async def disconnect(self):
+        """Disconnect the player from its voice channel."""
+        self.__state = PlayerState.STOPPED
+        await self.__ctx.voice_client.disconnect()
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""

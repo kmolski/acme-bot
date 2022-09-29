@@ -1,9 +1,9 @@
 """This module provides the music playback capability to the bot."""
+import logging
 import string
 from concurrent import futures
 from itertools import chain
 from math import ceil
-import logging
 from random import choices
 from shutil import which
 
@@ -119,10 +119,31 @@ class MusicModule(commands.Cog, CogFactory):
             if code not in self.players_by_code:
                 return code
 
+    async def __delete_player(self, player):
+        del self.players_by_code[player.access_code]
+        del self.__players[player.channel_id]
+        logging.info(
+            "Deleted the MusicPlayer instance for Channel ID %s.",
+            player.channel_id,
+        )
+        await player.disconnect()
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, _, before, after):
+        """Leave voice channels that don't contain any other users."""
+        if before.channel is not None and after.channel is None:
+            if before.channel.members == [self.bot.user]:
+                logging.info(
+                    "Voice channel ID %s is now empty, disconnecting.",
+                    before.channel.id,
+                )
+                player = self.__players[before.channel.id]
+                await self.__delete_player(player)
+
     @commands.command()
-    async def join(self, ctx, *, display=True):
+    async def join(self, ctx):
         """Join the sender's current voice channel."""
-        if display:
+        if ctx.display:
             await ctx.send(
                 f"\u27A1 Joining voice channel **{ctx.voice_client.channel.name}**."
             )
@@ -133,13 +154,7 @@ class MusicModule(commands.Cog, CogFactory):
         with self.__get_player(ctx) as player:
             player.stop()
             head, tail, _ = player.queue_data()
-            del self.players_by_code[player.access_code]
-        del self.__players[ctx.voice_client.channel.id]
-        logging.info(
-            "Deleted the MusicPlayer instance for Channel ID %s.",
-            ctx.voice_client.channel.id,
-        )
-        await ctx.voice_client.disconnect()
+            await self.__delete_player(player)
         if ctx.display:
             await ctx.send("\u23CF Quitting the voice channel.")
         return format_entry_lists(export_entry, head, tail)
@@ -409,6 +424,7 @@ class MusicModule(commands.Cog, CogFactory):
                 )
 
                 channel_id = ctx.voice_client.channel.id
+                player = MusicPlayer(ctx, self.downloader, access_code)
                 logging.info(
                     "Created a MusicPlayer instance with "
                     "access code %s for Channel ID %s.",
@@ -416,7 +432,6 @@ class MusicModule(commands.Cog, CogFactory):
                     channel_id,
                 )
 
-                player = MusicPlayer(ctx, self.downloader, access_code)
                 self.__players[channel_id] = player
                 self.players_by_code[access_code] = player
             else:
