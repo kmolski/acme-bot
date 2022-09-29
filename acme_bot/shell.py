@@ -347,14 +347,13 @@ UNQUOTED_WORD: /(\S+)\b/;
             await ctx.send(f"\U0001F9EE {output}.")
         return output
 
-    @commands.command(aliases=["tai"], enabled=which("tail"))
+    @commands.command(aliases=["tai"])
     async def tail(self, ctx, data, line_count=10):
         """Take the last `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
-        output = trim_double_newline(
-            await execute_system_cmd("tail", "-n", str(line_count), "-", stdin=data)
-        )
+        lines = data.splitlines()[-line_count:]
+        output = "\n".join(lines)
 
         if ctx.display:
             format_str = "```\n{}\n```"
@@ -364,14 +363,13 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         return output
 
-    @commands.command(aliases=["hea"], enabled=which("head"))
+    @commands.command(aliases=["hea"])
     async def head(self, ctx, data, line_count=10):
         """Take the first `line_count` lines of the input."""
         data, line_count = str(data), int(line_count)
 
-        output = trim_double_newline(
-            await execute_system_cmd("head", "-n", str(line_count), "-", stdin=data)
-        )
+        lines = data.splitlines()[:line_count]
+        output = "\n".join(lines)
 
         if ctx.display:
             format_str = "```\n{}\n```"
@@ -381,7 +379,7 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         return output
 
-    @commands.command(aliases=["lin"], enabled=(head.enabled and tail.enabled))
+    @commands.command(aliases=["lin"])
     async def lines(self, ctx, data, start, end):
         """Take lines from the specified line range (`start-end`) of the input."""
         start, end = int(start) - 1, int(end)
