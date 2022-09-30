@@ -6,6 +6,8 @@ license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
 repository = "https://github.com/kmolski/acme-bot"
 
+include = ["acme_bot/version_info/commit.txt"]
+
 [tool.poetry.dependencies]
 python = "^3.9"
 aio-pika = "^8.2.2"
