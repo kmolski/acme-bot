@@ -18,3 +18,8 @@ def test_split_message_long_lines_are_split_to_multiple_messages():
 def test_split_message_long_multiline_split_into_multiple_messages():
     long = "much much longer\n" * 4
     assert split_message(long, 20) == list(islice(repeat("much much longer"), 4))
+
+
+def test_split_message_preserves_empty_lines():
+    with_empty = "foobar\n\n" * 4
+    assert split_message(with_empty, 1000) == [with_empty.rstrip()]
