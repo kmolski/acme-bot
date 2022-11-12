@@ -5,6 +5,7 @@ from io import StringIO
 from shutil import which
 
 import asyncio
+import logging
 import re
 
 from discord import File
@@ -41,8 +42,14 @@ async def execute_system_cmd(name, *args, stdin=None):
         stdout=asyncio.subprocess.PIPE,
     )
 
-    (stdout, _) = await proc.communicate(stdin)
-    await proc.wait()
+    (stdout, stderr) = await proc.communicate(stdin)
+
+    if proc.returncode != 0:
+        logging.warning(
+            "%s (PID %s) terminated with code %s", name, proc.pid, proc.returncode
+        )
+        if error_msg := stderr or stdout:
+            raise commands.CommandError(str(error_msg, errors="replace"))
 
     return str(stdout, errors="replace")
 
@@ -334,17 +341,15 @@ UNQUOTED_WORD: /(\S+)\b/;
     async def units(self, ctx, *arguments):
         """Convert between units. The initial arguments describe the input unit,
         and the last argument describes the output unit."""
-        arguments = [str(arg) for arg in arguments]
+        arguments = [str(arg).strip() for arg in arguments]
         from_unit, to_unit = " ".join(arguments[:-1]), arguments[-1]
 
         output = (
-            await execute_system_cmd(
-                "units", "--verbose", "--one-line", "--", from_unit, to_unit
-            )
+            await execute_system_cmd("units", "--terse", "--", from_unit, to_unit)
         ).strip()
 
         if ctx.display:
-            await ctx.send(f"\U0001F9EE {output}.")
+            await ctx.send(f"\U0001F9EE {from_unit} = {output} {to_unit}.")
         return output
 
     @commands.command(aliases=["tai"])
