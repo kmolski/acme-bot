@@ -1,4 +1,4 @@
-FROM python:3.10.2-bullseye AS base
+FROM python:3.10.9-bullseye AS base
 
 WORKDIR /app
 ENV PIP_DEFAULT_TIMEOUT=100 \
@@ -14,7 +14,7 @@ RUN pip install poetry
 RUN python -m venv /venv
 
 COPY pyproject.toml poetry.lock ./
-RUN . /venv/bin/activate && poetry install --no-dev --no-root --extras external-control
+RUN . /venv/bin/activate && poetry install --only main --no-root --all-extras
 
 COPY . .
 RUN . /venv/bin/activate && poetry build
