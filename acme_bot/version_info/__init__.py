@@ -81,7 +81,7 @@ The source code of this build is available here: {}.
 
     @commands.command(aliases=["ver"])
     async def version(self, ctx):
-        """Print the bot version and link to the source code of the current build."""
+        """Show the bot version and link to the current build's source code."""
 
         if ctx.display:
             content = self.MESSAGE_TEMPLATE.format(
