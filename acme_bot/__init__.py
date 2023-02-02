@@ -18,9 +18,7 @@ from acme_bot.shell import ShellModule
 class HelpCommand(commands.DefaultHelpCommand):
     """The default help command modified to work with the shell interpreter."""
 
-    # Catch the "display" keyword argument and ignore it
-    # pylint: disable=arguments-differ
-    async def command_callback(self, ctx, command=None, **_):
+    async def command_callback(self, ctx, /, *, command=None):
         # Defining this attribute is necessary for the help command to work
         # pylint: disable=attribute-defined-outside-init
         self.context = ctx
@@ -57,11 +55,6 @@ def run():
             await module_class.load(client)
 
     client.setup_hook = load_cogs
-
-    @client.event
-    async def on_ready():
-        """Prints a message to stdout once the bot has started."""
-        logging.info("Connection is ready.")
 
     @client.event
     async def on_command_error(ctx, error):
