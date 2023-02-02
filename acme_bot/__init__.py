@@ -10,12 +10,8 @@ from discord.ext import commands
 from textx.exceptions import TextXSyntaxError
 
 from acme_bot.autoloader import get_autoloaded_cogs
-from acme_bot.config import (
-    COMMAND_PREFIX,
-    LOG_LEVEL,
-    DISCORD_TOKEN,
-    load_config,
-)
+from acme_bot.config import load_config
+from acme_bot.config.properties import DISCORD_TOKEN, COMMAND_PREFIX, LOG_LEVEL
 from acme_bot.shell import ShellModule
 
 
@@ -58,8 +54,7 @@ def run():
     async def load_cogs():
         import_submodules()
         for module_class in get_autoloaded_cogs():
-            if module_class.is_available():
-                await module_class.load(client)
+            await module_class.load(client)
 
     client.setup_hook = load_cogs
 
