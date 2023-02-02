@@ -1,4 +1,19 @@
-"""Configuration management using environment variables and config files."""
+"""Configuration management based on .env files and environment overrides."""
+#  Copyright (C) 2022-2023  Krzysztof Molski
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -7,7 +22,6 @@ from os.path import dirname, join
 from typing import Any
 
 from dotenv import load_dotenv
-from yarl import URL
 
 
 def load_config(config_path=None):
@@ -19,7 +33,7 @@ def load_config(config_path=None):
 
 @dataclass
 class ConfigProperty:
-    """Config property loaded from environment variables and config files."""
+    """Config property sourced from an environment variable or config files."""
 
     env_name: str
     constructor: Callable[[str], Any]
@@ -28,11 +42,7 @@ class ConfigProperty:
         try:
             return self.constructor(environ[self.env_name])
         except KeyError:
-            logging.critical(
-                "Required config property is missing: %s. "
-                "Please provide it using a config file or environment variable.",
-                self.env_name,
-            )
+            logging.critical("Required config property is missing: '%s'", self.env_name)
             raise
 
     def get(self, *, default=None):
@@ -41,14 +51,3 @@ class ConfigProperty:
             return self.constructor(env_value)
 
         return default
-
-
-# Credentials
-DISCORD_TOKEN = ConfigProperty("DISCORD_TOKEN", str)
-RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", URL)
-
-# Command subsystem
-COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", str)
-
-# Logging subsystem
-LOG_LEVEL = ConfigProperty("LOG_LEVEL", logging.getLevelName)
