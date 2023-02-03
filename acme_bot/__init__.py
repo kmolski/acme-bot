@@ -39,7 +39,7 @@ def run():
 
     client = commands.Bot(
         command_prefix=COMMAND_PREFIX(),
-        help_command=HelpCommand(),
+        help_command=HelpCommand(show_parameter_descriptions=False),
         intents=Intents.all(),
     )
     logging.basicConfig(
@@ -60,32 +60,32 @@ def run():
 
     @client.event
     async def on_command_error(ctx, error):
-        """Handles exceptions raised during command execution."""
+        """Handle exceptions raised during command execution."""
         if isinstance(error, commands.CommandError) and hasattr(error, "original"):
             await ctx.send(f"Error: {error.original}")
         elif isinstance(error, TextXSyntaxError):
             await ctx.send(f"Syntax error: {error.message}")
         elif isinstance(error, TypeError):
-            command = ctx.command
+            cmd = ctx.command
             await ctx.send(
                 f"Error: {error}\n"
-                f"Command usage: `{command.qualified_name} {command.signature}`\n"
-                f"For more information, refer to `!help {command.name}`."
+                f"Command usage: `{ctx.prefix}{cmd.qualified_name} {cmd.signature}`\n"
+                f"For more information, refer to `{ctx.prefix}help {cmd.name}`."
             )
         else:
             await ctx.send(f"Error: {error}")
 
     @client.event
     async def on_disconnect():
-        """Handles the termination of connections to Discord servers."""
+        """Handle the termination of connections to Discord servers."""
         # client.get_cog("MusicModule").pause_players()
-        logging.warning("Connection closed, will attempt to reconnect.")
+        logging.warning("Connection closed, will attempt to reconnect")
 
     @client.event
     async def on_resumed():
-        """Handles restarts of connections to Discord servers."""
+        """Handle restarts of connections to Discord servers."""
         # client.get_cog("MusicModule").resume_players()
-        logging.info("Connection resumed.")
+        logging.info("Connection resumed")
 
     async def eval_command(ctx):
         if ctx.invoked_with:

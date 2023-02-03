@@ -18,7 +18,7 @@ from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
 
 
 def validate_options(args, regex):
-    """Validates each argument in args against the provided regex.
+    """Validate each argument in args against the provided regex.
     If any argument does not match fully, a CommandError is raised."""
     for arg in args:
         if not regex.fullmatch(arg):
@@ -26,13 +26,13 @@ def validate_options(args, regex):
 
 
 def trim_double_newline(string):
-    """Trims down double newlines at the end of the string, such that
+    """Trim down double newlines at the end of the string, such that
     'abc\n\n' becomes 'abc\n', but 'abc\n' is still 'abc\n'."""
     return string if string[-2:] != "\n\n" else string[:-1]
 
 
 async def execute_system_cmd(name, *args, stdin=None):
-    """Executes a system command and communicates with the process.
+    """Execute a system command and communicates with the process.
     The `stdin` argument is encoded and passed into the standard input.
     Therefore, it must be convertible into a `bytes` object."""
     stdin = stdin.encode() if stdin else None
@@ -63,7 +63,7 @@ class ExprSeq:
         self.expr_comps = expr_comps
 
     async def eval(self, ctx):
-        """Evaluates an expression sequence by evaluating its components and
+        """Evaluate an expression sequence by evaluating its components and
         concatenating their return values."""
         result = ""
         for elem in self.expr_comps:
@@ -81,7 +81,7 @@ class ExprComp:
         self.exprs = exprs
 
     async def eval(self, ctx):
-        """Evaluates an expression composition by evaluating the components and
+        """Evaluate an expression composition by evaluating the components and
         passing the return value of the previous expression to the input of the
         following commands."""
         data, result = None, ""
@@ -109,7 +109,7 @@ class Command:
         self.args = args
 
     async def eval(self, ctx, pipe):
-        """Executes a command by evaluating its arguments, and calling its callback
+        """Execute a command by evaluating its arguments, and calling its callback
         using the data piped in from the previous expression."""
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
@@ -142,7 +142,7 @@ class StrLiteral:
         self.value = value
 
     async def eval(self, ctx):
-        """Evaluates the string literal, printing it in a code block if necessary."""
+        """Evaluate the string literal, printing it in a code block if necessary."""
         if ctx.display:
             await ctx.send(f"```\n{self.value}\n```")
         return self.value
@@ -156,7 +156,7 @@ class IntLiteral:
         self.value = value
 
     async def eval(self, *_, **__):
-        """Evaluates the integer literal."""
+        """Evaluate the integer literal."""
         return self.value
 
 
@@ -168,7 +168,7 @@ class BoolLiteral:
         self.value = value.lower() in ("yes", "true", "enable", "on")
 
     async def eval(self, *_, **__):
-        """Evaluates the boolean literal."""
+        """Evaluate the boolean literal."""
         return self.value
 
 
@@ -180,7 +180,7 @@ class FileContent:
         self.name = name
 
     async def eval(self, ctx):
-        """Extracts the contents of the file."""
+        """Extract the file contents."""
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
                 if elem.filename == self.name:
@@ -203,7 +203,7 @@ class ExprSubst:
         self.expr_seq = expr_seq
 
     async def eval(self, ctx):
-        """Evaluates the expression sequence in the substitution."""
+        """Evaluate the expression sequence in the substitution."""
         result = await self.expr_seq.eval(ctx)
         return result
 
