@@ -79,9 +79,14 @@ The source code of this build is available here: {}.
         build_info = BuildInfo(version_number, commit_hash, commit_date)
         return cls(build_info)
 
-    @commands.command(aliases=["ver"])
+    @commands.command(aliases=["vers"])
     async def version(self, ctx):
-        """Show the bot version and link to the current build's source code."""
+        """
+        Show the version & license information for this instance.
+
+        RETURN VALUE
+            The version number as a string.
+        """
 
         if ctx.display:
             content = self.MESSAGE_TEMPLATE.format(

@@ -1,7 +1,8 @@
-"""This module provides the shell interpreter capability to the bot."""
+"""Shell interpreter based on the textX library."""
 from copy import copy
 from datetime import datetime
 from io import StringIO
+from itertools import groupby
 from shutil import which
 
 import asyncio
@@ -68,7 +69,7 @@ class ExprSeq:
         for elem in self.expr_comps:
             ret = await elem.eval(ctx)
             if ret is not None:
-                result += ret
+                result += str(ret)
         return result
 
 
@@ -83,14 +84,18 @@ class ExprComp:
         """Evaluates an expression composition by evaluating the components and
         passing the return value of the previous expression to the input of the
         following commands."""
-        data, result = "", ""
+        data, result = None, ""
         end = len(self.exprs) - 1
         for index, elem in enumerate(self.exprs):
-            # The display property controls printing messages to the chat.
-            # It is only true if this expression is the last one being evaluated.
+            # Only display outputs if this expression is the last one in sequence.
             temp_ctx = copy(ctx)
             temp_ctx.display = ctx.display and (index == end)
-            result = await elem.eval(temp_ctx, data)
+            try:
+                result = await elem.eval(temp_ctx, data)
+            except (commands.CommandError, TypeError):
+                # Set the current command to the actual command throwing the exception.
+                ctx.command = temp_ctx.command
+                raise
             data = result
         return result
 
@@ -115,12 +120,12 @@ class Command:
             raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
         await cmd.call_before_hooks(ctx)
 
-        # Set display property to false so that argument eval doesn't print.
+        # Set display to False so that argument evaluation doesn't print outputs.
         temp_ctx = copy(ctx)
         temp_ctx.display = False
         args = (
             ([ctx] if cmd.cog is None else [cmd.cog, ctx])
-            + ([pipe] if pipe else [])  # Use the piped input only if it's not empty
+            + ([pipe] if pipe is not None else [])  # Use the pipe if it's not empty
             + ([await elem.eval(temp_ctx) for elem in self.args])
         )
         result = await cmd.callback(*args)
@@ -251,15 +256,23 @@ UNQUOTED_WORD: /(\S+)\b/;
         use_regexp_group=True,
     )
 
-    __GREP_ARGS = re.compile(r"-[0-9ABCEFGPcimnovwxy]+")
+    __GREP_ARGS = re.compile(r"-[0-9ABCEFGiovwx]+")
 
     @classmethod
     def create_cog(cls, bot):
         return cls()
 
-    @commands.command(aliases=["cat"])
+    @commands.command(aliases=["conc", "cat"])
     async def concat(self, ctx, *arguments):
-        """Joins its arguments together into a single string."""
+        """
+        Concatenate all argument strings.
+
+        ARGUMENTS
+            arguments... - input strings
+
+        RETURN VALUE
+            The arguments joined into a single string.
+        """
         content = "".join(str(arg) for arg in arguments)
         if ctx.display:
             for chunk in split_message(content, MAX_MESSAGE_LENGTH):
@@ -268,7 +281,12 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command()
     async def ping(self, ctx):
-        """Measure the time it takes to communicate with the Discord servers."""
+        """
+        Measure latency between the bot and Discord servers.
+
+        RETURN VALUE
+            The millisecond latency as an integer.
+        """
         start = datetime.now()
         # Adding a reaction is not done until the bot receives a response
         # from the Discord servers, so it can be used to measure the time.
@@ -280,7 +298,16 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command()
     async def print(self, ctx, content, file_format=""):
-        """Print the input data with highlighting specified by 'file_format'."""
+        """
+        Pretty-print the input string with the given syntax highlighting.
+
+        ARGUMENTS
+            content     - input string
+            file_format - name of the language used for syntax highlighting
+
+        RETURN VALUE
+            The unchanged input data as a string.
+        """
         content = str(content)
         if ctx.display:
             format_str = f"```{file_format}\n{{}}\n```"
@@ -289,9 +316,20 @@ UNQUOTED_WORD: /(\S+)\b/;
                 await ctx.send(format_str.format(chunk))
         return f"```{file_format}\n{content}\n```"
 
-    @commands.command(name="to-file", aliases=["tee"])
+    @commands.command(name="to-file", aliases=["tofi", "tee"])
     async def to_file(self, ctx, content, file_name):
-        """Redirect the input data to a new file with the specified filename."""
+        """
+        Redirect the input string to a file with the given name.
+
+        The output file name will be prefixed with your username.
+
+        ARGUMENTS
+            content   - input string
+            file_name - name of the file to write into
+
+        RETURN VALUE
+            The unchanged input data as a string.
+        """
         content, file_name = str(content), f"{ctx.author.name}_{file_name}"
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
@@ -300,22 +338,60 @@ UNQUOTED_WORD: /(\S+)\b/;
 
     @commands.command()
     async def open(self, ctx, file_name):
-        """Read the contents of a file with the specified filename."""
+        """
+        Read the contents of a file with the given name.
+
+        ARGUMENTS
+            file_name - name of the file to read
+
+        RETURN VALUE
+            The contents of the file as a string.
+        """
         file_name = str(file_name)
         file_content = FileContent(None, file_name)
         return await file_content.eval(ctx)
 
     @commands.command()
     async def tts(self, ctx, content):
-        """Send a text-to-speech message with the given content."""
+        """
+        Send the input string as a text-to-speech message.
+
+        ARGUMENTS
+            content - message content
+
+        RETURN VALUE
+            The unchanged input data as a string.
+        """
         content = str(content)
         await ctx.send(content, tts=True, delete_after=8.0)
         return content
 
     @commands.command(enabled=which("grep"))
     async def grep(self, ctx, data, patterns, *opts):
-        """Print the lines of `data` that match one or more of the specified patterns.
-        Additionally, a subset of `grep` arguments can be supplied as `opts`."""
+        """
+        Select lines of the input string that match the given regex patterns.
+
+        ARGUMENTS
+            data     - input string
+            patterns - regex patterns to match
+            opts     - additional options:
+                '-A NUM' - include NUM lines of context following each match
+                '-B NUM' - include NUM lines of context preceding each match
+                '-C NUM' - include NUM lines of context around each match
+
+                '-E' - interpret `patterns` as extended regular expressions
+                '-F' - interpret `patterns` as fixed strings
+                '-G' - interpret `patterns` as basic regular expressions
+
+                '-i' - perform case-insensitive matching
+                '-o' - only show the matching part of the lines
+                '-v' - only show the non-matching input lines
+                '-w' - only show matches of whole words
+                '-x' - only show exact matches of whole lines
+
+        RETURN VALUE
+            The selected input data lines as a string.
+        """
         data, patterns = str(data), str(patterns)
 
         opts = [str(option) for option in opts]
@@ -337,12 +413,19 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         return output
 
-    @commands.command(aliases=["uni"], enabled=which("units"))
-    async def units(self, ctx, *arguments):
-        """Convert between units. The initial arguments describe the input unit,
-        and the last argument describes the output unit."""
-        arguments = [str(arg).strip() for arg in arguments]
-        from_unit, to_unit = " ".join(arguments[:-1]), arguments[-1]
+    @commands.command(enabled=which("units"))
+    async def units(self, ctx, from_unit, to_unit):
+        """
+        Convert between measurement units.
+
+        ARGUMENTS
+            from_unit - the input expression or measurement unit
+            to_unit   - the output measurement unit
+
+        RETURN VALUE
+            The conversion result as a string.
+        """
+        from_unit, to_unit = str(from_unit), str(to_unit)
 
         output = (
             await execute_system_cmd("units", "--terse", "--", from_unit, to_unit)
@@ -352,9 +435,18 @@ UNQUOTED_WORD: /(\S+)\b/;
             await ctx.send(f"\U0001F9EE {from_unit} = {output} {to_unit}.")
         return output
 
-    @commands.command(aliases=["tai"])
+    @commands.command()
     async def tail(self, ctx, data, line_count=10):
-        """Take the last `line_count` lines of the input."""
+        """
+        Show the final lines of the input string.
+
+        ARGUMENTS
+            data       - input string
+            line_count - number of final lines to display (default: 10)
+
+        RETURN VALUE
+            The last [line_count] lines of input data as a string.
+        """
         data, line_count = str(data), int(line_count)
 
         lines = data.splitlines()[-line_count:]
@@ -368,9 +460,18 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         return output
 
-    @commands.command(aliases=["hea"])
+    @commands.command()
     async def head(self, ctx, data, line_count=10):
-        """Take the first `line_count` lines of the input."""
+        """
+        Show the initial lines of the input string.
+
+        ARGUMENTS
+            data       - input string
+            line_count - number of initial lines to display (default: 10)
+
+        RETURN VALUE
+            The first [line_count] lines of input data as a string.
+        """
         data, line_count = str(data), int(line_count)
 
         lines = data.splitlines()[:line_count]
@@ -384,9 +485,19 @@ UNQUOTED_WORD: /(\S+)\b/;
 
         return output
 
-    @commands.command(aliases=["lin"])
+    @commands.command()
     async def lines(self, ctx, data, start, end):
-        """Take lines from the specified line range (`start-end`) of the input."""
+        """
+        Show the given line range of the input string.
+
+        ARGUMENTS
+            data  - input string
+            start - number of the first line to display
+            end   - number of the last line to display
+
+        RETURN VALUE
+            The selected input data lines as a string.
+        """
         start, end = int(start) - 1, int(end)
         if start > end:
             raise commands.CommandError(
@@ -394,3 +505,93 @@ UNQUOTED_WORD: /(\S+)\b/;
             )
 
         return await self.tail(ctx, await self.head(ctx, data, end), end - start)
+
+    @commands.command(aliases=["wc"])
+    async def count(self, ctx, data):
+        """
+        Count lines in the input string.
+
+        ARGUMENTS
+            data - input string
+
+        RETURN VALUE
+            The number of lines in the input data as an integer.
+        """
+        data = str(data).splitlines()
+        count = len(data)
+
+        if ctx.display:
+            format_str = "```\n{}\n```"
+            await ctx.send(format_str.format(count))
+
+        return count
+
+    @commands.command(aliases=["enum", "nl"])
+    async def enumerate(self, ctx, data):
+        """
+        Number lines of the input string.
+
+        ARGUMENTS
+            data - input string
+
+        RETURN VALUE
+            The numbered lines of the input data as a string.
+        """
+        lines = str(data).splitlines()
+        line_count = len(lines)
+        max_digits = len(str(line_count))
+        output = "\n".join(
+            f"{n:{max_digits}}  {line}" for n, line in enumerate(lines, start=1)
+        )
+
+        if ctx.display:
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output
+
+    @commands.command()
+    async def sort(self, ctx, data):
+        """
+        Sort lines of the input string alphabetically.
+
+        ARGUMENTS
+            data - input string
+
+        RETURN VALUE
+            The sorted lines of the input data as a string.
+        """
+        lines = str(data).splitlines()
+        output = "\n".join(sorted(lines))
+
+        if ctx.display:
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output
+
+    @commands.command(aliases=["uniq"])
+    async def unique(self, ctx, data):
+        """
+        Remove adjacent matching lines from the input string.
+
+        ARGUMENTS
+            data - input string
+
+        RETURN VALUE
+            The unique lines of the input data as a string.
+        """
+        lines = str(data).splitlines()
+        output = "\n".join(line for line, _ in groupby(lines))
+
+        if ctx.display:
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output

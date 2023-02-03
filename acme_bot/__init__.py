@@ -18,7 +18,9 @@ from acme_bot.shell import ShellModule
 class HelpCommand(commands.DefaultHelpCommand):
     """The default help command modified to work with the shell interpreter."""
 
-    async def command_callback(self, ctx, /, *, command=None):
+    # Declare `command` as positional, because the shell does not support keyword args
+    # pylint: disable=arguments-differ
+    async def command_callback(self, ctx, command=None):
         # Defining this attribute is necessary for the help command to work
         # pylint: disable=attribute-defined-outside-init
         self.context = ctx
