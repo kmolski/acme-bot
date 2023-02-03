@@ -35,9 +35,9 @@ def split_message(text, limit):
     current_msg = ""
     for line in lines:
         if len(current_msg) + len(line) > limit:
-            messages.append(current_msg.strip())
+            messages.append(current_msg.rstrip())
             current_msg = ""
         current_msg += line + "\n"
 
-    messages.append(current_msg.strip())
+    messages.append(current_msg.rstrip())
     return messages

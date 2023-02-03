@@ -1,4 +1,19 @@
-"""This module provides the music playback capability to the bot."""
+"""Music player implementation based on FFMPEG and discord.py utilities."""
+#  Copyright (C) 2019-2023  Krzysztof Molski
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 import string
 from concurrent import futures
@@ -100,7 +115,7 @@ class MusicModule(commands.Cog, CogFactory):
     @classmethod
     def is_available(cls):
         if which("ffmpeg") is None:
-            logging.error("FFMPEG executable not found! Disabling MusicModule.")
+            logging.error("Cannot load MusicModule: FFMPEG executable not found!")
             return False
 
         return True
@@ -123,7 +138,7 @@ class MusicModule(commands.Cog, CogFactory):
         del self.players_by_code[player.access_code]
         del self.__players[player.channel_id]
         logging.info(
-            "Deleted the MusicPlayer instance for Channel ID %s.",
+            "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
         )
         await player.disconnect()
@@ -134,7 +149,7 @@ class MusicModule(commands.Cog, CogFactory):
         if before.channel is not None and after.channel is None:
             if before.channel.members == [self.bot.user]:
                 logging.info(
-                    "Voice channel ID %s is now empty, disconnecting.",
+                    "Voice channel ID %s is now empty, disconnecting",
                     before.channel.id,
                 )
                 player = self.__players[before.channel.id]
@@ -150,7 +165,12 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def leave(self, ctx):
-        """Leave the sender's current voice channel."""
+        """
+        Leave the sender's current voice channel.
+
+        RETURN VALUE
+            The deleted track URLs as a string.
+        """
         with self.__get_player(ctx) as player:
             player.stop()
             head, tail, _ = player.queue_data()
@@ -161,7 +181,15 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def play(self, ctx, *query):
-        """Search for and play a track from YouTube."""
+        """
+        Search for and play a track from YouTube.
+
+        ARGUMENTS
+            query... - the search query
+
+        RETURN VALUE
+            The added track URL as a string.
+        """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
@@ -195,9 +223,17 @@ class MusicModule(commands.Cog, CogFactory):
 
         return export_entry(new)
 
-    @commands.command(name="play-snd")
+    @commands.command(name="play-snd", aliases=["plsn"])
     async def play_snd(self, ctx, *query):
-        """Search for and play a track from Soundcloud."""
+        """
+        Search for and play a track from Soundcloud.
+
+        ARGUMENTS
+            query... - the search query
+
+        RETURN VALUE
+            The added track URL as a string.
+        """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
@@ -231,9 +267,17 @@ class MusicModule(commands.Cog, CogFactory):
 
         return export_entry(new)
 
-    @commands.command(name="play-url")
+    @commands.command(name="play-url", aliases=["plur"])
     async def play_url(self, ctx, *urls):
-        """Play a YouTube/Soundcloud track from the given URL."""
+        """
+        Play YouTube/Soundcloud tracks from the given URLs.
+
+        ARGUMENTS
+            urls... - track URLs to play
+
+        RETURN VALUE
+            The added track URLs as a string.
+        """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
@@ -275,12 +319,19 @@ class MusicModule(commands.Cog, CogFactory):
 
         return format_entry_lists(export_entry, results)
 
-    @commands.command(name="playlist-url")
-    async def playlist_url(self, ctx, *urls):
-        """Extract track URLs from the given playlists."""
+    @commands.command(name="list-urls", aliases=["liur"])
+    async def list_urls(self, ctx, *urls):
+        """
+        Extract track URLs from the given playlists.
+
+        ARGUMENTS
+            urls... - playlist URLs to extract tracks from
+
+        RETURN VALUE
+            The extracted track URLs as a string.
+        """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            # Get the tracks from the given URL list
             results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
         if ctx.display:
             await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
@@ -289,28 +340,43 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command(aliases=["prev"])
     async def previous(self, ctx, offset: int = 1):
-        """Play the previous video from the queue."""
+        """
+        Go back the given number of tracks.
+
+        ARGUMENTS
+            offset - number of tracks to rewind (default: 1)
+        """
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx, offset: int = 1):
-        """Play the next video from the queue."""
+        """
+        Skip the given number of tracks.
+
+        ARGUMENTS
+            offset - number of tracks to skip (default: 1)
+        """
         offset = int(offset)
         with self.__get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
-    async def loop(self, ctx, should_loop: bool):
-        """Set the looping behaviour of the player."""
-        should_loop = bool(should_loop)
+    async def loop(self, ctx, loop: bool):
+        """
+        Set the looping behaviour of the player.
+
+        RETURN VALUE
+            The loop parameter as a boolean.
+        """
+        loop = bool(loop)
         with self.__get_player(ctx) as player:
-            player.loop = should_loop
+            player.loop = loop
         if ctx.display:
-            msg = "on" if should_loop else "off"
+            msg = "on" if loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
-        return msg
+        return loop
 
     @commands.command()
     async def pause(self, ctx):
@@ -322,7 +388,12 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def queue(self, ctx):
-        """Display the queue contents."""
+        """
+        Show all tracks from the current queue.
+
+        RETURN VALUE
+            The track URLs as a string.
+        """
         with self.__get_player(ctx) as player:
             head, tail, split = player.queue_data()
             if ctx.display:
@@ -336,15 +407,15 @@ class MusicModule(commands.Cog, CogFactory):
                     await ctx.send(chunk)
             return format_entry_lists(export_entry, head, tail)
 
-    @commands.command()
+    @commands.command(aliases=["resu"])
     async def resume(self, ctx):
-        """Resume the player."""
+        """Resume playing the current track."""
         with self.__get_player(ctx) as player:
             msg = await player.resume()
             if msg and ctx.display:
                 await ctx.send(msg)
 
-    @commands.command()
+    @commands.command(aliases=["shuf"])
     async def shuffle(self, ctx):
         """Shuffle the queue contents."""
         with self.__get_player(ctx) as player:
@@ -354,7 +425,12 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def clear(self, ctx):
-        """Delete the queue contents."""
+        """
+        Delete all tracks from the queue.
+
+        RETURN VALUE
+            The removed track URLs as a string.
+        """
         with self.__get_player(ctx) as player:
             head, tail, _ = player.queue_data()
             player.clear()
@@ -364,25 +440,38 @@ class MusicModule(commands.Cog, CogFactory):
 
     @commands.command()
     async def stop(self, ctx):
-        """Stop the player."""
+        """Stop playing the current track."""
         with self.__get_player(ctx) as player:
             player.stop()
         if ctx.display:
             await ctx.send("\u23F9 Stopped.")
 
-    @commands.command()
+    @commands.command(aliases=["volu"])
     async def volume(self, ctx, volume: int):
-        """Change the volume of the player."""
+        """
+        Change the current player volume.
+
+        ARGUMENTS
+            volume - the volume value (from 0 to 100)
+
+        RETURN VALUE
+            The new volume value as an integer.
+        """
         volume = int(volume)
         with self.__get_player(ctx) as player:
             player.set_volume(volume)
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
-        return str(volume)
+        return volume
 
-    @commands.command()
+    @commands.command(aliases=["curr"])
     async def current(self, ctx):
-        """Display information about the current track."""
+        """
+        Show information about the current track.
+
+        RETURN VALUE
+            The current track URL as a string.
+        """
         with self.__get_player(ctx) as player:
             current = player.current()
             if ctx.display:
@@ -392,9 +481,17 @@ class MusicModule(commands.Cog, CogFactory):
                 )
             return export_entry(current)
 
-    @commands.command()
+    @commands.command(aliases=["remo"])
     async def remove(self, ctx, offset: int):
-        """Remove a track from the queue."""
+        """
+        Remove a track from the queue.
+
+        ARGUMENTS
+            offset - offset of the track to remove
+
+        RETURN VALUE
+            The removed track URL as a string.
+        """
         offset = int(offset)
         with self.__get_player(ctx) as player:
             removed = player.remove(offset)
@@ -427,7 +524,7 @@ class MusicModule(commands.Cog, CogFactory):
                 player = MusicPlayer(ctx, self.downloader, access_code)
                 logging.info(
                     "Created a MusicPlayer instance with "
-                    "access code %s for Channel ID %s.",
+                    "access code %s for Channel ID %s",
                     access_code,
                     channel_id,
                 )
@@ -445,7 +542,7 @@ class MusicModule(commands.Cog, CogFactory):
     @stop.before_invoke
     async def __ensure_voice_or_fail(self, ctx):
         """Ensure that the sender is in a voice channel, or throw
-        an exception that prevents the command from executing."""
+        an exception that will prevent the command from executing."""
 
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
