@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from html import escape
 from itertools import chain
 
 from discord.utils import escape_markdown
@@ -59,9 +60,9 @@ def _cog_description(cmd_cog):
 
 
 def _cmd_docs(cmd):
-    signature = (" " + escape_markdown(cmd.signature)).rstrip()
+    signature = escape_markdown(escape(cmd.signature))
     return f"""
-### {'/'.join([cmd.name] + cmd.aliases)}{signature}
+### {'/'.join([cmd.name] + cmd.aliases)}{(" " + signature).rstrip()}
 ```
 {cmd.help}
 ```

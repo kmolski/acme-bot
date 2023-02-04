@@ -27,7 +27,7 @@ RETURN VALUE
     The millisecond latency as an integer.
 ```
 
-### print <content> [file\_format]
+### print &lt;content&gt; [file\_format]
 ```
 Pretty-print the input string with the given syntax highlighting.
 
@@ -39,7 +39,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### to-file/tofi/tee <content> <file\_name>
+### to-file/tofi/tee &lt;content&gt; &lt;file\_name&gt;
 ```
 Redirect the input string to a file with the given name.
 
@@ -53,7 +53,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### open <file\_name>
+### open &lt;file\_name&gt;
 ```
 Read the contents of a file with the given name.
 
@@ -64,7 +64,7 @@ RETURN VALUE
     The contents of the file as a string.
 ```
 
-### tts <content>
+### tts &lt;content&gt;
 ```
 Send the input string as a text-to-speech message.
 
@@ -75,7 +75,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### grep <data> <patterns> [opts...]
+### grep &lt;data&gt; &lt;patterns&gt; [opts...]
 ```
 Select lines of the input string that match the given patterns.
 
@@ -101,7 +101,7 @@ RETURN VALUE
     The selected input data lines as a string.
 ```
 
-### units <from\_unit> <to\_unit>
+### units &lt;from\_unit&gt; &lt;to\_unit&gt;
 ```
 Convert between measurement units.
 
@@ -113,7 +113,7 @@ RETURN VALUE
     The conversion result as a string.
 ```
 
-### tail <data> [line\_count=10]
+### tail &lt;data&gt; [line\_count=10]
 ```
 Show the final lines of the input string.
 
@@ -125,7 +125,7 @@ RETURN VALUE
     The last [line_count] lines of input data as a string.
 ```
 
-### head <data> [line\_count=10]
+### head &lt;data&gt; [line\_count=10]
 ```
 Show the initial lines of the input string.
 
@@ -137,7 +137,7 @@ RETURN VALUE
     The first [line_count] lines of input data as a string.
 ```
 
-### lines <data> <start> <end>
+### lines &lt;data&gt; &lt;start&gt; &lt;end&gt;
 ```
 Show the given line range of the input string.
 
@@ -150,7 +150,7 @@ RETURN VALUE
     The selected input data lines as a string.
 ```
 
-### count/wc <data>
+### count/wc &lt;data&gt;
 ```
 Count lines in the input string.
 
@@ -161,7 +161,7 @@ RETURN VALUE
     The number of lines in the input data as an integer.
 ```
 
-### enumerate/enum/nl <data>
+### enumerate/enum/nl &lt;data&gt;
 ```
 Number lines of the input string.
 
@@ -172,7 +172,7 @@ RETURN VALUE
     The numbered lines of the input data as a string.
 ```
 
-### sort <data>
+### sort &lt;data&gt;
 ```
 Sort lines of the input string alphabetically.
 
@@ -183,7 +183,7 @@ RETURN VALUE
     The sorted lines of the input data as a string.
 ```
 
-### unique/uniq <data>
+### unique/uniq &lt;data&gt;
 ```
 Remove adjacent matching lines from the input string.
 
@@ -194,7 +194,7 @@ RETURN VALUE
     The unique lines of the input data as a string.
 ```
 
-### shuffle/shuf <data>
+### shuffle/shuf &lt;data&gt;
 ```
 Randomly shuffle lines of the input string.
 
@@ -283,7 +283,7 @@ ARGUMENTS
     offset - number of tracks to skip (default: 1)
 ```
 
-### loop <loop>
+### loop &lt;loop&gt;
 ```
 Set the looping behaviour of the player.
 
@@ -322,7 +322,7 @@ RETURN VALUE
 Stop playing the current track.
 ```
 
-### volume/volu <volume>
+### volume/volu &lt;volume&gt;
 ```
 Change the current player volume.
 
@@ -341,7 +341,7 @@ RETURN VALUE
     The current track URL as a string.
 ```
 
-### remove/remo <offset>
+### remove/remo &lt;offset&gt;
 ```
 Remove a track from the queue.
 
