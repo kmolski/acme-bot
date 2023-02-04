@@ -1,4 +1,4 @@
-"""Music player implementation based on FFMPEG and discord.py utilities."""
+"""Music player commands."""
 #  Copyright (C) 2019-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -101,7 +101,7 @@ def extract_urls(urls):
 
 @autoloaded
 class MusicModule(commands.Cog, CogFactory):
-    """This module is responsible for playing music and managing playlists."""
+    """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
     ACTION_TIMEOUT = 30.0
@@ -415,14 +415,6 @@ class MusicModule(commands.Cog, CogFactory):
             if msg and ctx.display:
                 await ctx.send(msg)
 
-    @commands.command(aliases=["shuf"])
-    async def shuffle(self, ctx):
-        """Shuffle the queue contents."""
-        with self.__get_player(ctx) as player:
-            player.shuffle()
-        if ctx.display:
-            await ctx.send("\U0001F500 Queue shuffled.")
-
     @commands.command()
     async def clear(self, ctx):
         """
@@ -507,6 +499,7 @@ class MusicModule(commands.Cog, CogFactory):
     @play_snd.before_invoke
     @play_url.before_invoke
     @volume.before_invoke
+    # pylint: disable=unused-private-member
     async def __ensure_voice_or_join(self, ctx):
         """Ensure that the sender is in a voice channel,
         otherwise join the sender's voice channel."""
@@ -540,6 +533,7 @@ class MusicModule(commands.Cog, CogFactory):
     @pause.before_invoke
     @resume.before_invoke
     @stop.before_invoke
+    # pylint: disable=unused-private-member
     async def __ensure_voice_or_fail(self, ctx):
         """Ensure that the sender is in a voice channel, or throw
         an exception that will prevent the command from executing."""
@@ -551,8 +545,8 @@ class MusicModule(commands.Cog, CogFactory):
     @previous.before_invoke
     @queue.before_invoke
     @remove.before_invoke
-    @shuffle.before_invoke
     @skip.before_invoke
+    # pylint: disable=unused-private-member
     async def __ensure_voice_and_non_empty_queue(self, ctx):
         """Ensure that the sender is in a voice channel, a MusicPlayer
         for that channel exists and the queue is not empty."""

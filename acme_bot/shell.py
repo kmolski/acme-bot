@@ -1,4 +1,4 @@
-"""Shell interpreter based on the textX library."""
+"""Shell utility commands."""
 #  Copyright (C) 2019-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@ from copy import copy
 from datetime import datetime
 from io import StringIO
 from itertools import groupby
+from random import shuffle
 from shutil import which
 
 import asyncio
@@ -225,8 +226,7 @@ class ExprSubst:
 
 @autoloaded
 class ShellModule(commands.Cog, CogFactory):
-    """This module is responsible for interpreting
-    complex commands and manipulating text."""
+    """Shell utility commands."""
 
     GRAMMAR = r"""
 ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
@@ -384,7 +384,7 @@ UNQUOTED_WORD: /(\S+)\b/;
     @commands.command(enabled=which("grep"))
     async def grep(self, ctx, data, patterns, *opts):
         """
-        Select lines of the input string that match the given regex patterns.
+        Select lines of the input string that match the given patterns.
 
         ARGUMENTS
             data     - input string
@@ -602,6 +602,29 @@ UNQUOTED_WORD: /(\S+)\b/;
         """
         lines = str(data).splitlines()
         output = "\n".join(line for line, _ in groupby(lines))
+
+        if ctx.display:
+            format_str = "```\n{}\n```"
+            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
+            for chunk in chunks:
+                await ctx.send(format_str.format(chunk))
+
+        return output
+
+    @commands.command(aliases=["shuf"])
+    async def shuffle(self, ctx, data):
+        """
+        Randomly shuffle lines of the input string.
+
+        ARGUMENTS
+            data - input string
+
+        RETURN VALUE
+            The shuffled lines of the input data as a string.
+        """
+        lines = str(data).splitlines()
+        shuffle(lines)
+        output = "\n".join(lines)
 
         if ctx.display:
             format_str = "```\n{}\n```"
