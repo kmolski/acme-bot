@@ -16,6 +16,8 @@
 
 from itertools import chain
 
+from discord.utils import escape_markdown
+
 from acme_bot import import_submodules, get_autoloaded_cogs
 
 HEADER = """
@@ -57,8 +59,9 @@ def _cog_description(cmd_cog):
 
 
 def _cmd_docs(cmd):
+    signature = (" " + escape_markdown(cmd.signature)).rstrip()
     return f"""
-### {'/'.join([cmd.name] + cmd.aliases)}
+### {'/'.join([cmd.name] + cmd.aliases)}{signature}
 ```
 {cmd.help}
 ```

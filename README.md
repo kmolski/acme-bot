@@ -2,6 +2,11 @@
 
 Discord bot with Unix shell-inspired commands and music playback features.
 
+Commands
+--------
+
+A full list of commands is available [here](docs/commands.md) or through the `help` command.
+
 Setup instructions with Docker
 -----------
 

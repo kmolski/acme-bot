@@ -8,7 +8,7 @@ ShellModule
 
 Shell utility commands.
 
-### concat/conc/cat
+### concat/conc/cat [arguments...]
 ```
 Concatenate all argument strings.
 
@@ -27,7 +27,7 @@ RETURN VALUE
     The millisecond latency as an integer.
 ```
 
-### print
+### print <content> [file\_format]
 ```
 Pretty-print the input string with the given syntax highlighting.
 
@@ -39,7 +39,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### to-file/tofi/tee
+### to-file/tofi/tee <content> <file\_name>
 ```
 Redirect the input string to a file with the given name.
 
@@ -53,7 +53,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### open
+### open <file\_name>
 ```
 Read the contents of a file with the given name.
 
@@ -64,7 +64,7 @@ RETURN VALUE
     The contents of the file as a string.
 ```
 
-### tts
+### tts <content>
 ```
 Send the input string as a text-to-speech message.
 
@@ -75,7 +75,7 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### grep
+### grep <data> <patterns> [opts...]
 ```
 Select lines of the input string that match the given patterns.
 
@@ -101,7 +101,7 @@ RETURN VALUE
     The selected input data lines as a string.
 ```
 
-### units
+### units <from\_unit> <to\_unit>
 ```
 Convert between measurement units.
 
@@ -113,7 +113,7 @@ RETURN VALUE
     The conversion result as a string.
 ```
 
-### tail
+### tail <data> [line\_count=10]
 ```
 Show the final lines of the input string.
 
@@ -125,7 +125,7 @@ RETURN VALUE
     The last [line_count] lines of input data as a string.
 ```
 
-### head
+### head <data> [line\_count=10]
 ```
 Show the initial lines of the input string.
 
@@ -137,7 +137,7 @@ RETURN VALUE
     The first [line_count] lines of input data as a string.
 ```
 
-### lines
+### lines <data> <start> <end>
 ```
 Show the given line range of the input string.
 
@@ -150,7 +150,7 @@ RETURN VALUE
     The selected input data lines as a string.
 ```
 
-### count/wc
+### count/wc <data>
 ```
 Count lines in the input string.
 
@@ -161,7 +161,7 @@ RETURN VALUE
     The number of lines in the input data as an integer.
 ```
 
-### enumerate/enum/nl
+### enumerate/enum/nl <data>
 ```
 Number lines of the input string.
 
@@ -172,7 +172,7 @@ RETURN VALUE
     The numbered lines of the input data as a string.
 ```
 
-### sort
+### sort <data>
 ```
 Sort lines of the input string alphabetically.
 
@@ -183,7 +183,7 @@ RETURN VALUE
     The sorted lines of the input data as a string.
 ```
 
-### unique/uniq
+### unique/uniq <data>
 ```
 Remove adjacent matching lines from the input string.
 
@@ -194,7 +194,7 @@ RETURN VALUE
     The unique lines of the input data as a string.
 ```
 
-### shuffle/shuf
+### shuffle/shuf <data>
 ```
 Randomly shuffle lines of the input string.
 
@@ -223,7 +223,7 @@ RETURN VALUE
     The deleted track URLs as a string.
 ```
 
-### play
+### play [query...]
 ```
 Search for and play a track from YouTube.
 
@@ -234,7 +234,7 @@ RETURN VALUE
     The added track URL as a string.
 ```
 
-### play-snd/plsn
+### play-snd/plsn [query...]
 ```
 Search for and play a track from Soundcloud.
 
@@ -245,7 +245,7 @@ RETURN VALUE
     The added track URL as a string.
 ```
 
-### play-url/plur
+### play-url/plur [urls...]
 ```
 Play YouTube/Soundcloud tracks from the given URLs.
 
@@ -256,7 +256,7 @@ RETURN VALUE
     The added track URLs as a string.
 ```
 
-### list-urls/liur
+### list-urls/liur [urls...]
 ```
 Extract track URLs from the given playlists.
 
@@ -267,7 +267,7 @@ RETURN VALUE
     The extracted track URLs as a string.
 ```
 
-### previous/prev
+### previous/prev [offset=1]
 ```
 Go back the given number of tracks.
 
@@ -275,7 +275,7 @@ ARGUMENTS
     offset - number of tracks to rewind (default: 1)
 ```
 
-### skip/next
+### skip/next [offset=1]
 ```
 Skip the given number of tracks.
 
@@ -283,7 +283,7 @@ ARGUMENTS
     offset - number of tracks to skip (default: 1)
 ```
 
-### loop
+### loop <loop>
 ```
 Set the looping behaviour of the player.
 
@@ -322,7 +322,7 @@ RETURN VALUE
 Stop playing the current track.
 ```
 
-### volume/volu
+### volume/volu <volume>
 ```
 Change the current player volume.
 
@@ -341,7 +341,7 @@ RETURN VALUE
     The current track URL as a string.
 ```
 
-### remove/remo
+### remove/remo <offset>
 ```
 Remove a track from the queue.
 
