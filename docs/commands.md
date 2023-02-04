@@ -283,7 +283,7 @@ ARGUMENTS
     offset - number of tracks to skip (default: 1)
 ```
 
-### loop &lt;loop&gt;
+### loop &lt;do\_loop&gt;
 ```
 Set the looping behaviour of the player.
 

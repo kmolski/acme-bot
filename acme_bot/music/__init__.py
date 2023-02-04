@@ -363,20 +363,20 @@ class MusicModule(commands.Cog, CogFactory):
             player.move(offset)
 
     @commands.command()
-    async def loop(self, ctx, loop: bool):
+    async def loop(self, ctx, do_loop: bool):
         """
         Set the looping behaviour of the player.
 
         RETURN VALUE
             The loop parameter as a boolean.
         """
-        loop = bool(loop)
+        do_loop = bool(do_loop)
         with self.__get_player(ctx) as player:
-            player.loop = loop
+            player.loop = do_loop
         if ctx.display:
-            msg = "on" if loop else "off"
+            msg = "on" if do_loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
-        return loop
+        return do_loop
 
     @commands.command()
     async def pause(self, ctx):
