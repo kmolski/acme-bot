@@ -42,6 +42,12 @@ class HelpCommand(commands.DefaultHelpCommand):
         return await super().command_callback(ctx, command=command)
 
 
+def import_submodules():
+    current_module = modules[__name__]
+    for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
+        import_module(module_name)
+
+
 def run():
     """The entry point for acme-bot."""
     parser = ArgumentParser(description="Launch the ACME Universal Bot.")
@@ -60,11 +66,6 @@ def run():
     logging.basicConfig(
         format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
     )
-
-    def import_submodules():
-        current_module = modules[__name__]
-        for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
-            import_module(module_name)
 
     async def load_cogs():
         import_submodules()
