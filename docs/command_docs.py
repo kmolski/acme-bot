@@ -25,7 +25,7 @@ HEADER = """
 Commands reference
 ------------------
 
-The following documentation is also available through the `help` bot command.
+The following documentation is also available through the `help` command.
 """
 
 
