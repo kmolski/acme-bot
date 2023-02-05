@@ -10,17 +10,17 @@ A full list of commands is available [here](docs/commands.md) or through the `he
 Setup instructions with Docker
 -----------
 
-### Build & run Docker container (requires a RabbitMQ instance)
+### Build & run Docker container
 
 1. Adjust configuration in `acme_bot/config/default.conf`
 2. Run the following in the project directory:
 
     ```console
     $ docker build . -t acme-bot:latest
-    $ docker run -d --name <CONTAINER NAME> \
-          -e DISCORD_TOKEN=<DISCORD API TOKEN> \
-          -e RABBITMQ_URI=<RABBITMQ INSTANCE URI> \
-          acme-bot:latest -c <CONFIG FILE>
+    $ docker run -d \
+          -e DISCORD_TOKEN=<Discord API token> \
+          -e RABBITMQ_URI=<RabbitMQ instance URI (optional)> \
+          acme-bot:latest
     ```
 
 Setup instructions
