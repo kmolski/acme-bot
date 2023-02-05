@@ -20,12 +20,19 @@ from itertools import chain
 from discord.utils import escape_markdown
 
 from acme_bot import import_submodules, get_autoloaded_cogs
+from acme_bot.textutils import escape_md_block
 
 HEADER = """
 Commands reference
 ------------------
 
 The following documentation is also available through the `help` command.
+
+Parameter notation follows the manpage conventions - angle brackets indicate
+required parameters, while square brackets indicate optional ones. Names of
+variable argument lists are followed by three dots. For example:
+
+#### example &lt;required&gt; [optional] [variable_list...]
 """
 
 
@@ -45,26 +52,30 @@ def _has_any_docs(cmd_cog):
     return any(cmd.help for cmd in _get_cog_commands(cmd_cog))
 
 
+def _escape_md(text):
+    return escape_markdown(escape(text))
+
+
 def _cog_header(cmd_cog):
     cog_name = cmd_cog.__cog_name__
     return f"""
-{cog_name}
+{_escape_md(cog_name)}
 {'-' * len(cog_name)}
 """
 
 
 def _cog_description(cmd_cog):
     return f"""
-{cmd_cog.__cog_description__}
+{_escape_md(cmd_cog.__cog_description__)}
 """
 
 
 def _cmd_docs(cmd):
-    signature = escape_markdown(escape(cmd.signature))
+    signature = _escape_md(cmd.signature)
     return f"""
 ### {'/'.join([cmd.name] + cmd.aliases)}{(" " + signature).rstrip()}
 ```
-{cmd.help}
+{escape_md_block(cmd.help)}
 ```
 """
 

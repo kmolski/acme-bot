@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from itertools import chain
+from re import sub, MULTILINE
 from textwrap import wrap
 
 # According to https://discord.com/developers/docs/resources/channel
@@ -41,3 +42,7 @@ def split_message(text, limit):
 
     messages.append(current_msg.rstrip())
     return messages
+
+
+def escape_md_block(text):
+    return sub(r"```", "\U0000200B".join("```"), text, flags=MULTILINE)
