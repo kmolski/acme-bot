@@ -3,6 +3,12 @@ Commands reference
 
 The following documentation is also available through the `help` command.
 
+Parameter notation follows the manpage conventions - angle brackets indicate
+required parameters, while square brackets indicate optional ones. Names of
+variable argument lists are followed by three dots. For example:
+
+#### example &lt;required&gt; [optional] [variable_list...]
+
 ShellModule
 -----------
 
@@ -29,11 +35,11 @@ RETURN VALUE
 
 ### print &lt;content&gt; [file\_format]
 ```
-Pretty-print the input string with the given syntax highlighting.
+Pretty print the input string with the given syntax highlighting.
 
 ARGUMENTS
     content     - input string
-    file_format - name of the language used for syntax highlighting
+    file_format - format for syntax highlighting (default: none)
 
 RETURN VALUE
     The unchanged input data as a string.
@@ -287,6 +293,9 @@ ARGUMENTS
 ```
 Set the looping behaviour of the player.
 
+ARGUMENTS
+    do_loop - whether to loop after playing all tracks
+
 RETURN VALUE
     The loop parameter as a boolean.
 ```
@@ -355,7 +364,7 @@ RETURN VALUE
 VersionInfoModule
 -----------------
 
-Version & license information commands.
+Version &amp; license information commands.
 
 ### version/vers
 ```

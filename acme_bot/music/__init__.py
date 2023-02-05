@@ -367,6 +367,9 @@ class MusicModule(commands.Cog, CogFactory):
         """
         Set the looping behaviour of the player.
 
+        ARGUMENTS
+            do_loop - whether to loop after playing all tracks
+
         RETURN VALUE
             The loop parameter as a boolean.
         """

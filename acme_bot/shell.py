@@ -314,11 +314,11 @@ UNQUOTED_WORD: /(\S+)\b/;
     @commands.command()
     async def print(self, ctx, content, file_format=""):
         """
-        Pretty-print the input string with the given syntax highlighting.
+        Pretty print the input string with the given syntax highlighting.
 
         ARGUMENTS
             content     - input string
-            file_format - name of the language used for syntax highlighting
+            file_format - format for syntax highlighting (default: none)
 
         RETURN VALUE
             The unchanged input data as a string.
