@@ -82,7 +82,9 @@ def _cmd_docs(cmd):
 
 def _cog_commands(cmd_cog):
     return "\n".join(
-        _cmd_docs(cmd).lstrip() for cmd in _get_cog_commands(cmd_cog) if cmd.help
+        _cmd_docs(cmd).lstrip()
+        for cmd in sorted(_get_cog_commands(cmd_cog), key=lambda cmd: cmd.name)
+        if cmd.help
     )
 
 
