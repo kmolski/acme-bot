@@ -331,7 +331,7 @@ UNQUOTED_WORD: /(\S+)\b/;
                 await ctx.send(format_str.format(chunk))
         return f"```{file_format}\n{content}\n```"
 
-    @commands.command(name="to-file", aliases=["tofi", "tee"])
+    @commands.command(name="to-file", aliases=["tfil", "tee"])
     async def to_file(self, ctx, content, file_name):
         """
         Redirect the input string to a file with the given name.
@@ -389,7 +389,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         ARGUMENTS
             data     - input string
             patterns - regex patterns to match
-            opts     - additional options:
+            opts...  - additional options:
                 '-A NUM' - include NUM lines of context following each match
                 '-B NUM' - include NUM lines of context preceding each match
                 '-C NUM' - include NUM lines of context around each match

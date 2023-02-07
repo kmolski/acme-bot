@@ -223,7 +223,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         return export_entry(new)
 
-    @commands.command(name="play-snd", aliases=["plsn"])
+    @commands.command(name="play-snd", aliases=["psnd"])
     async def play_snd(self, ctx, *query):
         """
         Search for and play a track from Soundcloud.
@@ -267,7 +267,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         return export_entry(new)
 
-    @commands.command(name="play-url", aliases=["plur"])
+    @commands.command(name="play-url", aliases=["purl"])
     async def play_url(self, ctx, *urls):
         """
         Play YouTube/Soundcloud tracks from the given URLs.
@@ -319,7 +319,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         return format_entry_lists(export_entry, results)
 
-    @commands.command(name="list-urls", aliases=["liur"])
+    @commands.command(name="list-urls", aliases=["lurl"])
     async def list_urls(self, ctx, *urls):
         """
         Extract track URLs from the given playlists.
