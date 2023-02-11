@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Generate markdown documentation from command & cog docstrings."""
 #  Copyright (C) 2023  Krzysztof Molski
 #
