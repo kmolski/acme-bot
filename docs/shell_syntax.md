@@ -88,13 +88,13 @@ Return values of previous steps are passed as the first argument to the followin
 For example:
 ```
 # leave the channel and save all tracks to a file called "queue.txt"
-# the return value of `leave` is assigned to the `data` parameter of `to-file`
+# the return value of `leave` is assigned to the `content` parameter of `to-file`
 !leave | to-file "queue.txt"
 
 # search for the word "eval" in a file named "code.py", then display
 # all matches with Python syntax highlighting and line numbers
 #
 # the return value of `enumerate` is assigned to the `data` parameter of `grep`
-# the return value of `grep` is assigned to the `content` parameter of `to-file`
+# the return value of `grep` is assigned to the `content` parameter of `print`
 !enumerate [code.py] | grep eval | print python
 ```

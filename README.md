@@ -7,7 +7,7 @@ Discord bot with Unix shell-inspired commands and music playback features.
 User documentation
 ------------------
 
-For a quick rundown on the extended syntax, read the [syntax overview](docs/shell_syntax.md).
+For a short description of the extended syntax, read the [syntax overview](docs/shell_syntax.md).
 
 A full list of commands is available [here](docs/commands.md) or through the `!help` command.
 
@@ -16,14 +16,14 @@ Setup instructions with Docker
 
 ### Build & run Docker container
 
-1. Adjust configuration in `acme_bot/config/default.conf`
+1. (Optional) Adjust configuration in `acme_bot/config/default.conf`
 2. Run the following in the project directory:
 
     ```console
     $ docker build . -t acme-bot:latest
     $ docker run -d \
           -e DISCORD_TOKEN=<Discord API token> \
-          -e RABBITMQ_URI=<RabbitMQ instance URI (optional)> \
+          -e RABBITMQ_URI=<RabbitMQ URI (optional)> \
           acme-bot:latest
     ```
 
@@ -36,12 +36,12 @@ To use this method, the [Poetry](https://python-poetry.org) build tool is requir
 
 ### Configure & run
 
-1. Copy the config file from `acme_bot/config/default.conf` and edit it
+1. (Optional) Copy the config file from `acme_bot/config/default.conf` and edit it
 2. Run the following in the project directory:
 
     ```console
     $ poetry install
-    $ poetry run acme-bot -c <CONFIG FILE>
+    $ poetry run acme-bot -c [config_file]
     ```
 
 Dependencies
