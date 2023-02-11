@@ -1,7 +1,7 @@
 Syntax overview
 ---------------
 
-If you've used a Unix shell, this syntax will probably look familiar to you.
+If you've used a Unix shell, this syntax will probably look familiar to you.  
 The main differences from conventional shells include:
 - [Interaction of pipes with arguments](#pipescompositions)
 - [Expression/command substitution](#expression-substitution)
@@ -37,7 +37,7 @@ Commands can have many kinds of arguments (matched in this exact order):
 Expression substitution
 -----------------------
 
-Command outputs can be passed to other commands as arguments.
+Command outputs can be passed to other commands as arguments.  
 The substitution is enclosed in parentheses, as in the example below:
 ```
 # play tracks from files named "gloryhammer.txt" and "rick.txt"
@@ -54,7 +54,7 @@ File content substitution
 
 The content of any file from the user's current channel can be used as an argument.
 
-The first matching file found in the channel will be read & passed to the command.
+The first matching file found in the channel will be read & passed to the command.  
 Filenames are enclosed in square brackets, for example:
 ```
 # play tracks from files named "sabadu.txt" and "nanowar.txt"
@@ -67,7 +67,7 @@ Filenames are enclosed in square brackets, for example:
 Sequences
 ---------
 
-Commands can be executed one after another using the `&&` operator.
+Commands can be executed one after another using the `&&` operator.  
 If any expression/command fails, the next ones won't be run.
 
 For example:
@@ -82,7 +82,7 @@ For example:
 Pipes/compositions
 ------------------
 
-Commands can be chained together using the `|` operator.
+Commands can be chained together using the `|` operator.  
 Return values of previous steps are passed as the first argument to the following steps.
 
 For example:
