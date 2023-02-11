@@ -9,7 +9,7 @@ User documentation
 
 For a quick rundown on the extended syntax, read the [syntax overview](docs/shell_syntax.md).
 
-A full list of available commands is available [here](docs/commands.md) or through the `!help <cmd>` command.
+A full list of commands is available [here](docs/commands.md) or through the `!help` command.
 
 Setup instructions with Docker
 -----------
