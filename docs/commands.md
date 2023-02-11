@@ -5,9 +5,10 @@ The following documentation is also available through the `help` command.
 
 Parameter notation follows the manpage conventions - angle brackets indicate
 required parameters, while square brackets indicate optional ones. Names of
-variable argument lists are followed by three dots. For example:
+variable argument lists are followed by three dots.
 
-#### example &lt;required&gt; [optional] [variable_list...]
+For example:
+**command &lt;required&gt; [optional] [variable_list...]**
 
 ShellModule
 -----------
@@ -54,7 +55,7 @@ Select lines of the input string that match the given patterns.
 ARGUMENTS
     data     - input string
     patterns - regex patterns to match
-    opts     - additional options:
+    opts...  - additional options:
         '-A NUM' - include NUM lines of context following each match
         '-B NUM' - include NUM lines of context preceding each match
         '-C NUM' - include NUM lines of context around each match
@@ -163,7 +164,7 @@ RETURN VALUE
     The last [line_count] lines of input data as a string.
 ```
 
-### to-file/tofi/tee &lt;content&gt; &lt;file\_name&gt;
+### to-file/tfil/tee &lt;content&gt; &lt;file\_name&gt;
 ```
 Redirect the input string to a file with the given name.
 
@@ -245,7 +246,7 @@ RETURN VALUE
     The deleted track URLs as a string.
 ```
 
-### list-urls/liur [urls...]
+### list-urls/lurl [urls...]
 ```
 Extract track URLs from the given playlists.
 
@@ -283,7 +284,7 @@ RETURN VALUE
     The added track URL as a string.
 ```
 
-### play-snd/plsn [query...]
+### play-snd/psnd [query...]
 ```
 Search for and play a track from Soundcloud.
 
@@ -294,7 +295,7 @@ RETURN VALUE
     The added track URL as a string.
 ```
 
-### play-url/plur [urls...]
+### play-url/purl [urls...]
 ```
 Play YouTube/Soundcloud tracks from the given URLs.
 

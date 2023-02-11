@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Generate markdown documentation from command & cog docstrings."""
 #  Copyright (C) 2023  Krzysztof Molski
 #
@@ -30,9 +31,10 @@ The following documentation is also available through the `help` command.
 
 Parameter notation follows the manpage conventions - angle brackets indicate
 required parameters, while square brackets indicate optional ones. Names of
-variable argument lists are followed by three dots. For example:
+variable argument lists are followed by three dots.
 
-#### example &lt;required&gt; [optional] [variable_list...]
+For example:
+**command &lt;required&gt; [optional] [variable_list...]**
 """
 
 
