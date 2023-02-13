@@ -1,5 +1,4 @@
-Syntax overview
----------------
+# Syntax overview
 
 If you've used a Unix shell, this syntax will probably look familiar to you.  
 The main differences from conventional shells include:

@@ -24,8 +24,7 @@ from acme_bot import import_submodules, get_autoloaded_cogs
 from acme_bot.textutils import escape_md_block
 
 HEADER = """
-Commands reference
-------------------
+# Commands reference
 
 The following documentation is also available through the `help` command.
 
