@@ -10,19 +10,19 @@ include = ["acme_bot/version_info/commit.txt"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-aio-pika = "^8.3.0"
-"discord.py" = {version = "^2.1.0", extras = ["voice"]}
+aio-pika = "^9.0.4"
+"discord.py" = {version = "^2.1.1", extras = ["voice"]}
 python-dotenv = "^0.21.1"
-textX = "^3.0.0"
-yt-dlp = "^2023.1.6"
+textX = "^3.1.1"
+yt-dlp = "^2023.2.17"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"
 
 [tool.poetry.group.lint.dependencies]
-black = "^22.12.0"
+black = "^23.1.0"
 flake8 = "^6.0.0"
-pylint = "^2.16.0"
+pylint = "^2.16.2"
 
 [tool.poetry.build]
 script = "commit_info.py"
