@@ -11,8 +11,8 @@ include = ["acme_bot/version_info/commit.txt"]
 [tool.poetry.dependencies]
 python = "^3.9"
 aio-pika = "^9.0.4"
-"discord.py" = {version = "^2.1.1", extras = ["voice"]}
-python-dotenv = "^0.21.1"
+"discord.py" = {version = "^2.2.2", extras = ["voice"]}
+python-dotenv = "^1.0.0"
 textX = "^3.1.1"
 yt-dlp = "^2023.2.17"
 

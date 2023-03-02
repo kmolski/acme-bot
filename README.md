@@ -1,6 +1,6 @@
 # acme-bot
 
-Discord bot with Unix shell-inspired commands and music playback features.
+Discord bot with music playback and Unix shell-inspired commands.
 
 [Have a chat!](https://discordapp.com/users/596614462019207178)
 
@@ -41,7 +41,7 @@ To use this method, the [Poetry](https://python-poetry.org) build tool is requir
 
     ```console
     $ poetry install
-    $ poetry run acme-bot -c [config_file]
+    $ poetry run acme-bot [-c CONFIG_FILE]
     ```
 
 Dependencies
