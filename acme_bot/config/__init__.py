@@ -24,6 +24,9 @@ from typing import Any
 from dotenv import load_dotenv
 
 
+log = logging.getLogger(__name__)
+
+
 def load_config(config_path=None):
     """Load configuration from the default and user-specified config files."""
     if config_path is not None:
@@ -33,7 +36,7 @@ def load_config(config_path=None):
 
 @dataclass
 class ConfigProperty:
-    """Config property sourced from an environment variable or config files."""
+    """Config property sourced from config files or an environment variable."""
 
     env_name: str
     constructor: Callable[[str], Any]
@@ -42,7 +45,7 @@ class ConfigProperty:
         try:
             return self.constructor(environ[self.env_name])
         except KeyError:
-            logging.critical("Required config property is missing: '%s'", self.env_name)
+            log.critical("Required config property is missing: %s", self.env_name)
             raise
 
     def get(self, *, default=None):
@@ -50,4 +53,5 @@ class ConfigProperty:
         if env_value := environ.get(self.env_name):
             return self.constructor(env_value)
 
+        log.debug("No value found for %s, using default: %s", self.env_name, env_value)
         return default
