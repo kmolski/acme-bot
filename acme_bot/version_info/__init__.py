@@ -58,12 +58,13 @@ class VersionInfoModule(commands.Cog, CogFactory):
 acme-bot {} ({} {})
 {}
 
-This program is free software: you can redistribute it and/or modify it under the terms
-of the GNU Affero General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify it under the terms\
+ of the GNU Affero General Public License as published by the Free Software Foundation,\
+ either version 3 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+This program is distributed in the hope that it will be useful, but WITHOUT ANY\
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A\
+ PARTICULAR PURPOSE.
 See the GNU Affero General Public License for more details.
 
 The source code of this build is available here: {}.
@@ -91,7 +92,7 @@ The source code of this build is available here: {}.
         if ctx.display:
             content = self.MESSAGE_TEMPLATE.format(
                 self.build_info.version_number,
-                self.build_info.commit_hash or "commit info not available",
+                self.build_info.commit_hash or " commit info not available",
                 self.build_info.commit_date or "",
                 self.COPYRIGHT_INFO,
                 self.build_info.github_link,
