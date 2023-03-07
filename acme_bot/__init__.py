@@ -16,6 +16,7 @@
 
 import logging
 from argparse import ArgumentParser
+from datetime import datetime, timezone
 from importlib import import_module
 from pkgutil import iter_modules
 from sys import modules
@@ -28,6 +29,26 @@ from acme_bot.autoloader import get_autoloaded_cogs
 from acme_bot.config import load_config
 from acme_bot.config.properties import DISCORD_TOKEN, COMMAND_PREFIX, LOG_LEVEL
 from acme_bot.shell import ShellModule
+
+
+log = logging.getLogger(__name__)
+
+
+class RFC3339Formatter(logging.Formatter):
+    """
+    Log formatter using RFC 3339 compliant timestamps.
+
+    The timestamp format is documented here:
+    https://datatracker.ietf.org/doc/html/rfc3339#section-5.6
+    """
+
+    def formatTime(self, record, datefmt=None):
+        """Format the creation datetime using the RFC 3339 format."""
+        return (
+            datetime.fromtimestamp(record.created, timezone.utc)
+            .astimezone()
+            .isoformat(timespec="milliseconds")
+        )
 
 
 class HelpCommand(commands.DefaultHelpCommand):
@@ -63,9 +84,13 @@ def run():
         help_command=HelpCommand(show_parameter_descriptions=False),
         intents=Intents.all(),
     )
-    logging.basicConfig(
-        format="[%(asctime)s] %(levelname)s: %(message)s", level=LOG_LEVEL()
-    )
+    formatter = RFC3339Formatter(fmt="%(asctime)s %(levelname)8s %(name)s: %(message)s")
+    handler = logging.StreamHandler()
+    logger = logging.getLogger()
+
+    handler.setFormatter(formatter)
+    logger.setLevel(LOG_LEVEL())
+    logger.addHandler(handler)
 
     async def load_cogs():
         import_submodules()
@@ -111,7 +136,7 @@ def run():
                 model = ShellModule.META_MODEL.model_from_str(command.strip())
                 await model.eval(ctx)
             except (
-                commands.CommandError,  # Explicitly thrown command errors
+                commands.CommandError,  # Command validation errors
                 TextXSyntaxError,  # Shell syntax errors
                 TypeError,  # Type mismatch errors (incorrect command args)
             ) as exc:
@@ -119,7 +144,7 @@ def run():
             # Log the unhandled exceptions for later analysis
             # pylint: disable=broad-except
             except Exception as error:
-                logging.exception(
+                log.exception(
                     "Unhandled exception caused by message '%s':",
                     ctx.message.content,
                     exc_info=error,
@@ -135,4 +160,4 @@ def run():
         ctx.display = True
         await eval_command(ctx)
 
-    client.run(DISCORD_TOKEN())
+    client.run(DISCORD_TOKEN(), log_handler=None)
