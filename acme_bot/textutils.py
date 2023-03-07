@@ -45,4 +45,5 @@ def split_message(text, limit):
 
 
 def escape_md_block(text):
+    """Escape triple backtick delimiters in the given text."""
     return sub(r"```", "\U0000200B".join("```"), text, flags=MULTILINE)

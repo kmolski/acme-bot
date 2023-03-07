@@ -2,8 +2,13 @@ from os import environ
 
 import pytest
 
-from acme_bot.config import load_config
-from acme_bot.config.properties import *
+from acme_bot.config import load_config, ConfigProperty
+from acme_bot.config.properties import (
+    COMMAND_PREFIX,
+    DISCORD_TOKEN,
+    LOG_LEVEL,
+    RABBITMQ_URI,
+)
 
 
 EXAMPLE_PROP_NAME = "EXAMPLE_PROP_NAME"
