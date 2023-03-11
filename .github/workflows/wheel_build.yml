@@ -1,0 +1,56 @@
+name: Python wheel build
+
+on:
+  push:
+    branches: ["master", "gh_actions"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          cache: "poetry"
+
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.local
+          key: poetry-0
+
+      - name: Install Poetry
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
+        uses: snok/install-poetry@v1
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y --no-install-recommends build-essential curl git libffi-dev
+
+      - name: Build Python wheel
+        run: poetry build
+
+      - name: Convert wheel to be platform independent
+        run: |
+          set -eu -o pipefail
+          
+          SRC_WHEEL=dist/*.whl
+          DEST_WHEEL="$(basename $SRC_WHEEL | cut -d '-' -f -2)-py3-none-any.whl"
+          
+          TMP_DIR=$(mktemp -d)
+          unzip $SRC_WHEEL -d $TMP_DIR
+          rm $SRC_WHEEL
+          
+          pushd $TMP_DIR
+          sed -i 's/^Root-Is-Purelib.*$/Root-Is-Purelib: true/' **/WHEEL
+          sed -i 's/^Tag.*$/Tag: py3-none-any/' **/WHEEL
+          zip -r "$GITHUB_WORKSPACE/dist/$DEST_WHEEL" *
+
+      - name: Upload Python wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-wheel
+          path: dist/*.whl
