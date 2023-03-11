@@ -1,4 +1,19 @@
 """This module provides track downloader for the MusicModule."""
+#  Copyright (C) 2019-2023  Krzysztof Molski
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from base64 import b64decode
 from itertools import islice, chain
 from json import loads
@@ -12,6 +27,8 @@ from discord.ext import commands
 import yt_dlp
 
 yt_dlp.utils.bug_reports_message = lambda: ""
+
+log = logging.getLogger(__name__)
 
 
 def add_expire_time(entry):
@@ -41,20 +58,22 @@ def add_expire_time(entry):
         else:
             raise commands.CommandError("Expected a YouTube/Soundcloud entry!")
 
-    except (commands.CommandError, IndexError, KeyError):
+    except (commands.CommandError, IndexError, KeyError, ValueError):
         # Default to 5 minutes if the expiration time cannot be found
         entry["expire"] = time() + (5 * 60)
-        logging.warning(
+        log.warning(
             "No expiration time found for URL, assuming 5 minutes: %s", entry["url"]
         )
 
 
 def chunks(iterable, size):
+    """Split `iterable` into chunks, each with `size` elements."""
     while chunk := tuple(islice(iterable, size)):
         yield chunk
 
 
 def filter_not_none(iterable):
+    """Remove None values from the `iterable`."""
     return [entry for entry in iterable if entry is not None]
 
 
@@ -94,7 +113,7 @@ class MusicDownloader(yt_dlp.YoutubeDL):
             args=(result_queue, url),
         )
         process.start()
-        logging.debug("Started extractor process for URL %s, PID %s.", url, process.pid)
+        log.debug("Started extractor process for URL %s, PID %s", url, process.pid)
         return result_queue, process
 
     async def get_entries_by_urls(self, url_list):
@@ -106,10 +125,10 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         )
         results = []
 
-        for (result_queue, process) in handles:
+        for result_queue, process in handles:
             result = await self.loop.run_in_executor(None, result_queue.get)
             process.join()
-            logging.debug("Extractor process (PID %s) finished.", process.pid)
+            log.debug("Extractor process (PID %s) finished", process.pid)
 
             if result is None:
                 continue
@@ -124,11 +143,11 @@ class MusicDownloader(yt_dlp.YoutubeDL):
 
     async def get_entries_by_query(self, provider, query):
         """Extract the track entries for the given search provider and query."""
-        # Run the extraction in parallel processes
+        # Run the extraction in a background process
         result_queue, process = self.__start_extractor_process(provider + query)
         results = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
-        logging.debug("Extractor process (PID %s) finished.", process.pid)
+        log.debug("Extractor process (PID %s) finished", process.pid)
 
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
@@ -137,11 +156,11 @@ class MusicDownloader(yt_dlp.YoutubeDL):
 
     async def update_entry(self, entry):
         """Update a track entry in-place with a new URL and expiration time."""
-        # Run the extraction in parallel processes
+        # Run the extraction in a background process
         result_queue, process = self.__start_extractor_process(entry["webpage_url"])
         result = await self.loop.run_in_executor(None, result_queue.get)
         process.join()
-        logging.debug("Extractor process (PID %s) finished.", process.pid)
+        log.debug("Extractor process (PID %s) finished", process.pid)
 
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
             raise commands.CommandError("Incorrect track URL!")

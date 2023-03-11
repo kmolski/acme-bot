@@ -1,4 +1,19 @@
 """This module provides a music player for the bot."""
+#  Copyright (C) 2019-2023  Krzysztof Molski
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from asyncio import run_coroutine_threadsafe
 from enum import Enum, auto
 from re import match
@@ -14,7 +29,12 @@ from discord.ext import commands
 from acme_bot.music.queue import MusicQueue
 
 
+log = logging.getLogger(__name__)
+
+
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
+    """Error handling wrapper for discord.py FFmpegPCMAudio."""
+
     __SUCCESSFUL_RETURN_CODES = [-9, 0]
 
     def __init__(self, *args, **kwargs):
@@ -26,10 +46,10 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
         if proc and proc.returncode not in self.__SUCCESSFUL_RETURN_CODES:
             msg = (
-                f"ffmpeg process {proc.pid} terminated with"
-                f" return code of {proc.returncode}."
+                f"ffmpeg (PID {proc.pid}) terminated with"
+                f" return code of {proc.returncode}"
             )
-            logging.error(msg)
+            log.error(msg)
             raise ChildProcessError(msg)
 
 
@@ -57,9 +77,8 @@ def parse_log_entry(line):
 
 
 def process_ffmpeg_logs(source):
-    """This function processes the FFMPEG's stderr output and redirects
-    it to the bot's log accordingly."""
-    # These log messages are completely normal and can be filtered out
+    """Redirect log messages from FFMPEG stderr to the module logger."""
+    # These log messages are expected and can be filtered out
     rejects = ["Error in the pull function", "Will reconnect at"]
     # Alas, we need to perform this access to get the FFMPEG process
     # pylint: disable=protected-access
@@ -71,9 +90,9 @@ def process_ffmpeg_logs(source):
             level, message, module = parse_log_entry(line.decode(errors="replace"))
             # Redirect to the bot's log only if the message is not in the rejects
             if all(r not in message for r in rejects):
-                logging.log(level, "In ffmpeg module '%s': %s", module, message)
+                log.log(level, "In ffmpeg module '%s': %s", module, message)
         else:
-            logging.debug("Log processing for ffmpeg process %s finished.", process.pid)
+            log.debug("Log processing for ffmpeg process %s finished", process.pid)
             return
 
 
@@ -186,7 +205,7 @@ class MusicPlayer(MusicQueue):
         # Start the log parser thread
         log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
-        logging.debug("Started ffmpeg log processing thread.")
+        log.debug("Started ffmpeg log processing thread")
 
         self.__state = PlayerState.PLAYING
 
@@ -209,7 +228,7 @@ class MusicPlayer(MusicQueue):
         """Executed after the track is done playing, plays the next song or stops."""
         with self.__sem:
             if err:
-                logging.error(err)
+                log.error(err)
                 return
             # Stop the if player loop is off and it played the last song in queue
             if self.should_stop() and self.__state == PlayerState.PLAYING:

@@ -27,8 +27,13 @@ from acme_bot.music import MusicModule
 from acme_bot.autoloader import CogFactory, autoloaded
 
 
+log = logging.getLogger(__name__)
+
+
 @autoloaded
 class ExternalControlModule(commands.Cog, CogFactory):
+    """External music player control using an AMQP message broker."""
+
     def __init__(self, bot, uri, music_module):
         self.bot = bot
         self.uri = uri
@@ -37,14 +42,11 @@ class ExternalControlModule(commands.Cog, CogFactory):
     @classmethod
     def is_available(cls):
         if not MusicModule.is_available():
-            logging.info("Cannot load ExternalControlModule: MusicModule not available")
+            log.info("Cannot load ExternalControlModule: MusicModule not available")
             return False
 
         if RABBITMQ_URI.get() is None:
-            logging.info(
-                "Cannot load ExternalControlModule: "
-                "RABBITMQ_URI config property is missing"
-            )
+            log.info("Cannot load ExternalControlModule: RABBITMQ_URI is not set")
             return False
 
         return True
@@ -55,9 +57,10 @@ class ExternalControlModule(commands.Cog, CogFactory):
         run_coroutine_threadsafe(ext_control.__process_messages(), bot.loop)
         return ext_control
 
+    # pylint: disable=unused-private-member
     async def __process_messages(self):
         connection = await aio_pika.connect_robust(self.uri)
-        logging.info("Connected to AMQP broker at '%s'", censor_url(self.uri))
+        log.info("Connected to AMQP broker at '%s'", censor_url(self.uri))
         async with connection:
             channel = await connection.channel()
             exchange = await channel.declare_exchange(
@@ -68,7 +71,7 @@ class ExternalControlModule(commands.Cog, CogFactory):
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
                     async with message.process():
-                        logging.info("Processing message '%s'", message.body)
+                        log.info("Processing message '%s'", message.body)
 
                         try:
                             message_dict = json.loads(message.body)
@@ -85,7 +88,7 @@ class ExternalControlModule(commands.Cog, CogFactory):
                                 player.stop()
 
                         except (json.JSONDecodeError, KeyError) as exc:
-                            logging.exception(
+                            log.exception(
                                 "Exception caused by message %s:",
                                 message.body,
                                 exc_info=exc,

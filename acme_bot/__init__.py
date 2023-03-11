@@ -64,6 +64,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 
 def import_submodules():
+    """Import all submodules of `acme_bot`."""
     current_module = modules[__name__]
     for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
         import_module(module_name)
