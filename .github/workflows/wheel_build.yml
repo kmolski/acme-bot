@@ -33,22 +33,22 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends build-essential curl git libffi-dev
 
       - name: Install Python dependencies
-        run: poetry install
+        run: poetry install --no-interaction
 
       - name: Check formatting with black
-        run: black --check .
+        run: poetry run black --check .
 
       - name: Lint with flake8
-        run: flake8
+        run: poetry run flake8
 
       - name: Lint with pylint
-        run: pylint acme_bot/
+        run: poetry run pylint acme_bot/
 
       - name: Run tests with pytest
-        run: pytest
+        run: poetry run pytest
 
       - name: Build Python wheel
-        run: poetry build
+        run: poetry build --no-interaction
 
       - name: Convert wheel to be platform independent
         run: |
