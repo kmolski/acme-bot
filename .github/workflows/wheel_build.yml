@@ -1,11 +1,13 @@
 name: Python wheel build
 
 on:
+  pull_request:
   push:
-    branches: ["master", "gh_actions"]
+    branches: ["master", "release/**", "gh_actions"]
+    tags: ["v**"]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,19 +18,34 @@ jobs:
           python-version: "3.9"
           cache: "poetry"
 
-      - name: Load cached Poetry installation
+      - name: Load cached Poetry
         id: cached-poetry
         uses: actions/cache@v3
         with:
           path: ~/.local
           key: poetry-0
 
-      - name: Install Poetry
+      - name: Install Poetry (latest)
         if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
 
-      - name: Install build dependencies
+      - name: Install system dependencies
         run: sudo apt-get install -y --no-install-recommends build-essential curl git libffi-dev
+
+      - name: Install Python dependencies
+        run: poetry install
+
+      - name: Check formatting with black
+        run: black --check .
+
+      - name: Lint with flake8
+        run: flake8
+
+      - name: Lint with pylint
+        run: pylint acme_bot/
+
+      - name: Run tests with pytest
+        run: pytest
 
       - name: Build Python wheel
         run: poetry build
