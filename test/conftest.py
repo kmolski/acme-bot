@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 
@@ -13,7 +14,7 @@ class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
     messages: list[str]
-    files: list[str | None]
+    files: list[Optional[str]]
     tts: list[bool]
 
     async def send(self, content, *, tts=False, file=None):
