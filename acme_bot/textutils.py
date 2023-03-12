@@ -50,9 +50,10 @@ async def send_pages(
     """Split and send a message with the specified content and format."""
     if escape_md_blocks:
         content = escape_md_block(content)
+    if fmt is not None:
+        max_length -= len(fmt)
 
-    fmt_length = len(fmt) if fmt is not None else 0
-    for chunk in _split_message(content, max_length - fmt_length):
+    for chunk in _split_message(content, max_length):
         if fmt is not None:
             chunk = fmt.format(chunk)
         await ctx.send(chunk)
