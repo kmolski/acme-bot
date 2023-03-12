@@ -157,7 +157,7 @@ class StrLiteral:
         self.parent = parent
         self.value = value
 
-    async def eval(self, ctx):
+    async def eval(self, ctx, *_, **__):
         """Evaluate the string literal, printing it in a code block if necessary."""
         if ctx.display:
             await ctx.send(f"```\n{self.value}\n```")
@@ -195,7 +195,7 @@ class FileContent:
         self.parent = parent
         self.name = name
 
-    async def eval(self, ctx):
+    async def eval(self, ctx, *_, **__):
         """Extract the file contents."""
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
@@ -218,7 +218,7 @@ class ExprSubst:
         self.parent = parent
         self.expr_seq = expr_seq
 
-    async def eval(self, ctx):
+    async def eval(self, ctx, *_, **__):
         """Evaluate the expression sequence in the substitution."""
         result = await self.expr_seq.eval(ctx)
         return result
