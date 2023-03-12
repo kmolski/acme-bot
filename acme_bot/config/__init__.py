@@ -53,5 +53,5 @@ class ConfigProperty:
         if env_value := environ.get(self.env_name):
             return self.constructor(env_value)
 
-        log.debug("No value found for %s, using default: %s", self.env_name, env_value)
+        log.debug("No value found for %s, using default: %s", self.env_name, default)
         return default
