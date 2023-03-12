@@ -27,7 +27,6 @@ from discord.ext import commands
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.music.downloader import MusicDownloader, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
-from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
 
 
 def assemble_menu(header, entries):
@@ -133,6 +132,7 @@ class MusicModule(commands.Cog, CogFactory):
         while code := "".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH)):
             if code not in self.players_by_code:
                 return code
+        assert False
 
     async def __delete_player(self, player):
         del self.players_by_code[player.access_code]
@@ -406,8 +406,7 @@ class MusicModule(commands.Cog, CogFactory):
                     enumerate(tail, start=split),
                     init="\U0001F3BC Current queue:",
                 )
-                for chunk in split_message(queue_info, MAX_MESSAGE_LENGTH):
-                    await ctx.send(chunk)
+                await ctx.send_pages(queue_info)
             return format_entry_lists(export_entry, head, tail)
 
     @commands.command(aliases=["resu"])

@@ -17,6 +17,7 @@
 import logging
 from argparse import ArgumentParser
 from datetime import datetime, timezone
+from functools import partial
 from importlib import import_module
 from pkgutil import iter_modules
 from sys import modules
@@ -29,7 +30,7 @@ from acme_bot.autoloader import get_autoloaded_cogs
 from acme_bot.config import load_config
 from acme_bot.config.properties import DISCORD_TOKEN, COMMAND_PREFIX, LOG_LEVEL
 from acme_bot.shell import ShellModule
-
+from acme_bot.textutils import send_pages
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 
 
 def import_submodules():
-    """Import all submodules of `acme_bot`."""
+    """Import all submodules of acme_bot."""
     current_module = modules[__name__]
     for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
         import_module(module_name)
@@ -121,13 +122,13 @@ def run():
     async def on_disconnect():
         """Handle the termination of connections to Discord servers."""
         # client.get_cog("MusicModule").pause_players()
-        logging.warning("Connection closed, will attempt to reconnect")
+        log.warning("Connection closed, will attempt to reconnect")
 
     @client.event
     async def on_resumed():
         """Handle restarts of connections to Discord servers."""
         # client.get_cog("MusicModule").resume_players()
-        logging.info("Connection resumed")
+        log.info("Connection resumed")
 
     async def eval_command(ctx):
         if ctx.invoked_with:
@@ -159,6 +160,7 @@ def run():
             return
         ctx = await client.get_context(message)
         ctx.display = True
+        ctx.send_pages = partial(send_pages, ctx)
         await eval_command(ctx)
 
     client.run(DISCORD_TOKEN(), log_handler=None)

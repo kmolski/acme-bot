@@ -30,7 +30,9 @@ from discord.ext import commands
 from textx import metamodel_from_str
 
 from acme_bot.autoloader import CogFactory, autoloaded
-from acme_bot.textutils import split_message, MAX_MESSAGE_LENGTH
+
+
+MD_BLOCK_FMT = "```\n{}\n```"
 
 
 def validate_options(args, regex):
@@ -160,7 +162,7 @@ class StrLiteral:
     async def eval(self, ctx, *_, **__):
         """Evaluate the string literal, printing it in a code block if necessary."""
         if ctx.display:
-            await ctx.send(f"```\n{self.value}\n```")
+            await ctx.send_pages(self.value, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
         return self.value
 
 
@@ -202,10 +204,9 @@ class FileContent:
                 if elem.filename == self.name:
                     content = str(await elem.read(), errors="replace")
                     if ctx.display:
-                        fmt = "```\n{}\n```"
-                        chunks = split_message(content, MAX_MESSAGE_LENGTH - len(fmt))
-                        for chunk in chunks:
-                            await ctx.send(fmt.format(chunk))
+                        await ctx.send_pages(
+                            content, fmt=MD_BLOCK_FMT, escape_md_blocks=True
+                        )
                     return content
 
         raise commands.CommandError("No such file!")
@@ -290,8 +291,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         """
         content = "".join(str(arg) for arg in arguments)
         if ctx.display:
-            for chunk in split_message(content, MAX_MESSAGE_LENGTH):
-                await ctx.send(chunk)
+            await ctx.send_pages(content)
         return content
 
     @commands.command()
@@ -325,10 +325,9 @@ UNQUOTED_WORD: /(\S+)\b/;
         """
         content = str(content)
         if ctx.display:
-            format_str = f"```{file_format}\n{{}}\n```"
-            chunks = split_message(content, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(
+                content, fmt=f"```{file_format}\n{{}}\n```", escape_md_blocks=True
+            )
         return f"```{file_format}\n{content}\n```"
 
     @commands.command(name="to-file", aliases=["tfil", "tee"])
@@ -421,10 +420,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -468,10 +464,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -493,10 +486,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -536,8 +526,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         count = len(data)
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            await ctx.send(format_str.format(count))
+            await ctx.send(f"```\n{count}\n```")
 
         return count
 
@@ -560,10 +549,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -582,10 +568,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(sorted(lines))
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -604,10 +587,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(line for line, _ in groupby(lines))
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -627,9 +607,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            format_str = "```\n{}\n```"
-            chunks = split_message(output, MAX_MESSAGE_LENGTH - len(format_str))
-            for chunk in chunks:
-                await ctx.send(format_str.format(chunk))
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output

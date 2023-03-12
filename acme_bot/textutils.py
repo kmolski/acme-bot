@@ -22,7 +22,7 @@ from textwrap import wrap
 MAX_MESSAGE_LENGTH = 2000
 
 
-def split_message(text, limit):
+def _split_message(text, limit):
     """Split a message into chunks with the specified maximum length.
     Lines longer than the limit are wrapped and split across chunks."""
 
@@ -42,6 +42,20 @@ def split_message(text, limit):
 
     messages.append(current_msg.rstrip())
     return messages
+
+
+async def send_pages(
+    ctx, content, *, fmt=None, escape_md_blocks=False, max_length=MAX_MESSAGE_LENGTH
+):
+    """Split and send a message with the specified content and format."""
+    if escape_md_blocks:
+        content = escape_md_block(content)
+
+    fmt_length = len(fmt) if fmt is not None else 0
+    for chunk in _split_message(content, max_length - fmt_length):
+        if fmt is not None:
+            chunk = fmt.format(chunk)
+        await ctx.send(chunk)
 
 
 def escape_md_block(text):

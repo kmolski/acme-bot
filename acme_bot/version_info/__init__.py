@@ -97,5 +97,5 @@ The source code of this build is available here: {}.
                 self.COPYRIGHT_INFO,
                 self.build_info.github_link,
             )
-            await ctx.send(content)
+            await ctx.send_pages(content)
         return self.build_info.version_number
