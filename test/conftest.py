@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 
+import pytest
 
-def fake_context():
+
+@pytest.fixture()
+def fake_ctx():
     return FakeContext([], [], [])
 
 
