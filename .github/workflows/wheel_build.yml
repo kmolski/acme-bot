@@ -13,21 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Load cached Poetry
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - uses: actions/cache@v3
         id: cached-poetry
-        uses: actions/cache@v3
         with:
           path: ~/.local
           key: poetry-0
 
-      - name: Install Poetry (latest)
+      - uses: snok/install-poetry@v1
         if: steps.cached-poetry.outputs.cache-hit != 'true'
-        uses: snok/install-poetry@v1
-
-      - name: Install Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
 
       - name: Install system dependencies
         run: sudo apt-get install -y --no-install-recommends build-essential curl git libffi-dev
@@ -45,12 +42,12 @@ jobs:
         run: poetry run pylint acme_bot/
 
       - name: Run tests with pytest
-        run: poetry run pytest
+        run: poetry run pytest test/
 
       - name: Build Python wheel
         run: poetry build --no-interaction
 
-      - name: Convert wheel to be platform independent
+      - name: Convert to platform-independent wheel
         run: |
           set -eu -o pipefail
           
@@ -66,8 +63,7 @@ jobs:
           sed -i 's/^Tag.*$/Tag: py3-none-any/' **/WHEEL
           zip -r "$GITHUB_WORKSPACE/dist/$DEST_WHEEL" *
 
-      - name: Upload Python wheels
-        uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v3
         with:
           name: python-wheel
           path: dist/*.whl
