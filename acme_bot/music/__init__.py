@@ -14,9 +14,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import logging
 import string
-from concurrent import futures
 from itertools import chain
 from math import ceil
 from random import choices
@@ -27,6 +27,9 @@ from discord.ext import commands
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.music.downloader import MusicDownloader, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
+
+
+log = logging.getLogger(__name__)
 
 
 def assemble_menu(header, entries):
@@ -114,7 +117,7 @@ class MusicModule(commands.Cog, CogFactory):
     @classmethod
     def is_available(cls):
         if which("ffmpeg") is None:
-            logging.error("Cannot load MusicModule: FFMPEG executable not found!")
+            log.error("Cannot load MusicModule: FFMPEG executable not found!")
             return False
 
         return True
@@ -137,7 +140,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def __delete_player(self, player):
         del self.players_by_code[player.access_code]
         del self.__players[player.channel_id]
-        logging.info(
+        log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
         )
@@ -148,7 +151,7 @@ class MusicModule(commands.Cog, CogFactory):
         """Leave voice channels that don't contain any other users."""
         if before.channel is not None and after.channel is None:
             if before.channel.members == [self.bot.user]:
-                logging.info(
+                log.info(
                     "Voice channel ID %s is now empty, disconnecting",
                     before.channel.id,
                 )
@@ -203,7 +206,7 @@ class MusicModule(commands.Cog, CogFactory):
             response = await self.bot.wait_for(
                 "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
             )
-        except futures.TimeoutError:
+        except asyncio.exceptions.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
             return
 
@@ -247,7 +250,7 @@ class MusicModule(commands.Cog, CogFactory):
             response = await self.bot.wait_for(
                 "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
             )
-        except futures.TimeoutError:
+        except asyncio.exceptions.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
             return
 
@@ -296,7 +299,7 @@ class MusicModule(commands.Cog, CogFactory):
                 check=pred_confirm(ctx, menu_msg),
                 timeout=self.ACTION_TIMEOUT,
             )
-        except futures.TimeoutError:
+        except asyncio.exceptions.TimeoutError:
             await menu_msg.edit(content="\u231B *Action expired.*")
             return
 
@@ -517,7 +520,7 @@ class MusicModule(commands.Cog, CogFactory):
 
                 channel_id = ctx.voice_client.channel.id
                 player = MusicPlayer(ctx, self.downloader, access_code)
-                logging.info(
+                log.info(
                     "Created a MusicPlayer instance with "
                     "access code %s for Channel ID %s",
                     access_code,

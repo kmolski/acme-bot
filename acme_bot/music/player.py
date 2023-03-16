@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
-    """Error handling wrapper for discord.py FFmpegPCMAudio."""
+    """Error handling extension for discord.py FFmpegPCMAudio."""
 
     __SUCCESSFUL_RETURN_CODES = [-9, 0]
 
@@ -54,8 +54,7 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
 
 def parse_log_entry(line):
-    """This function parses a single line of the FFMPEG's stderr output
-    and extracts information about the message."""
+    """Parse and convert a single line of FFMPEG log output."""
     ffmpeg_levels = {
         "panic": logging.CRITICAL,
         "fatal": logging.CRITICAL,
@@ -66,8 +65,7 @@ def parse_log_entry(line):
         "debug": logging.DEBUG,
     }
 
-    # This regex matches (in order) the source module's name,
-    # the level and the message of the log entry.
+    # Matches (in order) the source module name, log level and message.
     matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
 
     try:
@@ -78,8 +76,7 @@ def parse_log_entry(line):
 
 def process_ffmpeg_logs(source):
     """Redirect log messages from FFMPEG stderr to the module logger."""
-    # These log messages are expected and can be filtered out
-    rejects = ["Error in the pull function", "Will reconnect at"]
+    expected = ["Error in the pull function", "Will reconnect at"]
     # Alas, we need to perform this access to get the FFMPEG process
     # pylint: disable=protected-access
     process = source.original._process
@@ -88,8 +85,8 @@ def process_ffmpeg_logs(source):
         line = process.stderr.readline()
         if line:
             level, message, module = parse_log_entry(line.decode(errors="replace"))
-            # Redirect to the bot's log only if the message is not in the rejects
-            if all(r not in message for r in rejects):
+            # Redirect to module logger only if the logged message is not expected
+            if all(e not in message for e in expected):
                 log.log(level, "In ffmpeg module '%s': %s", module, message)
         else:
             log.debug("Log processing for ffmpeg process %s finished", process.pid)
@@ -230,7 +227,7 @@ class MusicPlayer(MusicQueue):
             if err:
                 log.error(err)
                 return
-            # Stop the if player loop is off and it played the last song in queue
+            # Stop if queue looping is off and the last song has finished playing
             if self.should_stop() and self.__state == PlayerState.PLAYING:
                 self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
