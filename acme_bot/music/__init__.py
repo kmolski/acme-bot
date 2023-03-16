@@ -36,7 +36,10 @@ def assemble_menu(header, entries):
     """Create a menu with the given header and information about the queue entries."""
     menu = header
     for index, entry in enumerate(entries):
-        menu += "\n{}. **{title}** - {uploader}".format(index, **entry)
+        minutes, seconds = get_entry_duration(entry)
+        menu += "\n{}. **{title}** ({}:{:02}) - {uploader}".format(
+            index, minutes, seconds, **entry
+        )
     return menu
 
 
