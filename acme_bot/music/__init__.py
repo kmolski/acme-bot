@@ -37,7 +37,7 @@ def assemble_menu(header, entries):
     menu = header
     for index, entry in enumerate(entries):
         minutes, seconds = get_entry_duration(entry)
-        menu += "\n{}. **{title}** ({}:{:02}) - {uploader}".format(
+        menu += "\n{}. **{title}** - {uploader} - {}:{:02}".format(
             index, minutes, seconds, **entry
         )
     return menu
