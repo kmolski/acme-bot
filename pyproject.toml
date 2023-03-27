@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "acme-bot"
-version = "0.2-dev"
+version = "0.2.0-dev"
 description = "Discord music bot with a custom shell language"
 license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
