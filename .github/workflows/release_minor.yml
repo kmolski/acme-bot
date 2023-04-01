@@ -28,7 +28,7 @@ jobs:
 
       - name: Generate release branch suffix
         id: generate-branch-name
-        run: echo "BRANCH=$(echo '${{ steps.bump-version.outputs.VERSION }}' | sed 's/\.[0-9]*$/.x/)" >> $GITHUB_OUTPUT
+        run: echo "BRANCH=$(echo '${{ steps.bump-version.outputs.VERSION }}' | sed 's/\.[0-9]*$/.x/')" >> $GITHUB_OUTPUT
 
       - name: Create release branch & tag
         uses: EndBug/add-and-commit@v9

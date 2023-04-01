@@ -1,4 +1,4 @@
-name: GitHub release minor version
+name: GitHub release patch version
 
 on:
   workflow_dispatch:
