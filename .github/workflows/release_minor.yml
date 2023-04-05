@@ -37,5 +37,7 @@ jobs:
         with:
           new_branch: "release/${{ steps.generate-branch-name.outputs.BRANCH }}"
           tag: "v${{ steps.bump-version.outputs.VERSION }}"
+          committer_name: github-actions
+          committer_email: actions@github.com
           message: Bump minor version
           add: pyproject.toml
