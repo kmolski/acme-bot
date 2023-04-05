@@ -9,6 +9,8 @@ jobs:
     if: startsWith(github.ref, 'refs/branch/release')
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - uses: actions/setup-python@v4
         with:
