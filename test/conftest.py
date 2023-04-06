@@ -3,8 +3,22 @@ from typing import Optional
 
 import pytest
 
+from acme_bot.music.queue import MusicQueue
 
-@pytest.fixture()
+
+@pytest.fixture
+def queue():
+    return MusicQueue()
+
+
+@pytest.fixture
+def queue_with_tracks():
+    queue = MusicQueue()
+    queue.extend(["one", "two"])
+    return queue
+
+
+@pytest.fixture
 def fake_ctx():
     return FakeContext([], [], [])
 

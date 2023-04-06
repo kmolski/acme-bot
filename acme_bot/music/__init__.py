@@ -179,7 +179,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         with self.__get_player(ctx) as player:
             player.stop()
-            head, tail, _ = player.queue_data()
+            head, tail, _ = player.split_view()
             await self.__delete_player(player)
         if ctx.display:
             await ctx.send("\u23CF Quitting the voice channel.")
@@ -404,7 +404,7 @@ class MusicModule(commands.Cog, CogFactory):
             The track URLs as a string.
         """
         with self.__get_player(ctx) as player:
-            head, tail, split = player.queue_data()
+            head, tail, split = player.split_view()
             if ctx.display:
                 queue_info = format_entry_lists(
                     display_entry,
@@ -432,7 +432,7 @@ class MusicModule(commands.Cog, CogFactory):
             The removed track URLs as a string.
         """
         with self.__get_player(ctx) as player:
-            head, tail, _ = player.queue_data()
+            head, tail, _ = player.split_view()
             player.clear()
             if ctx.display:
                 await ctx.send("\u2716 Queue cleared.")
