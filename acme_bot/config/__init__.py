@@ -30,7 +30,10 @@ log = logging.getLogger(__name__)
 def load_config(config_path=None):
     """Load configuration from the default and user-specified config files."""
     if config_path is not None:
+        log.debug("Loading config file: '%s'", config_path)
         load_dotenv(config_path)
+
+    log.debug("Loading config file: 'default.conf'")
     load_dotenv(join(dirname(__file__), "default.conf"))
 
 

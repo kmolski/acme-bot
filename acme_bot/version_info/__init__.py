@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 from dataclasses import dataclass
 from importlib.metadata import version
 from os.path import dirname, join
@@ -23,14 +24,18 @@ from discord.ext import commands
 from acme_bot.autoloader import CogFactory, autoloaded
 
 
+log = logging.getLogger(__name__)
+
+
 def get_commit_info_from_module():
     """Read the commit hash and date from the `commit.txt` file in this directory."""
+    path = join(dirname(__file__), "commit.txt")
     try:
-        path = join(dirname(__file__), "commit.txt")
         with open(path, encoding="utf-8") as info_file:
             commit_hash, commit_date = info_file.read().strip().split()
             return commit_hash, commit_date
-    except OSError:
+    except OSError as exc:
+        log.exception("Cannot load commit info from '%s':", path, exc_info=exc)
         return None, None
 
 

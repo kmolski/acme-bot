@@ -14,6 +14,11 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+
+
+log = logging.getLogger(__name__)
+
 
 class CogFactory:
     """Factory method implementation for discord.py cogs."""
@@ -42,6 +47,7 @@ __AUTOLOAD_MODULES = []
 def autoloaded(cls):
     """Register the cog as an automatically loadable module."""
     __AUTOLOAD_MODULES.append(cls)
+    log.debug("Class registered with @autoloaded: '%s'", cls.__name__)
     return cls
 
 
