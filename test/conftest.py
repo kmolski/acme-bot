@@ -93,8 +93,12 @@ def soundcloud_entry():
 async def stub_extractor(youtube_entry_query, youtube_playlist, soundcloud_entry):
     stub_config = {
         "https://www.youtube.com/watch?v=3SdSKZFoUa0": youtube_entry_query,
-        "https://www.youtube.com/playlist?list=000": {"entries": youtube_playlist},
+        "https://www.youtube.com/playlist?list=000": {
+            "extractor": "youtube:playlist",
+            "entries": youtube_playlist,
+        },
         "https://soundcloud.com/baz/foo": soundcloud_entry,
+        "ytsearch10:bar": {"entries": youtube_playlist},
     }
     executor = ProcessPoolExecutor(
         initializer=MusicExtractor.init_downloader,
