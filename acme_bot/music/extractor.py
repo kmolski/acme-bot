@@ -1,4 +1,4 @@
-"""This module provides track downloader for the MusicModule."""
+"""Track extractor based on YoutubeDL and multiprocessing pools."""
 #  Copyright (C) 2019-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -77,21 +77,8 @@ def filter_not_none(iterable):
     return [entry for entry in iterable if entry is not None]
 
 
-class MusicDownloader(yt_dlp.YoutubeDL):
-    """This class extracts and updates information about music tracks
-    that are found by a query or by their URLs."""
-
-    DOWNLOAD_OPTIONS = {
-        "format": "bestaudio/best",
-        "noplaylist": True,
-        "nocheckcertificate": True,
-        "ignoreerrors": True,
-        "logtostderr": False,
-        "quiet": True,
-        "no_warnings": True,
-        "default_search": "auto",
-        "source_address": "0.0.0.0",
-    }
+class MusicExtractor:
+    """Track extractor based on YoutubeDL and multiprocessing pools."""
 
     __PROCESS_COUNT = 4
     __ALLOWED_URL_EXTRACTORS = (
@@ -101,15 +88,17 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         "soundcloud:set",
     )
 
-    def __init__(self, loop):
-        super().__init__(self.DOWNLOAD_OPTIONS)
-        self.loop = loop
+    def __init__(self, downloader, loop):
+        self.__downloader = downloader
+        self.__loop = loop
 
     def __start_extractor_process(self, url):
         """Start YoutubeDL.extract_info in a separate Python process."""
         result_queue = Queue()
         process = Process(
-            target=lambda q, url: q.put(self.extract_info(url, download=False)),
+            target=lambda q, url: q.put(
+                self.__downloader.extract_info(url, download=False)
+            ),
             args=(result_queue, url),
         )
         process.start()
@@ -126,7 +115,7 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         results = []
 
         for result_queue, process in handles:
-            result = await self.loop.run_in_executor(None, result_queue.get)
+            result = await self.__loop.run_in_executor(None, result_queue.get)
             process.join()
             log.debug("Extractor process (PID %s) finished", process.pid)
 
@@ -145,7 +134,7 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         """Extract the track entries for the given search provider and query."""
         # Run the extraction in a background process
         result_queue, process = self.__start_extractor_process(provider + query)
-        results = await self.loop.run_in_executor(None, result_queue.get)
+        results = await self.__loop.run_in_executor(None, result_queue.get)
         process.join()
         log.debug("Extractor process (PID %s) finished", process.pid)
 
@@ -158,7 +147,7 @@ class MusicDownloader(yt_dlp.YoutubeDL):
         """Update a track entry in-place with a new URL and expiration time."""
         # Run the extraction in a background process
         result_queue, process = self.__start_extractor_process(entry["webpage_url"])
-        result = await self.loop.run_in_executor(None, result_queue.get)
+        result = await self.__loop.run_in_executor(None, result_queue.get)
         process.join()
         log.debug("Extractor process (PID %s) finished", process.pid)
 

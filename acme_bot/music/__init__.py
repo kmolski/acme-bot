@@ -23,9 +23,10 @@ from random import choices
 from shutil import which
 
 from discord.ext import commands
+from yt_dlp import YoutubeDL
 
 from acme_bot.autoloader import CogFactory, autoloaded
-from acme_bot.music.downloader import MusicDownloader, add_expire_time
+from acme_bot.music.extractor import MusicExtractor, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
 
 
@@ -111,6 +112,18 @@ class MusicModule(commands.Cog, CogFactory):
     ACCESS_CODE_LENGTH = 6
     ACTION_TIMEOUT = 30.0
 
+    DOWNLOAD_OPTIONS = {
+        "format": "bestaudio/best",
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": True,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
     def __init__(self, bot, downloader):
         self.bot = bot
         self.downloader = downloader
@@ -127,7 +140,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     @classmethod
     def create_cog(cls, bot):
-        downloader = MusicDownloader(bot.loop)
+        downloader = MusicExtractor(YoutubeDL(cls.DOWNLOAD_OPTIONS), bot.loop)
         return cls(bot, downloader)
 
     def __get_player(self, ctx):
