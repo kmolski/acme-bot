@@ -29,3 +29,6 @@ COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", str)
 
 # Logging subsystem
 LOG_LEVEL = ConfigProperty("LOG_LEVEL", logging.getLevelName)
+
+# Music module
+MUSIC_EXTRACTOR_MAX_WORKERS = ConfigProperty("MUSIC_EXTRACTOR_MAX_WORKERS", int)
