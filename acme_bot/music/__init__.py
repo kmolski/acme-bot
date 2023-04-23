@@ -140,6 +140,9 @@ class MusicModule(commands.Cog, CogFactory):
         extractor = MusicExtractor(executor, bot.loop)
         return cls(bot, extractor)
 
+    async def cog_unload(self):
+        self.extractor.shutdown_executor()
+
     def __get_player(self, ctx):
         """Return a MusicPlayer instance for the channel in the current context."""
         return self.__players[ctx.voice_client.channel.id]

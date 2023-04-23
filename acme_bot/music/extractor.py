@@ -18,6 +18,7 @@ import logging
 from asyncio import gather
 from base64 import b64decode
 from json import loads
+from os import getpid
 from pathlib import PurePosixPath
 from time import time
 from typing import Optional
@@ -94,6 +95,11 @@ class MusicExtractor:
     def init_downloader(cls, constructor, *args):
         """Initialize the YoutubeDL instance for the current worker process."""
         cls.__DOWNLOADER = constructor(*args)
+        log.info("Created the YoutubeDL instance for worker PID %s", getpid())
+
+    def shutdown_executor(self):
+        log.info("Shutting down pool executor for MusicExtractor")
+        self.__executor.shutdown(cancel_futures=True)
 
     async def get_entries_by_urls(self, url_list):
         """Extract the track entries from the given URLs."""
