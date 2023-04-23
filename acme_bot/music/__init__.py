@@ -162,8 +162,8 @@ class MusicModule(commands.Cog, CogFactory):
         )
         await player.disconnect()
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, _, before, after):
+    @commands.Cog.listener("on_voice_state_update")
+    async def _quit_channel_if_empty(self, _, before, after):
         """Leave voice channels that don't contain any other users."""
         if before.channel is not None and after.channel is None:
             if before.channel.members == [self.bot.user]:
