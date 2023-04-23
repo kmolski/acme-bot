@@ -98,6 +98,7 @@ class MusicExtractor:
         log.info("Created the YoutubeDL instance for worker PID %s", getpid())
 
     def shutdown_executor(self):
+        """Clean up the executor associated with this MusicExtractor."""
         log.info("Shutting down pool executor for MusicExtractor")
         self.__executor.shutdown(cancel_futures=True)
 
