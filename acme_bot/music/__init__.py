@@ -17,15 +17,17 @@
 import asyncio
 import logging
 import string
+from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
-from math import ceil
 from random import choices
 from shutil import which
 
 from discord.ext import commands
+from yt_dlp import YoutubeDL
 
 from acme_bot.autoloader import CogFactory, autoloaded
-from acme_bot.music.downloader import MusicDownloader, add_expire_time
+from acme_bot.config.properties import MUSIC_EXTRACTOR_MAX_WORKERS
+from acme_bot.music.extractor import MusicExtractor, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
 
 
@@ -36,9 +38,8 @@ def assemble_menu(header, entries):
     """Create a menu with the given header and information about the queue entries."""
     menu = header
     for index, entry in enumerate(entries):
-        minutes, seconds = get_entry_duration(entry)
-        menu += "\n{}. **{title}** - {uploader} - {}:{:02}".format(
-            index, minutes, seconds, **entry
+        menu += "\n{}. **{title}** - {uploader} - {duration_string}".format(
+            index, **entry
         )
     return menu
 
@@ -70,24 +71,16 @@ def pred_confirm(ctx, menu_msg):
     return pred
 
 
-def get_entry_duration(entry):
-    """Return the duration of an YTDL entry as a tuple of (minutes, seconds)"""
-    duration = ceil(entry["duration"])  # The YTDL duration is not always an integer
-    return duration // 60, duration % 60
-
-
-def display_entry(entry_data):
+def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
-    minutes, seconds = get_entry_duration(entry_data[1])
-    return "{}. **{title}** - {uploader} - {}:{:02}".format(
-        entry_data[0], minutes, seconds, **entry_data[1]
+    return "{}. **{title}** - {uploader} - {duration_string}".format(
+        entry[0], **entry[1]
     )
 
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    minutes, seconds = get_entry_duration(entry)
-    return "{webpage_url}    {title} - {}:{:02}".format(minutes, seconds, **entry)
+    return "{webpage_url}    {title} - {duration_string}".format(**entry)
 
 
 def format_entry_lists(fmt, *iterables, init=None):
@@ -111,9 +104,21 @@ class MusicModule(commands.Cog, CogFactory):
     ACCESS_CODE_LENGTH = 6
     ACTION_TIMEOUT = 30.0
 
-    def __init__(self, bot, downloader):
+    DOWNLOAD_OPTIONS = {
+        "format": "bestaudio/best",
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": True,
+        "logtostderr": False,
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": "auto",
+        "source_address": "0.0.0.0",
+    }
+
+    def __init__(self, bot, extractor):
         self.bot = bot
-        self.downloader = downloader
+        self.extractor = extractor
         self.__players = {}
         self.players_by_code = {}
 
@@ -127,8 +132,13 @@ class MusicModule(commands.Cog, CogFactory):
 
     @classmethod
     def create_cog(cls, bot):
-        downloader = MusicDownloader(bot.loop)
-        return cls(bot, downloader)
+        executor = ProcessPoolExecutor(
+            max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
+            initializer=MusicExtractor.init_downloader,
+            initargs=(YoutubeDL, cls.DOWNLOAD_OPTIONS),
+        )
+        extractor = MusicExtractor(executor, bot.loop)
+        return cls(bot, extractor)
 
     def __get_player(self, ctx):
         """Return a MusicPlayer instance for the channel in the current context."""
@@ -199,7 +209,7 @@ class MusicModule(commands.Cog, CogFactory):
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
-            results = await self.downloader.get_entries_by_query("ytsearch10:", query)
+            results = await self.extractor.get_entries_by_query("ytsearch10:", query)
             # Assemble and display menu
             menu_msg = await ctx.send(
                 assemble_menu("\u2049 Choose one of the following results:", results)
@@ -243,7 +253,7 @@ class MusicModule(commands.Cog, CogFactory):
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             # Get video list for query
-            results = await self.downloader.get_entries_by_query("scsearch10:", query)
+            results = await self.extractor.get_entries_by_query("scsearch10:", query)
             # Assemble and display menu
             menu_msg = await ctx.send(
                 assemble_menu("\u2049 Choose one of the following results:", results)
@@ -287,7 +297,7 @@ class MusicModule(commands.Cog, CogFactory):
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             # Get the tracks from the given URL list
-            results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
+            results = await self.extractor.get_entries_by_urls(extract_urls(url_list))
             # Assemble and display menu
             menu_msg = await ctx.send(
                 f"\u2049 Do you want to add {len(results)} tracks to the queue?"
@@ -338,7 +348,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.downloader.get_entries_by_urls(extract_urls(url_list))
+            results = await self.extractor.get_entries_by_urls(extract_urls(url_list))
         if ctx.display:
             await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
 
@@ -522,7 +532,7 @@ class MusicModule(commands.Cog, CogFactory):
                 )
 
                 channel_id = ctx.voice_client.channel.id
-                player = MusicPlayer(ctx, self.downloader, access_code)
+                player = MusicPlayer(ctx, self.extractor, access_code)
                 log.info(
                     "Created a MusicPlayer instance with "
                     "access code %s for Channel ID %s",

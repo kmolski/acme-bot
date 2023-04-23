@@ -84,7 +84,7 @@ def test_next_advances_the_queue(queue_with_tracks):
 
 
 def test_next_with_negative_offset_returns(queue_with_tracks):
-    queue_with_tracks.next_offset = -1
+    queue_with_tracks._next_offset = -1
     result = queue_with_tracks.next()
 
     assert queue_with_tracks.current() == result == "two"
@@ -92,7 +92,7 @@ def test_next_with_negative_offset_returns(queue_with_tracks):
 
 
 def test_next_with_overflow_offset_returns(queue_with_tracks):
-    queue_with_tracks.next_offset = 201
+    queue_with_tracks._next_offset = 201
     result = queue_with_tracks.next()
 
     assert queue_with_tracks.current() == result == "two"

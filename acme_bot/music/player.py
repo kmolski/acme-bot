@@ -147,7 +147,7 @@ class MusicPlayer(MusicQueue):
 
     def move(self, new_offset):
         """Moves to the track pointed at by the offset."""
-        self.next_offset = new_offset
+        self._next_offset = new_offset
         if self.__ctx.voice_client.is_playing():
             self.__ctx.voice_client.stop()
 
@@ -160,7 +160,7 @@ class MusicPlayer(MusicQueue):
         """Removes a track from the player's queue."""
         removed = super().pop(offset)
         if offset == 0:  # If the current track got removed, start playing the next one.
-            self.next_offset = 0
+            self._next_offset = 0
             self.__ctx.voice_client.stop()
         if self.is_empty():  # If the queue is now empty, stop the player.
             self.__state = PlayerState.IDLE
