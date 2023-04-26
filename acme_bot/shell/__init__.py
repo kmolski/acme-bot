@@ -65,7 +65,10 @@ async def execute_system_cmd(name, *args, stdin=None):
 
     if proc.returncode != 0:
         logging.warning(
-            "%s (PID %s) terminated with code %s", name, proc.pid, proc.returncode
+            "%s (PID %s) terminated with return code of %s",
+            name,
+            proc.pid,
+            proc.returncode,
         )
         if error_msg := stderr or stdout:
             raise commands.CommandError(str(error_msg, errors="replace"))

@@ -14,22 +14,62 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 from asyncio import run_coroutine_threadsafe
 from enum import Enum, auto
 from re import match
 from subprocess import PIPE
-from threading import Semaphore, Thread
+from threading import Lock, Thread
 from time import time
-
-import logging
 
 import discord
 from discord.ext import commands
 
 from acme_bot.music.queue import MusicQueue
 
+_FFMPEG_LOG_LEVELS = {
+    "panic": logging.CRITICAL,
+    "fatal": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warning": logging.WARNING,
+    "info": logging.INFO,
+    "verbose": logging.INFO,
+    "debug": logging.DEBUG,
+}
+_EXPECTED = ["Error in the pull function", "Will reconnect at"]
 
 log = logging.getLogger(__name__)
+
+
+def parse_log_entry(line):
+    """Parse and convert a single line of FFMPEG log output."""
+    # Matches the source module name, log level and message.
+    # e.g. [http @ 0x000000000000] [error] HTTP error 404 Not Found
+    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
+
+    try:
+        return _FFMPEG_LOG_LEVELS[matches[2]], matches[3], matches[1]
+    except (IndexError, TypeError):
+        return logging.WARNING, line, "unknown"
+
+
+def process_ffmpeg_logs(source):
+    """Redirect log messages from FFMPEG stderr to the module logger."""
+    # Alas, we need to perform this access to get the FFMPEG process
+    # pylint: disable=protected-access
+    process = source.original._process
+    log.debug("Log processing for ffmpeg (PID %s) started", process.pid)
+
+    while True:
+        line = process.stderr.readline()
+        if line:
+            level, message, module = parse_log_entry(line.decode(errors="replace"))
+            # Redirect to module logger only if the logged message is not expected
+            if all(e not in message for e in _EXPECTED):
+                log.log(level, "In ffmpeg module '%s': %s", module, message)
+        else:
+            log.debug("Log processing for ffmpeg (PID %s) finished", process.pid)
+            return
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
@@ -53,48 +93,8 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
             raise ChildProcessError(msg)
 
 
-def parse_log_entry(line):
-    """Parse and convert a single line of FFMPEG log output."""
-    ffmpeg_levels = {
-        "panic": logging.CRITICAL,
-        "fatal": logging.CRITICAL,
-        "error": logging.ERROR,
-        "warning": logging.WARNING,
-        "info": logging.INFO,
-        "verbose": logging.INFO,
-        "debug": logging.DEBUG,
-    }
-
-    # Matches (in order) the source module name, log level and message.
-    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
-
-    try:
-        return ffmpeg_levels[matches[2]], matches[3], matches[1]
-    except (IndexError, TypeError):
-        return logging.WARNING, line, "unknown"
-
-
-def process_ffmpeg_logs(source):
-    """Redirect log messages from FFMPEG stderr to the module logger."""
-    expected = ["Error in the pull function", "Will reconnect at"]
-    # Alas, we need to perform this access to get the FFMPEG process
-    # pylint: disable=protected-access
-    process = source.original._process
-
-    while True:
-        line = process.stderr.readline()
-        if line:
-            level, message, module = parse_log_entry(line.decode(errors="replace"))
-            # Redirect to module logger only if the logged message is not expected
-            if all(e not in message for e in expected):
-                log.log(level, "In ffmpeg module '%s': %s", module, message)
-        else:
-            log.debug("Log processing for ffmpeg process %s finished", process.pid)
-            return
-
-
 class PlayerState(Enum):
-    """This enum represents the current state of MusicPlayer."""
+    """State set for the MusicPlayer implementation."""
 
     IDLE = auto()
     PLAYING = auto()
@@ -105,27 +105,27 @@ class PlayerState(Enum):
 class MusicPlayer(MusicQueue):
     """This class provides a music player with a queue and some common controls."""
 
-    FFMPEG_OPTIONS = {
+    __FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
         "options": "-vn -af dynaudnorm -hide_banner -loglevel +level",
     }
 
-    def __init__(self, ctx, downloader, access_code):
+    def __init__(self, ctx, extractor, access_code):
         super().__init__()
         self.__ctx = ctx
-        self.__sem = Semaphore()
+        self.__lock = Lock()
         self.__state = PlayerState.IDLE
         self.__volume = 1.0
-        self.__downloader = downloader
+        self.__extractor = extractor
 
         self.access_code = access_code
 
     def __enter__(self):
-        self.__sem.acquire()
+        self.__lock.acquire()
         return self
 
     def __exit__(self, *_):
-        self.__sem.release()
+        self.__lock.release()
         return False
 
     @property
@@ -192,24 +192,18 @@ class MusicPlayer(MusicQueue):
         """Async function used for starting the player."""
         # Update the entry if it would expire during playback
         if time() + current["duration"] > current["expire"]:
-            await self.__downloader.update_entry(current)
+            await self.__extractor.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
-            FFmpegAudioSource(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
+            FFmpegAudioSource(current["url"], **self.__FFMPEG_OPTIONS, stderr=PIPE),
             volume=self.__volume,
         )
 
-        # Start the log parser thread
         log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
         log_parser.start()
-        log.debug("Started ffmpeg log processing thread")
 
         self.__state = PlayerState.PLAYING
-
         self.__ctx.voice_client.play(audio, after=self.__play_next)
-        await self.__ctx.send(
-            "\u25B6 Playing **{title}** by {uploader}.".format(**current)
-        )
 
     def stop(self):
         """Stop the player."""
@@ -223,7 +217,7 @@ class MusicPlayer(MusicQueue):
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""
-        with self.__sem:
+        with self.__lock:
             if err:
                 log.error(err)
                 return

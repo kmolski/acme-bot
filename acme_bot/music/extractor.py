@@ -95,11 +95,11 @@ class MusicExtractor:
     def init_downloader(cls, constructor, *args):
         """Initialize the YoutubeDL instance for the current worker process."""
         cls.__DOWNLOADER = constructor(*args)
-        log.info("Created the YoutubeDL instance for worker PID %s", getpid())
+        log.info("Created the YoutubeDL instance for worker (PID %s)", getpid())
 
     def shutdown_executor(self):
         """Clean up the executor associated with this MusicExtractor."""
-        log.info("Shutting down pool executor for MusicExtractor")
+        log.info("Shutting down ProcessPoolExecutor for MusicExtractor")
         self.__executor.shutdown(cancel_futures=True)
 
     async def get_entries_by_urls(self, url_list):
