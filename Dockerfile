@@ -23,7 +23,7 @@ RUN . /venv/bin/activate && poetry build
 FROM base AS final
 
 ENV RUNTIME_DEPS="ffmpeg grep units"
-RUN apt-get upgrade \
+RUN apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ${RUNTIME_DEPS} \
     && apt-get clean \
     && rm -rf -- /var/lib/apt/lists/*
