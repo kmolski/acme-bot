@@ -1,4 +1,4 @@
-"""This module provides a music player for the bot."""
+"""Music player based on MusicQueue and discord.py FFmpegPCMAudio."""
 #  Copyright (C) 2019-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,13 @@ from discord.ext import commands
 
 from acme_bot.music.queue import MusicQueue
 
-_FFMPEG_LOG_LEVELS = {
+__EXPECTED = [
+    "Connection reset by peer",
+    "Error in the pull function",
+    "Will reconnect at",
+]
+
+__FFMPEG_LOG_LEVELS = {
     "panic": logging.CRITICAL,
     "fatal": logging.CRITICAL,
     "error": logging.ERROR,
@@ -36,7 +42,6 @@ _FFMPEG_LOG_LEVELS = {
     "verbose": logging.INFO,
     "debug": logging.DEBUG,
 }
-_EXPECTED = ["Error in the pull function", "Will reconnect at"]
 
 log = logging.getLogger(__name__)
 
@@ -48,16 +53,14 @@ def parse_log_entry(line):
     matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
 
     try:
-        return _FFMPEG_LOG_LEVELS[matches[2]], matches[3], matches[1]
+        return __FFMPEG_LOG_LEVELS[matches[2]], matches[3], matches[1]
     except (IndexError, TypeError):
         return logging.WARNING, line, "unknown"
 
 
 def process_ffmpeg_logs(source):
     """Redirect log messages from FFMPEG stderr to the module logger."""
-    # Alas, we need to perform this access to get the FFMPEG process
-    # pylint: disable=protected-access
-    process = source.original._process
+    process = source.original._process  # pylint: disable=protected-access
     log.debug("Log processing for ffmpeg (PID %s) started", process.pid)
 
     while True:
@@ -65,8 +68,8 @@ def process_ffmpeg_logs(source):
         if line:
             level, message, module = parse_log_entry(line.decode(errors="replace"))
             # Redirect to module logger only if the logged message is not expected
-            if all(e not in message for e in _EXPECTED):
-                log.log(level, "In ffmpeg module '%s': %s", module, message)
+            if all(e not in message for e in __EXPECTED):
+                log.log(level, "ffmpeg/%s: %s", module, message)
         else:
             log.debug("Log processing for ffmpeg (PID %s) finished", process.pid)
             return
@@ -103,7 +106,11 @@ class PlayerState(Enum):
 
 
 class MusicPlayer(MusicQueue):
-    """This class provides a music player with a queue and some common controls."""
+    """
+    Music player based on MusicQueue and discord.py FFmpegPCMAudio.
+
+    Implements a finite state machine as defined by PlayerState.
+    """
 
     __FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -112,13 +119,13 @@ class MusicPlayer(MusicQueue):
 
     def __init__(self, ctx, extractor, access_code):
         super().__init__()
-        self.__ctx = ctx
         self.__lock = Lock()
         self.__state = PlayerState.IDLE
         self.__volume = 1.0
-        self.__extractor = extractor
 
-        self.access_code = access_code
+        self.__ctx = ctx
+        self.__extractor = extractor
+        self.__access_code = access_code
 
     def __enter__(self):
         self.__lock.acquire()
@@ -129,13 +136,18 @@ class MusicPlayer(MusicQueue):
         return False
 
     @property
+    def access_code(self):
+        """Return the player's access code."""
+        return self.__access_code
+
+    @property
     def channel_id(self):
-        """Provides external access to the player's voice channel ID."""
+        """Return the player's voice channel ID."""
         return self.__ctx.voice_client.channel.id
 
     @property
     def state(self):
-        """Provides external access to the state field."""
+        """Return the current player state."""
         return self.__state
 
     def clear(self):
@@ -143,7 +155,6 @@ class MusicPlayer(MusicQueue):
         super().clear()
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
-        super().clear()
 
     def move(self, new_offset):
         """Moves to the track pointed at by the offset."""
