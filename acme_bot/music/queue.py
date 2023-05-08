@@ -24,13 +24,14 @@ class MusicQueue:
         self.__index = 0
         self.__playlist = []
 
-    def append(self, new_elem):
-        """Add a single new element to the queue."""
-        self.__playlist.append(new_elem)
-
+    @property
     def current(self):
         """Return the current track."""
         return self.__playlist[self.__index]
+
+    def append(self, new_elem):
+        """Add a single new element to the queue."""
+        self.__playlist.append(new_elem)
 
     def extend(self, elem_list):
         """Append an iterable of new elements to the queue."""
@@ -70,7 +71,7 @@ class MusicQueue:
 
         self.__index = (self.__index + self._next_offset) % len(self.__playlist)
         self._next_offset = 1  # Reset next_offset to the default value of 1
-        return self.current()
+        return self.current
 
     def pop(self, offset):
         """Remove the entry at `offset` from the queue."""
