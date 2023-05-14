@@ -37,10 +37,6 @@ class MusicQueue:
         """Append an iterable of new elements to the queue."""
         self.__playlist.extend(elem_list)
 
-    def on_first(self):
-        """Return True if the current element is the first one."""
-        return self.__index == 0
-
     def is_empty(self):
         """Return True if the queue is empty."""
         return not self.__playlist

@@ -30,10 +30,6 @@ def test_extend_empty_queue(queue):
     assert queue.next() == "entries"
 
 
-def test_on_first_with_single_track(queue_with_tracks):
-    assert queue_with_tracks.on_first() is True
-
-
 def test_is_empty_with_empty_queue(queue):
     assert queue.is_empty() is True
 
@@ -80,7 +76,7 @@ def test_next_advances_the_queue(queue_with_tracks):
     result = queue_with_tracks.next()
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.on_first() is False
+    assert queue_with_tracks.split_view()[1]
 
 
 def test_next_with_negative_offset_returns(queue_with_tracks):
@@ -88,7 +84,7 @@ def test_next_with_negative_offset_returns(queue_with_tracks):
     result = queue_with_tracks.next()
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.on_first() is False
+    assert queue_with_tracks.split_view()[1]
 
 
 def test_next_with_overflow_offset_returns(queue_with_tracks):
@@ -96,7 +92,7 @@ def test_next_with_overflow_offset_returns(queue_with_tracks):
     result = queue_with_tracks.next()
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.on_first() is False
+    assert queue_with_tracks.split_view()[1]
 
 
 def test_pop_with_empty_queue_throws(queue):
