@@ -83,9 +83,9 @@ def export_entry(entry):
     return "{webpage_url}    {title} - {duration_string}".format(**entry)
 
 
-def format_entry_lists(fmt, *iterables, init=None):
+def format_entry_lists(fmt, *iterables, header=None):
     """Export entry iterables using the given formatting function."""
-    lines = [init] * (init is not None)
+    lines = [header] * (header is not None)
     for entry in chain.from_iterable(iterables):
         lines.append(fmt(entry))
     lines.append("")
@@ -423,7 +423,7 @@ class MusicModule(commands.Cog, CogFactory):
                     display_entry,
                     enumerate(head),
                     enumerate(tail, start=split),
-                    init="\U0001F3BC Current queue:",
+                    header="\U0001F3BC Current queue:",
                 )
                 await ctx.send_pages(queue_info)
             return format_entry_lists(export_entry, head, tail)
@@ -432,9 +432,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def resume(self, ctx):
         """Resume playing the current track."""
         with self.__get_player(ctx) as player:
-            msg = await player.resume()
-            if msg and ctx.display:
-                await ctx.send(msg)
+            await player.resume()
 
     @commands.command()
     async def clear(self, ctx):
@@ -472,7 +470,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         volume = int(volume)
         with self.__get_player(ctx) as player:
-            player.set_volume(volume)
+            player.volume = volume
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return volume
@@ -486,7 +484,7 @@ class MusicModule(commands.Cog, CogFactory):
             The current track URL as a string.
         """
         with self.__get_player(ctx) as player:
-            current = player.current()
+            current = player.current
             if ctx.display:
                 await ctx.send(
                     "\u25B6 Playing **{title}** by {uploader} now."

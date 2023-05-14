@@ -58,15 +58,14 @@ def parse_log_entry(line):
         return logging.WARNING, line, "unknown"
 
 
-def process_ffmpeg_logs(source):
+def parse_ffmpeg_log(process):
     """Redirect log messages from FFMPEG stderr to the module logger."""
-    process = source.original._process  # pylint: disable=protected-access
     log.debug("Log processing for ffmpeg (PID %s) started", process.pid)
 
-    while True:
-        line = process.stderr.readline()
-        if line:
-            level, message, module = parse_log_entry(line.decode(errors="replace"))
+    while process.stderr:
+        entry = process.stderr.readline()
+        if entry:
+            level, message, module = parse_log_entry(entry.decode(errors="replace"))
             # Redirect to module logger only if the logged message is not expected
             if all(e not in message for e in __EXPECTED):
                 log.log(level, "ffmpeg/%s: %s", module, message)
@@ -82,6 +81,8 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        log_parser = Thread(target=parse_ffmpeg_log, args=[self._process], daemon=True)
+        log_parser.start()
 
     def cleanup(self):
         proc = self._process
@@ -150,6 +151,21 @@ class MusicPlayer(MusicQueue):
         """Return the current player state."""
         return self.__state
 
+    @property
+    def volume(self):
+        """Return the current player volume."""
+        return self.__volume * 100
+
+    @volume.setter
+    def volume(self, volume):
+        """Set the volume of the player."""
+        if 0 <= volume <= 100:
+            self.__volume = volume / 100
+            if source := self.__ctx.voice_client.source:
+                source.volume = self.__volume
+        else:
+            raise commands.CommandError("Incorrect volume value!")
+
     def clear(self):
         """Stop the player and clear the playlist."""
         super().clear()
@@ -183,35 +199,22 @@ class MusicPlayer(MusicQueue):
         if self.__state == PlayerState.PAUSED:
             self.__state = PlayerState.PLAYING
             self.__ctx.voice_client.resume()
-            return "\u25B6 Playing **{title}** by {uploader}.".format(**self.current())
-        if self.__state == PlayerState.STOPPED:
+        elif self.__state == PlayerState.STOPPED:
             self.__state = PlayerState.PLAYING
-            await self.start_player(self.current())
+            await self.start_player(self.current)
         else:
             raise commands.CommandError("This player is not paused!")
-
-    def set_volume(self, volume):
-        """Sets the volume of the player."""
-        if 0 <= volume <= 100:
-            self.__volume = volume / 100
-            if source := self.__ctx.voice_client.source:
-                source.volume = self.__volume
-        else:
-            raise commands.CommandError("Incorrect volume value!")
 
     async def start_player(self, current):
         """Async function used for starting the player."""
         # Update the entry if it would expire during playback
-        if time() + current["duration"] > current["expire"]:
+        if "expire" not in current or time() + current["duration"] > current["expire"]:
             await self.__extractor.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
             FFmpegAudioSource(current["url"], **self.__FFMPEG_OPTIONS, stderr=PIPE),
             volume=self.__volume,
         )
-
-        log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
-        log_parser.start()
 
         self.__state = PlayerState.PLAYING
         self.__ctx.voice_client.play(audio, after=self.__play_next)
