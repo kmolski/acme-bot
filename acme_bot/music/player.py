@@ -123,6 +123,7 @@ class MusicPlayer(MusicQueue):
         self.__lock = Lock()
         self.__state = PlayerState.IDLE
         self.__volume = 1.0
+        self.__next_offset = 1
 
         self.__ctx = ctx
         self.__extractor = extractor
@@ -174,7 +175,7 @@ class MusicPlayer(MusicQueue):
 
     def move(self, new_offset):
         """Moves to the track pointed at by the offset."""
-        self._next_offset = new_offset
+        self.__next_offset = new_offset
         if self.__ctx.voice_client.is_playing():
             self.__ctx.voice_client.stop()
 
@@ -185,9 +186,9 @@ class MusicPlayer(MusicQueue):
 
     def remove(self, offset):
         """Removes a track from the player's queue."""
-        removed = super().pop(offset)
+        removed = self.pop(offset)
         if offset == 0:  # If the current track got removed, start playing the next one.
-            self._next_offset = 0
+            self.__next_offset = 0
             self.__ctx.voice_client.stop()
         if self.is_empty():  # If the queue is now empty, stop the player.
             self.__state = PlayerState.IDLE
@@ -236,7 +237,10 @@ class MusicPlayer(MusicQueue):
                 log.error(err)
                 return
             # Stop if queue looping is off and the last song has finished playing
-            if self.should_stop() and self.__state == PlayerState.PLAYING:
+            if (
+                self.should_stop(self.__next_offset)
+                and self.__state == PlayerState.PLAYING
+            ):
                 self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
                     self.__ctx.send("The queue is empty, resume to keep playing."),
@@ -244,7 +248,8 @@ class MusicPlayer(MusicQueue):
                 )
             # Advance the queue if it's not empty
             if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
-                current = super().next()
+                current = self.next(self.__next_offset)
+                self.__next_offset = 1  # Reset next_offset to the default value of 1
                 run_coroutine_threadsafe(
                     self.start_player(current), self.__ctx.bot.loop
                 )

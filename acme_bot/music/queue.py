@@ -20,7 +20,6 @@ class MusicQueue:
 
     def __init__(self):
         self.loop = True
-        self._next_offset = 1
         self.__index = 0
         self.__playlist = []
 
@@ -41,10 +40,10 @@ class MusicQueue:
         """Return True if the queue is empty."""
         return not self.__playlist
 
-    def should_stop(self):
+    def should_stop(self, offset):
         """Return True if the current element is the last one and looping is off."""
         return self.is_empty() or (
-            self.__index + self._next_offset >= len(self.__playlist) and not self.loop
+            self.__index + offset >= len(self.__playlist) and not self.loop
         )
 
     def split_view(self):
@@ -60,13 +59,12 @@ class MusicQueue:
         self.__playlist.clear()
         self.__index = 0  # Set the index to 0, as there is nothing in the queue
 
-    def next(self):
+    def next(self, offset):
         """Return the next track based on the offset."""
         if self.is_empty():
             raise IndexError("queue index out of range")
 
-        self.__index = (self.__index + self._next_offset) % len(self.__playlist)
-        self._next_offset = 1  # Reset next_offset to the default value of 1
+        self.__index = (self.__index + offset) % len(self.__playlist)
         return self.current
 
     def pop(self, offset):
