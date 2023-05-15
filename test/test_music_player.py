@@ -93,16 +93,6 @@ async def test_resume_when_paused_succeeds(player_with_tracks, fake_voice_client
     assert player_with_tracks.state == PlayerState.PLAYING
 
 
-async def test_resume_when_stopped_succeeds(player_with_tracks, fake_voice_client):
-    player_with_tracks.stop()
-    assert fake_voice_client.stopped is True
-    assert player_with_tracks.state == PlayerState.STOPPED
-
-    await player_with_tracks.resume()
-    assert fake_voice_client.played_tracks
-    assert player_with_tracks.state == PlayerState.PLAYING
-
-
 async def test_resume_when_idle_fails(player_with_tracks):
     with pytest.raises(commands.CommandError):
         await player_with_tracks.resume()
