@@ -191,7 +191,7 @@ class MusicPlayer(MusicQueue):
         if self.is_empty():  # If the queue is now empty, stop the player.
             self.__state = PlayerState.IDLE
             self.__ctx.voice_client.stop()
-        elif offset == 0:  # If the current track got removed, start playing the next one.
+        elif offset == 0:  # If the current track is removed, start playing the next.
             self.__next_offset = 0
             self.__ctx.voice_client.stop()
         return removed
