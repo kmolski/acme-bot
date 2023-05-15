@@ -2,18 +2,18 @@
 
 [[package]]
 name = "aio-pika"
-version = "9.0.5"
+version = "9.0.7"
 description = "Wrapper around the aiormq for asyncio and humans"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "aio_pika-9.0.5-py3-none-any.whl", hash = "sha256:48e90b6a901742e8078c306d3a28580a065b16b5178dd50b2399b27b1884b15d"},
-    {file = "aio_pika-9.0.5.tar.gz", hash = "sha256:096add8286019832008baa48e7463d7c0c609953011ec4c3e185f5249760e47b"},
+    {file = "aio_pika-9.0.7-py3-none-any.whl", hash = "sha256:f53059edeed5b24af5df1213014c7bef9b8200930c7527a1125b408f93a8d3a6"},
+    {file = "aio_pika-9.0.7.tar.gz", hash = "sha256:e89fc7a60c1294260defc3ec8eda5d9d75a886a3855192914baf34ab0a0fada9"},
 ]
 
 [package.dependencies]
-aiormq = ">=6.7.1,<6.8.0"
+aiormq = ">=6.7.5,<6.8.0"
 yarl = "*"
 
 [[package]]
@@ -127,14 +127,14 @@ speedups = ["Brotli", "aiodns", "cchardet"]
 
 [[package]]
 name = "aiormq"
-version = "6.7.4"
+version = "6.7.6"
 description = "Pure python AMQP asynchronous client library"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "aiormq-6.7.4-py3-none-any.whl", hash = "sha256:f4d4f3859c044b16c3a221755eca9c0393d283e286f238db343560af9d4b4728"},
-    {file = "aiormq-6.7.4.tar.gz", hash = "sha256:b5249b6bc04b21e79ffeb049667b134128e187aaaafd06d84587aead19aeddb2"},
+    {file = "aiormq-6.7.6-py3-none-any.whl", hash = "sha256:da53ec26aeecdccda8dab7947f391c9b53943f7dd45c0fc4b515971e7fc320cf"},
+    {file = "aiormq-6.7.6.tar.gz", hash = "sha256:ccf495e3da2849be37ba802389839ac7a6f18cf58f2b7d5f2cc4eb21e2dbc564"},
 ]
 
 [package.dependencies]
@@ -1567,4 +1567,4 @@ websockets = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "9ca934ac3ddc889c6dab0f265a2fa26c3aa04f7234854a09a37e8cfcf8d92781"
+content-hash = "e3f7e6867934762f455a1cc7099e86fb22d9d1b048d133f2612eed32561cdc59"
