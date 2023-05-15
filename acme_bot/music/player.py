@@ -129,11 +129,12 @@ class MusicPlayer(MusicQueue):
         self.__extractor = extractor
         self.__access_code = access_code
 
-    def __enter__(self):
-        self.__lock.acquire()
+    async def __aenter__(self):
+        loop = self.__ctx.bot.loop
+        await loop.run_in_executor(None, self.__lock.acquire)
         return self
 
-    def __exit__(self, *_):
+    async def __aexit__(self, *_):
         self.__lock.release()
         return False
 
@@ -246,6 +247,7 @@ class MusicPlayer(MusicQueue):
                     self.__ctx.send("The queue is empty, resume to keep playing."),
                     self.__ctx.bot.loop,
                 )
+                return
             # Advance the queue if it's not empty
             if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
                 current = self._next(self.__next_offset)
