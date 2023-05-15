@@ -174,30 +174,30 @@ class MusicPlayer(MusicQueue):
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
 
-    def move(self, new_offset):
-        """Moves to the track pointed at by the offset."""
-        self.__next_offset = new_offset
+    def move(self, offset):
+        """Move to the track at the given offset."""
+        self.__next_offset = offset
         if self.__ctx.voice_client.is_playing():
             self.__ctx.voice_client.stop()
 
     def pause(self):
-        """Pauses the player."""
+        """Pause the player."""
         self.__state = PlayerState.PAUSED
         self.__ctx.voice_client.pause()
 
     def remove(self, offset):
-        """Removes a track from the player's queue."""
+        """Remove a track from the player's queue."""
         removed = self._pop(offset)
-        if offset == 0:  # If the current track got removed, start playing the next one.
-            self.__next_offset = 0
-            self.__ctx.voice_client.stop()
         if self.is_empty():  # If the queue is now empty, stop the player.
             self.__state = PlayerState.IDLE
+            self.__ctx.voice_client.stop()
+        elif offset == 0:  # If the current track got removed, start playing the next one.
+            self.__next_offset = 0
             self.__ctx.voice_client.stop()
         return removed
 
     async def resume(self):
-        """Resumes the player."""
+        """Resume the player."""
         if self.__state == PlayerState.PAUSED:
             self.__state = PlayerState.PLAYING
             self.__ctx.voice_client.resume()
@@ -208,7 +208,7 @@ class MusicPlayer(MusicQueue):
             raise commands.CommandError("This player is not paused!")
 
     async def start_player(self, current):
-        """Async function used for starting the player."""
+        """Start playing the given track."""
         # Update the entry if it would expire during playback
         if "expire" not in current or time() + current["duration"] > current["expire"]:
             await self.__extractor.update_entry(current)
