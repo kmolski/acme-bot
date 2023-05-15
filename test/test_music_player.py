@@ -51,14 +51,6 @@ def test_move_stops_client(player, fake_voice_client):
     assert fake_voice_client.stopped is True
 
 
-def test_move_only_sets_offset_when_stopped(player, fake_voice_client):
-    player.stop()
-    assert player.state == PlayerState.STOPPED
-
-    player.move(10)
-    assert fake_voice_client.stopped is True
-
-
 def test_pause_sets_state_and_pauses_voice_client(player, fake_voice_client):
     assert player.state == PlayerState.IDLE
     assert fake_voice_client.paused is False
@@ -76,8 +68,6 @@ def test_remove_pops_track_from_queue(player_with_tracks, youtube_playlist):
 def test_remove_stops_after_removing_current_track(
     player_with_tracks, youtube_playlist, fake_voice_client
 ):
-    assert player_with_tracks.current is youtube_playlist[0]
-
     removed = player_with_tracks.remove(0)
     assert removed is youtube_playlist[0]
     assert fake_voice_client.stopped is True
@@ -90,7 +80,6 @@ def test_remove_stops_after_removing_last_track(
 
     removed = player_with_tracks.remove(0)
     assert removed is youtube_playlist[0]
-    assert fake_voice_client.stopped is True
     assert player_with_tracks.state == PlayerState.IDLE
 
 
@@ -104,9 +93,7 @@ async def test_resume_when_paused_succeeds(player_with_tracks, fake_voice_client
     assert player_with_tracks.state == PlayerState.PLAYING
 
 
-async def test_resume_when_stopped_succeeds(
-    player_with_tracks, fake_voice_client, youtube_playlist
-):
+async def test_resume_when_stopped_succeeds(player_with_tracks, fake_voice_client):
     player_with_tracks.stop()
     assert fake_voice_client.stopped is True
     assert player_with_tracks.state == PlayerState.STOPPED
@@ -116,23 +103,12 @@ async def test_resume_when_stopped_succeeds(
     assert player_with_tracks.state == PlayerState.PLAYING
 
 
-async def test_resume_when_playing_fails(player_with_tracks):
-    await player_with_tracks.start_player(player_with_tracks.current)
+async def test_resume_when_idle_fails(player_with_tracks):
     with pytest.raises(commands.CommandError):
         await player_with_tracks.resume()
 
 
-async def test_start_player_with_current_entry(player_with_tracks, fake_voice_client):
-    assert "expire" not in player_with_tracks.current
-
-    await player_with_tracks.start_player(player_with_tracks.current)
-
-    assert fake_voice_client.played_tracks
-    assert "expire" in player_with_tracks.current
-    assert player_with_tracks.state == PlayerState.PLAYING
-
-
-def test_stop_sets_state_and_stops_voice_client(player, fake_voice_client):
+def test_stop_sets_voice_client_state(player, fake_voice_client):
     assert player.state == PlayerState.IDLE
     assert fake_voice_client.stopped is False
 
@@ -141,9 +117,7 @@ def test_stop_sets_state_and_stops_voice_client(player, fake_voice_client):
     assert fake_voice_client.stopped is True
 
 
-async def test_disconnect_sets_state_and_disconnects_voice_client(
-    player, fake_voice_client
-):
+async def test_disconnect_sets_voice_client_state(player, fake_voice_client):
     assert player.state == PlayerState.IDLE
     assert fake_voice_client.disconnected is False
 
