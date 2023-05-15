@@ -81,19 +81,19 @@ For example:
 Pipes/compositions
 ------------------
 
-Commands can be chained together using the `|` operator.  
-Return values of previous steps are passed as the first argument to the following steps.
+Commands can be chained together using the `|` operator. The return value from
+a command before the pipe symbol is passed as the first argument to the following command.
 
 For example:
 ```
 # leave the channel and save all tracks to a file called "queue.txt"
-# the return value of `leave` is assigned to the `content` argument of `to-file`
+# the return value of `leave` is passed as the `content` argument of `to-file`
 !leave | to-file "queue.txt"
 
 # search for the word "eval" in a file named "code.py", then display
 # all matches with Python syntax highlighting and line numbers
 #
-# the return value of `enumerate` is assigned to the `data` argument of `grep`
-# the return value of `grep` is assigned to the `content` argument of `print`
+# the return value of `enumerate` is passed as the `data` argument of `grep`
+# the return value of `grep` is passed as the `content` argument of `print`
 !enumerate [code.py] | grep eval | print python
 ```
