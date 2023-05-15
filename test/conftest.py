@@ -25,7 +25,7 @@ class StubYoutubeDL:
 
 @dataclass
 class StubChannel:
-    """Stub voice channel object."""
+    """Stub discord.py voice channel object."""
 
     id: int = 123456789
 

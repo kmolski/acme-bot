@@ -28,6 +28,32 @@ class MusicQueue:
         """Return the current track."""
         return self.__playlist[self.__index]
 
+    def _clear(self):
+        """Remove all elements from the queue."""
+        self.__playlist.clear()
+        self.__index = 0  # Set the index to 0, as there is nothing in the queue
+
+    def _next(self, offset):
+        """Return the next track based on the offset."""
+        if self.is_empty():
+            raise IndexError("queue index out of range")
+
+        self.__index = (self.__index + offset) % len(self.__playlist)
+        return self.current
+
+    def _should_stop(self, offset):
+        """Return True if the current element is the last one and looping is off."""
+        return self.is_empty() or (
+            self.__index + offset >= len(self.__playlist) and not self.loop
+        )
+
+    def _pop(self, offset):
+        """Remove the entry at `offset` from the queue."""
+        if self.is_empty():
+            raise IndexError("queue index out of range")
+
+        return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
+
     def append(self, new_elem):
         """Add a single new element to the queue."""
         self.__playlist.append(new_elem)
@@ -40,12 +66,6 @@ class MusicQueue:
         """Return True if the queue is empty."""
         return not self.__playlist
 
-    def should_stop(self, offset):
-        """Return True if the current element is the last one and looping is off."""
-        return self.is_empty() or (
-            self.__index + offset >= len(self.__playlist) and not self.loop
-        )
-
     def split_view(self):
         """Return the queue head, tail and split offset."""
         return (
@@ -53,23 +73,3 @@ class MusicQueue:
             self.__playlist[: self.__index],
             len(self.__playlist) - self.__index,
         )
-
-    def clear(self):
-        """Remove all elements from the queue."""
-        self.__playlist.clear()
-        self.__index = 0  # Set the index to 0, as there is nothing in the queue
-
-    def next(self, offset):
-        """Return the next track based on the offset."""
-        if self.is_empty():
-            raise IndexError("queue index out of range")
-
-        self.__index = (self.__index + offset) % len(self.__playlist)
-        return self.current
-
-    def pop(self, offset):
-        """Remove the entry at `offset` from the queue."""
-        if self.is_empty():
-            raise IndexError("queue index out of range")
-
-        return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
