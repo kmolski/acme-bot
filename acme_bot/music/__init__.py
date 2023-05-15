@@ -30,7 +30,6 @@ from acme_bot.config.properties import MUSIC_EXTRACTOR_MAX_WORKERS
 from acme_bot.music.extractor import MusicExtractor, add_expire_time
 from acme_bot.music.player import MusicPlayer, PlayerState
 
-
 log = logging.getLogger(__name__)
 
 
@@ -83,9 +82,9 @@ def export_entry(entry):
     return "{webpage_url}    {title} - {duration_string}".format(**entry)
 
 
-def format_entry_lists(fmt, *iterables, init=None):
+def format_entry_lists(fmt, *iterables, header=None):
     """Export entry iterables using the given formatting function."""
-    lines = [init] * (init is not None)
+    lines = [header] * (header is not None)
     for entry in chain.from_iterable(iterables):
         lines.append(fmt(entry))
     lines.append("")
@@ -190,7 +189,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The deleted track URLs as a string.
         """
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.stop()
             head, tail, _ = player.split_view()
             await self.__delete_player(player)
@@ -229,7 +228,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = results[int(response.content)]
         add_expire_time(new)  # Update the entry with its expiration time
 
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.append(new)  # Add the new entry to the player's queue
 
             if player.state == PlayerState.IDLE:
@@ -273,7 +272,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = results[int(response.content)]
         add_expire_time(new)  # Update the entry with its expiration time
 
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.append(new)  # Add the new entry to the player's queue
 
             if player.state == PlayerState.IDLE:
@@ -327,7 +326,7 @@ class MusicModule(commands.Cog, CogFactory):
         if ctx.display:
             await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
 
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.extend(results)  # Add the new entries to the player's queue
 
             for elem in results:
@@ -366,7 +365,7 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to rewind (default: 1)
         """
         offset = int(offset)
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command(aliases=["next"])
@@ -378,7 +377,7 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to skip (default: 1)
         """
         offset = int(offset)
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
@@ -393,7 +392,7 @@ class MusicModule(commands.Cog, CogFactory):
             The loop parameter as a boolean.
         """
         do_loop = bool(do_loop)
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.loop = do_loop
         if ctx.display:
             msg = "on" if do_loop else "off"
@@ -403,7 +402,7 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command()
     async def pause(self, ctx):
         """Pause the player."""
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.pause()
         if ctx.display:
             await ctx.send("\u23F8 Paused.")
@@ -416,14 +415,14 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The track URLs as a string.
         """
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             head, tail, split = player.split_view()
             if ctx.display:
                 queue_info = format_entry_lists(
                     display_entry,
                     enumerate(head),
                     enumerate(tail, start=split),
-                    init="\U0001F3BC Current queue:",
+                    header="\U0001F3BC Current queue:",
                 )
                 await ctx.send_pages(queue_info)
             return format_entry_lists(export_entry, head, tail)
@@ -431,10 +430,8 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command(aliases=["resu"])
     async def resume(self, ctx):
         """Resume playing the current track."""
-        with self.__get_player(ctx) as player:
-            msg = await player.resume()
-            if msg and ctx.display:
-                await ctx.send(msg)
+        async with self.__get_player(ctx) as player:
+            await player.resume()
 
     @commands.command()
     async def clear(self, ctx):
@@ -444,7 +441,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The removed track URLs as a string.
         """
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             head, tail, _ = player.split_view()
             player.clear()
             if ctx.display:
@@ -454,7 +451,7 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command()
     async def stop(self, ctx):
         """Stop playing the current track."""
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             player.stop()
         if ctx.display:
             await ctx.send("\u23F9 Stopped.")
@@ -471,8 +468,8 @@ class MusicModule(commands.Cog, CogFactory):
             The new volume value as an integer.
         """
         volume = int(volume)
-        with self.__get_player(ctx) as player:
-            player.set_volume(volume)
+        async with self.__get_player(ctx) as player:
+            player.volume = volume
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return volume
@@ -485,8 +482,8 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The current track URL as a string.
         """
-        with self.__get_player(ctx) as player:
-            current = player.current()
+        async with self.__get_player(ctx) as player:
+            current = player.current
             if ctx.display:
                 await ctx.send(
                     "\u25B6 Playing **{title}** by {uploader} now."
@@ -506,7 +503,7 @@ class MusicModule(commands.Cog, CogFactory):
             The removed track URL as a string.
         """
         offset = int(offset)
-        with self.__get_player(ctx) as player:
+        async with self.__get_player(ctx) as player:
             removed = player.remove(offset)
             if ctx.display:
                 await ctx.send(

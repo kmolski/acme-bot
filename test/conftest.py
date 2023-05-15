@@ -5,8 +5,75 @@ from typing import Optional
 
 import pytest
 
-from acme_bot.music import MusicExtractor
+from acme_bot.music.extractor import MusicExtractor
+from acme_bot.music.player import MusicPlayer
 from acme_bot.music.queue import MusicQueue
+
+
+@dataclass
+class StubYoutubeDL:
+    """Stub YoutubeDL object for testing modules using the yt-dlp library."""
+
+    responses: dict[str, object]
+
+    def extract_info(self, url, **_):
+        try:
+            return self.responses[url]
+        except KeyError:
+            return None
+
+
+@dataclass
+class StubChannel:
+    """Stub discord.py voice channel object."""
+
+    id: int = 123456789
+
+
+@dataclass
+class FakeVoiceClient:
+    """Stub discord.py voice client object."""
+
+    played_tracks: list[object]
+    channel: StubChannel
+    source: Optional[object]
+    stopped: bool = False
+    paused: bool = False
+    disconnected: bool = False
+
+    def is_playing(self):
+        return not (self.stopped or self.paused)
+
+    def pause(self):
+        self.paused = True
+
+    def stop(self):
+        self.stopped = True
+
+    def resume(self):
+        self.paused = False
+
+    async def disconnect(self):
+        self.disconnected = True
+
+    def play(self, source, **_):
+        self.played_tracks.append(source)
+
+
+@dataclass
+class FakeContext:
+    """Fake discord.py context for testing modules that interact with the text chat."""
+
+    messages: list[str]
+    files: list[Optional[str]]
+    tts: list[bool]
+
+    voice_client: FakeVoiceClient
+
+    async def send(self, content, *, tts=False, file=None):
+        self.messages.append(content)
+        self.files.append(file)
+        self.tts.append(tts)
 
 
 @pytest.fixture
@@ -97,6 +164,7 @@ async def stub_extractor(youtube_entry_query, youtube_playlist, soundcloud_entry
             "extractor": "youtube:playlist",
             "entries": youtube_playlist,
         },
+        "https://www.youtube.com/watch?v=Ee_uujKuJM0": youtube_playlist[0],
         "https://soundcloud.com/baz/foo": soundcloud_entry,
         "ytsearch10:bar": {"entries": youtube_playlist},
     }
@@ -108,32 +176,27 @@ async def stub_extractor(youtube_entry_query, youtube_playlist, soundcloud_entry
 
 
 @pytest.fixture
-def fake_ctx():
-    return FakeContext([], [], [])
+def stub_channel():
+    return StubChannel()
 
 
-@dataclass
-class StubYoutubeDL:
-    """Stub YoutubeDL object for testing modules using the yt-dlp library."""
-
-    responses: dict[str, object]
-
-    def extract_info(self, url, **_):
-        try:
-            return self.responses[url]
-        except KeyError:
-            return None
+@pytest.fixture
+def fake_voice_client(stub_channel):
+    return FakeVoiceClient([], stub_channel, None)
 
 
-@dataclass
-class FakeContext:
-    """Fake discord.py context for testing modules that interact with the text chat."""
+@pytest.fixture
+def fake_ctx(fake_voice_client):
+    return FakeContext([], [], [], fake_voice_client)
 
-    messages: list[str]
-    files: list[Optional[str]]
-    tts: list[bool]
 
-    async def send(self, content, *, tts=False, file=None):
-        self.messages.append(content)
-        self.files.append(file)
-        self.tts.append(tts)
+@pytest.fixture
+async def player(fake_ctx, stub_extractor):
+    return MusicPlayer(fake_ctx, stub_extractor, 123456)
+
+
+@pytest.fixture
+async def player_with_tracks(fake_ctx, stub_extractor, youtube_playlist):
+    player = MusicPlayer(fake_ctx, stub_extractor, 123456)
+    player.extend(youtube_playlist)
+    return player

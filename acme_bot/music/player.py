@@ -1,4 +1,4 @@
-"""This module provides a music player for the bot."""
+"""Music player based on MusicQueue and discord.py FFmpegPCMAudio."""
 #  Copyright (C) 2019-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,64 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 from asyncio import run_coroutine_threadsafe
 from enum import Enum, auto
 from re import match
 from subprocess import PIPE
-from threading import Semaphore, Thread
+from threading import Lock, Thread
 from time import time
-
-import logging
 
 import discord
 from discord.ext import commands
 
 from acme_bot.music.queue import MusicQueue
 
+__EXPECTED = [
+    "Connection reset by peer",
+    "Error in the pull function",
+    "Will reconnect at",
+]
+
+__FFMPEG_LOG_LEVELS = {
+    "panic": logging.CRITICAL,
+    "fatal": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warning": logging.WARNING,
+    "info": logging.INFO,
+    "verbose": logging.INFO,
+    "debug": logging.DEBUG,
+}
 
 log = logging.getLogger(__name__)
+
+
+def parse_log_entry(line):
+    """Parse and convert a single line of FFMPEG log output."""
+    # Matches the source module name, log level and message.
+    # e.g. [http @ 0x000000000000] [error] HTTP error 404 Not Found
+    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
+
+    try:
+        return __FFMPEG_LOG_LEVELS[matches[2]], matches[3], matches[1]
+    except (IndexError, TypeError):
+        return logging.WARNING, line, "unknown"
+
+
+def parse_ffmpeg_log(process):
+    """Redirect log messages from FFMPEG stderr to the module logger."""
+    log.debug("Log processing for ffmpeg (PID %s) started", process.pid)
+
+    while process.stderr:
+        entry = process.stderr.readline()
+        if entry:
+            level, message, module = parse_log_entry(entry.decode(errors="replace"))
+            # Redirect to module logger only if the logged message is not expected
+            if all(e not in message for e in __EXPECTED):
+                log.log(level, "ffmpeg/%s: %s", module, message)
+        else:
+            log.debug("Log processing for ffmpeg (PID %s) finished", process.pid)
+            return
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
@@ -39,6 +81,8 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        log_parser = Thread(target=parse_ffmpeg_log, args=[self._process], daemon=True)
+        log_parser.start()
 
     def cleanup(self):
         proc = self._process
@@ -53,48 +97,8 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
             raise ChildProcessError(msg)
 
 
-def parse_log_entry(line):
-    """Parse and convert a single line of FFMPEG log output."""
-    ffmpeg_levels = {
-        "panic": logging.CRITICAL,
-        "fatal": logging.CRITICAL,
-        "error": logging.ERROR,
-        "warning": logging.WARNING,
-        "info": logging.INFO,
-        "verbose": logging.INFO,
-        "debug": logging.DEBUG,
-    }
-
-    # Matches (in order) the source module name, log level and message.
-    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
-
-    try:
-        return ffmpeg_levels[matches[2]], matches[3], matches[1]
-    except (IndexError, TypeError):
-        return logging.WARNING, line, "unknown"
-
-
-def process_ffmpeg_logs(source):
-    """Redirect log messages from FFMPEG stderr to the module logger."""
-    expected = ["Error in the pull function", "Will reconnect at"]
-    # Alas, we need to perform this access to get the FFMPEG process
-    # pylint: disable=protected-access
-    process = source.original._process
-
-    while True:
-        line = process.stderr.readline()
-        if line:
-            level, message, module = parse_log_entry(line.decode(errors="replace"))
-            # Redirect to module logger only if the logged message is not expected
-            if all(e not in message for e in expected):
-                log.log(level, "In ffmpeg module '%s': %s", module, message)
-        else:
-            log.debug("Log processing for ffmpeg process %s finished", process.pid)
-            return
-
-
 class PlayerState(Enum):
-    """This enum represents the current state of MusicPlayer."""
+    """State set for the MusicPlayer implementation."""
 
     IDLE = auto()
     PLAYING = auto()
@@ -103,84 +107,60 @@ class PlayerState(Enum):
 
 
 class MusicPlayer(MusicQueue):
-    """This class provides a music player with a queue and some common controls."""
+    """
+    Music player based on MusicQueue and discord.py FFmpegPCMAudio.
 
-    FFMPEG_OPTIONS = {
+    Implements a finite state machine as defined by PlayerState.
+    """
+
+    __FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
         "options": "-vn -af dynaudnorm -hide_banner -loglevel +level",
     }
 
-    def __init__(self, ctx, downloader, access_code):
+    def __init__(self, ctx, extractor, access_code):
         super().__init__()
-        self.__ctx = ctx
-        self.__sem = Semaphore()
+        self.__lock = Lock()
         self.__state = PlayerState.IDLE
         self.__volume = 1.0
-        self.__downloader = downloader
+        self.__next_offset = 1
 
-        self.access_code = access_code
+        self.__ctx = ctx
+        self.__extractor = extractor
+        self.__access_code = access_code
 
-    def __enter__(self):
-        self.__sem.acquire()
+    async def __aenter__(self):
+        loop = self.__ctx.bot.loop
+        await loop.run_in_executor(None, self.__lock.acquire)
         return self
 
-    def __exit__(self, *_):
-        self.__sem.release()
+    async def __aexit__(self, *_):
+        self.__lock.release()
         return False
 
     @property
+    def access_code(self):
+        """Return the player's access code."""
+        return self.__access_code
+
+    @property
     def channel_id(self):
-        """Provides external access to the player's voice channel ID."""
+        """Return the player's voice channel ID."""
         return self.__ctx.voice_client.channel.id
 
     @property
     def state(self):
-        """Provides external access to the state field."""
+        """Return the current player state."""
         return self.__state
 
-    def clear(self):
-        """Stop the player and clear the playlist."""
-        super().clear()
-        self.__state = PlayerState.IDLE
-        self.__ctx.voice_client.stop()
-        super().clear()
+    @property
+    def volume(self):
+        """Return the current player volume."""
+        return self.__volume * 100
 
-    def move(self, new_offset):
-        """Moves to the track pointed at by the offset."""
-        self._next_offset = new_offset
-        if self.__ctx.voice_client.is_playing():
-            self.__ctx.voice_client.stop()
-
-    def pause(self):
-        """Pauses the player."""
-        self.__state = PlayerState.PAUSED
-        self.__ctx.voice_client.pause()
-
-    def remove(self, offset):
-        """Removes a track from the player's queue."""
-        removed = super().pop(offset)
-        if offset == 0:  # If the current track got removed, start playing the next one.
-            self._next_offset = 0
-            self.__ctx.voice_client.stop()
-        if self.is_empty():  # If the queue is now empty, stop the player.
-            self.__state = PlayerState.IDLE
-            self.__ctx.voice_client.stop()
-        return removed
-
-    async def resume(self):
-        """Resumes the player."""
-        if self.__state == PlayerState.PAUSED:
-            self.__state = PlayerState.PLAYING
-            self.__ctx.voice_client.resume()
-            return "\u25B6 Playing **{title}** by {uploader}.".format(**self.current())
-        if self.__state == PlayerState.STOPPED:
-            self.__state = PlayerState.PLAYING
-            await self.start_player(self.current())
-        else:
-            raise commands.CommandError("This player is not paused!")
-
-    def set_volume(self, volume):
-        """Sets the volume of the player."""
+    @volume.setter
+    def volume(self, volume):
+        """Set the volume of the player."""
         if 0 <= volume <= 100:
             self.__volume = volume / 100
             if source := self.__ctx.voice_client.source:
@@ -188,28 +168,58 @@ class MusicPlayer(MusicQueue):
         else:
             raise commands.CommandError("Incorrect volume value!")
 
+    def clear(self):
+        """Stop the player and clear the playlist."""
+        self._clear()
+        self.__state = PlayerState.IDLE
+        self.__ctx.voice_client.stop()
+
+    def move(self, offset):
+        """Move to the track at the given offset."""
+        self.__next_offset = offset
+        if self.__ctx.voice_client.is_playing():
+            self.__ctx.voice_client.stop()
+
+    def pause(self):
+        """Pause the player."""
+        self.__state = PlayerState.PAUSED
+        self.__ctx.voice_client.pause()
+
+    def remove(self, offset):
+        """Remove a track from the player's queue."""
+        removed = self._pop(offset)
+        if self.is_empty():  # If the queue is now empty, stop the player.
+            self.__state = PlayerState.IDLE
+            self.__ctx.voice_client.stop()
+        elif offset == 0:  # If the current track is removed, start playing the next.
+            self.__next_offset = 0
+            self.__ctx.voice_client.stop()
+        return removed
+
+    async def resume(self):
+        """Resume the player."""
+        if self.__state == PlayerState.PAUSED:
+            self.__state = PlayerState.PLAYING
+            self.__ctx.voice_client.resume()
+        elif self.__state == PlayerState.STOPPED:
+            self.__state = PlayerState.PLAYING
+            await self.start_player(self.current)
+        else:
+            raise commands.CommandError("This player is not paused!")
+
     async def start_player(self, current):
-        """Async function used for starting the player."""
+        """Start playing the given track."""
         # Update the entry if it would expire during playback
-        if time() + current["duration"] > current["expire"]:
-            await self.__downloader.update_entry(current)
+        if "expire" not in current or time() + current["duration"] > current["expire"]:
+            await self.__extractor.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
-            FFmpegAudioSource(current["url"], **self.FFMPEG_OPTIONS, stderr=PIPE),
+            FFmpegAudioSource(current["url"], **self.__FFMPEG_OPTIONS, stderr=PIPE),
             volume=self.__volume,
         )
 
-        # Start the log parser thread
-        log_parser = Thread(target=process_ffmpeg_logs, args=[audio], daemon=True)
-        log_parser.start()
-        log.debug("Started ffmpeg log processing thread")
-
         self.__state = PlayerState.PLAYING
-
         self.__ctx.voice_client.play(audio, after=self.__play_next)
-        await self.__ctx.send(
-            "\u25B6 Playing **{title}** by {uploader}.".format(**current)
-        )
 
     def stop(self):
         """Stop the player."""
@@ -223,20 +233,25 @@ class MusicPlayer(MusicQueue):
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""
-        with self.__sem:
+        with self.__lock:
             if err:
                 log.error(err)
                 return
             # Stop if queue looping is off and the last song has finished playing
-            if self.should_stop() and self.__state == PlayerState.PLAYING:
+            if (
+                self._should_stop(self.__next_offset)
+                and self.__state == PlayerState.PLAYING
+            ):
                 self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
                     self.__ctx.send("The queue is empty, resume to keep playing."),
                     self.__ctx.bot.loop,
                 )
+                return
             # Advance the queue if it's not empty
             if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
-                current = super().next()
+                current = self._next(self.__next_offset)
+                self.__next_offset = 1  # Reset next_offset to the default value of 1
                 run_coroutine_threadsafe(
                     self.start_player(current), self.__ctx.bot.loop
                 )

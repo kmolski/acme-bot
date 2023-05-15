@@ -95,11 +95,11 @@ class MusicExtractor:
     def init_downloader(cls, constructor, *args):
         """Initialize the YoutubeDL instance for the current worker process."""
         cls.__DOWNLOADER = constructor(*args)
-        log.info("Created the YoutubeDL instance for worker PID %s", getpid())
+        log.info("Created the YoutubeDL instance for worker (PID %s)", getpid())
 
     def shutdown_executor(self):
         """Clean up the executor associated with this MusicExtractor."""
-        log.info("Shutting down pool executor for MusicExtractor")
+        log.info("Shutting down ProcessPoolExecutor for MusicExtractor")
         self.__executor.shutdown(cancel_futures=True)
 
     async def get_entries_by_urls(self, url_list):
@@ -136,11 +136,12 @@ class MusicExtractor:
 
     async def update_entry(self, entry):
         """Update a track entry in-place with a new URL and expiration time."""
+        entry_url = entry["webpage_url"]
         result = await self.__loop.run_in_executor(
-            self.__executor, self._extract_in_subprocess, entry["webpage_url"]
+            self.__executor, self._extract_in_subprocess, entry_url
         )
 
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
-            raise commands.CommandError("Incorrect track URL!")
+            raise commands.CommandError(f"Incorrect track URL: {entry_url}")
         add_expire_time(result)  # Add the expiration time to the entry
         entry.update(result)  # Update the entry in-place
