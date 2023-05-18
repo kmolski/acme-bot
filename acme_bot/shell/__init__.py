@@ -14,16 +14,15 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
+import logging
+import re
 from copy import copy
 from datetime import datetime
 from io import StringIO
 from itertools import groupby
 from random import shuffle
 from shutil import which
-
-import asyncio
-import logging
-import re
 
 from discord import File
 from discord.ext import commands
@@ -367,21 +366,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         file_name = str(file_name)
         file_content = FileContent(None, file_name)
         return await file_content.eval(ctx)
-
-    @commands.command()
-    async def tts(self, ctx, content):
-        """
-        Send the input string as a text-to-speech message.
-
-        ARGUMENTS
-            content - message content
-
-        RETURN VALUE
-            The unchanged input data as a string.
-        """
-        content = str(content)
-        await ctx.send(content, tts=True, delete_after=8.0)
-        return content
 
     @commands.command(enabled=which("grep"))
     async def grep(self, ctx, data, patterns, *opts):
