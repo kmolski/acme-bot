@@ -177,17 +177,6 @@ RETURN VALUE
     The unchanged input data as a string.
 ```
 
-### tts &lt;content&gt;
-```
-Send the input string as a text-to-speech message.
-
-ARGUMENTS
-    content - message content
-
-RETURN VALUE
-    The unchanged input data as a string.
-```
-
 ### unique/uniq &lt;data&gt;
 ```
 Remove adjacent matching lines from the input string.
