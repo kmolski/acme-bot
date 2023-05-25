@@ -21,17 +21,17 @@ from copy import copy
 from datetime import datetime
 from io import StringIO
 from itertools import groupby
+from os.path import dirname, join
 from random import shuffle
 from shutil import which
 
 from discord import File
 from discord.ext import commands
-from textx import metamodel_from_str
+from textx import metamodel_from_file
 
 from acme_bot.autoloader import CogFactory, autoloaded
 
-
-MD_BLOCK_FMT = "```\n{}\n```"
+__MD_BLOCK_FMT = "```\n{}\n```"
 
 
 def validate_options(args, regex):
@@ -164,7 +164,7 @@ class StrLiteral:
     async def eval(self, ctx, *_, **__):
         """Evaluate the string literal, printing it in a code block if necessary."""
         if ctx.display:
-            await ctx.send_pages(self.value, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(self.value, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
         return self.value
 
 
@@ -207,7 +207,7 @@ class FileContent:
                     content = str(await elem.read(), errors="replace")
                     if ctx.display:
                         await ctx.send_pages(
-                            content, fmt=MD_BLOCK_FMT, escape_md_blocks=True
+                            content, fmt=__MD_BLOCK_FMT, escape_md_blocks=True
                         )
                     return content
 
@@ -231,36 +231,8 @@ class ExprSubst:
 class ShellModule(commands.Cog, CogFactory):
     """Shell utility commands."""
 
-    GRAMMAR = r"""
-ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
-
-ExprComp: exprs=Expr ('|'- exprs=Command)* ;
-
-Expr: Command | FileContent | ExprSubst | StrLiteral;
-
-Command: name=COMMAND_NAME args*=Argument;
-
-Argument: IntLiteral | BoolLiteral | FileContent | ExprSubst | StrLiteral;
-
-StrLiteral: value=STRING | value=CODE_BLOCK | value = UNQUOTED_WORD;
-
-IntLiteral: value=NUMBER;
-
-BoolLiteral: value=BOOLEAN;
-
-FileContent: '['- name=FILE_NAME ']'- ;
-
-ExprSubst: '('- expr_seq=ExprSeq ')'- ;
-
-BOOLEAN: /(?i)(yes|true|enable|on|no|false|disable|off)\b/;
-CODE_BLOCK: /(?ms)```(?:[^`\n]*\n)?(.*?)```/;
-COMMAND_NAME: /[\w\-]+\b/;
-FILE_NAME: /[\w\-. '\"]+/;
-UNQUOTED_WORD: /(\S+)\b/;
-"""
-
-    META_MODEL = metamodel_from_str(
-        GRAMMAR,
+    META_MODEL = metamodel_from_file(
+        join(dirname(__file__), "grammar.tx"),
         classes=[
             ExprSeq,
             ExprComp,
@@ -407,7 +379,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -430,7 +402,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         ).strip()
 
         if ctx.display:
-            await ctx.send(f"\U0001F9EE {from_unit} = {output} {to_unit}.")
+            await ctx.send_pages(f"\U0001F9EE {from_unit} = {output} {to_unit}.")
         return output
 
     @commands.command()
@@ -451,7 +423,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -473,7 +445,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -513,7 +485,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         count = len(data)
 
         if ctx.display:
-            await ctx.send(f"```\n{count}\n```")
+            await ctx.send_pages(f"```\n{count}\n```")
 
         return count
 
@@ -536,7 +508,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -555,7 +527,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(sorted(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -574,7 +546,7 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(line for line, _ in groupby(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -594,6 +566,6 @@ UNQUOTED_WORD: /(\S+)\b/;
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output

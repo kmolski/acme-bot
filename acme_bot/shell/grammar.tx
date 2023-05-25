@@ -1,0 +1,25 @@
+ExprSeq: expr_comps=ExprComp ('&&'- expr_comps=ExprComp)* ;
+
+ExprComp: exprs=Expr ('|'- exprs=Command)* ;
+
+Expr: Command | FileContent | ExprSubst | StrLiteral;
+
+Command: name=COMMAND_NAME args*=Argument;
+
+Argument: IntLiteral | BoolLiteral | FileContent | ExprSubst | StrLiteral;
+
+StrLiteral: value=STRING | value=CODE_BLOCK | value = UNQUOTED_WORD;
+
+IntLiteral: value=NUMBER;
+
+BoolLiteral: value=BOOLEAN;
+
+FileContent: '['- name=FILE_NAME ']'- ;
+
+ExprSubst: '('- expr_seq=ExprSeq ')'- ;
+
+BOOLEAN: /(?i)(yes|true|enable|on|no|false|disable|off)\b/;
+CODE_BLOCK: /(?ms)```(?:[^`\n]*\n)?(.*?)```/;
+COMMAND_NAME: /[\w\-]+\b/;
+FILE_NAME: /[\w\-. '\"]+/;
+UNQUOTED_WORD: /(\S+)\b/;
