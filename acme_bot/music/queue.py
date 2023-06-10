@@ -28,10 +28,30 @@ class MusicQueue:
         """Return the current track."""
         return self.__playlist[self.__index]
 
+    def append(self, new_elem):
+        """Add a single new element to the queue."""
+        self.__playlist.append(new_elem)
+
+    def extend(self, elem_list):
+        """Append an iterable of new elements to the queue."""
+        self.__playlist.extend(elem_list)
+
+    def is_empty(self):
+        """Return True if the queue is empty."""
+        return not self.__playlist
+
+    def split_view(self):
+        """Return the queue head, tail and split offset."""
+        return (
+            self.__playlist[self.__index :],
+            self.__playlist[: self.__index],
+            len(self.__playlist) - self.__index,
+        )
+
     def _clear(self):
         """Remove all elements from the queue."""
         self.__playlist.clear()
-        self.__index = 0  # Set the index to 0, as there is nothing in the queue
+        self.__index = 0  # Index of zero will point at the first appended track
 
     def _next(self, offset):
         """Return the next track based on the offset."""
@@ -53,23 +73,3 @@ class MusicQueue:
             raise IndexError("queue index out of range")
 
         return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
-
-    def append(self, new_elem):
-        """Add a single new element to the queue."""
-        self.__playlist.append(new_elem)
-
-    def extend(self, elem_list):
-        """Append an iterable of new elements to the queue."""
-        self.__playlist.extend(elem_list)
-
-    def is_empty(self):
-        """Return True if the queue is empty."""
-        return not self.__playlist
-
-    def split_view(self):
-        """Return the queue head, tail and split offset."""
-        return (
-            self.__playlist[self.__index :],
-            self.__playlist[: self.__index],
-            len(self.__playlist) - self.__index,
-        )

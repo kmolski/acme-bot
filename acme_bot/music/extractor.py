@@ -36,7 +36,6 @@ def add_expire_time(entry):
     """Update the entry with its expiration time (kept as a Unix timestamp)."""
     try:
         url = urlparse(entry["url"])
-
         if entry["extractor"] == "youtube":
             if url.query:
                 # Usually the expiration time is in the `expire` part of the query
@@ -86,10 +85,6 @@ class MusicExtractor:
     def __init__(self, executor, loop):
         self.__executor = executor
         self.__loop = loop
-
-    @classmethod
-    def _extract_in_subprocess(cls, url):
-        return cls.__DOWNLOADER.extract_info(url, download=False)
 
     @classmethod
     def init_downloader(cls, constructor, *args):
@@ -143,5 +138,9 @@ class MusicExtractor:
 
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
             raise commands.CommandError(f"Incorrect track URL: {entry_url}")
-        add_expire_time(result)  # Add the expiration time to the entry
+        add_expire_time(result)
         entry.update(result)  # Update the entry in-place
+
+    @classmethod
+    def _extract_in_subprocess(cls, url):
+        return cls.__DOWNLOADER.extract_info(url, download=False)
