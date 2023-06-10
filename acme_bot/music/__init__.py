@@ -22,6 +22,7 @@ from itertools import chain
 from random import choices
 from shutil import which
 
+from discord import Embed
 from discord.ext import commands
 from yt_dlp import YoutubeDL
 
@@ -478,10 +479,15 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__get_player(ctx) as player:
             current = player.current
             if ctx.display:
-                await ctx.send_pages(
-                    "\u25B6 Playing **{title}** by {uploader} now."
-                    "\n{webpage_url}".format(**current)
+                embed = Embed(
+                    title=f"\u25B6 Now playing: {current['title']}",
+                    description=f"by {current['uploader']}",
+                    color=0xFF0000,
+                    url=current["webpage_url"],
                 )
+                if "thumbnail" in current:
+                    embed.set_thumbnail(url=current["thumbnail"])
+                await ctx.send(embed=embed)
             return export_entry(current)
 
     @commands.command(aliases=["remo"])
