@@ -210,10 +210,8 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            # Get video list for query
             results = await self.extractor.get_entries_by_query("ytsearch10:", query)
-            # Assemble and display menu
-            menu_msg = await ctx.send(
+            menu_msg = await ctx.send_pages(
                 assemble_menu("\u2049 Choose one of the following results:", results)
             )
 
@@ -226,16 +224,15 @@ class MusicModule(commands.Cog, CogFactory):
             return
 
         new = results[int(response.content)]
-        add_expire_time(new)  # Update the entry with its expiration time
+        add_expire_time(new)
 
         async with self.__get_player(ctx) as player:
-            player.append(new)  # Add the new entry to the player's queue
+            player.append(new)
 
             if player.state == PlayerState.IDLE:
-                # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
             elif ctx.display:
-                await ctx.send(
+                await ctx.send_pages(
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
 
@@ -254,10 +251,8 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            # Get video list for query
             results = await self.extractor.get_entries_by_query("scsearch10:", query)
-            # Assemble and display menu
-            menu_msg = await ctx.send(
+            menu_msg = await ctx.send_pages(
                 assemble_menu("\u2049 Choose one of the following results:", results)
             )
 
@@ -270,16 +265,15 @@ class MusicModule(commands.Cog, CogFactory):
             return
 
         new = results[int(response.content)]
-        add_expire_time(new)  # Update the entry with its expiration time
+        add_expire_time(new)
 
         async with self.__get_player(ctx) as player:
-            player.append(new)  # Add the new entry to the player's queue
+            player.append(new)
 
             if player.state == PlayerState.IDLE:
-                # If the player is not playing, paused or stopped, start playing
                 await player.start_player(new)
             elif ctx.display:
-                await ctx.send(
+                await ctx.send_pages(
                     "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
                 )
 
@@ -298,13 +292,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            # Get the tracks from the given URL list
             results = await self.extractor.get_entries_by_urls(extract_urls(url_list))
-            # Assemble and display menu
             menu_msg = await ctx.send(
                 f"\u2049 Do you want to add {len(results)} tracks to the queue?"
             )
-            # Add the reactions used to confirm or cancel the action
+            # Add reactions to confirm or cancel the action
             await menu_msg.add_reaction("\u2714")
             await menu_msg.add_reaction("\u274C")
 
@@ -327,13 +319,12 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
 
         async with self.__get_player(ctx) as player:
-            player.extend(results)  # Add the new entries to the player's queue
+            for track in results:
+                add_expire_time(track)
+            player.extend(results)
 
-            for elem in results:
-                add_expire_time(elem)  # Update the new entry with its expiration time
-                if player.state == PlayerState.IDLE:
-                    # If the player is not playing, paused or stopped, start playing
-                    await player.start_player(elem)
+            if player.state == PlayerState.IDLE:
+                await player.start_player(results[0])
 
         return format_entry_lists(export_entry, results)
 
@@ -485,7 +476,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__get_player(ctx) as player:
             current = player.current
             if ctx.display:
-                await ctx.send(
+                await ctx.send_pages(
                     "\u25B6 Playing **{title}** by {uploader} now."
                     "\n{webpage_url}".format(**current)
                 )
@@ -506,7 +497,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__get_player(ctx) as player:
             removed = player.remove(offset)
             if ctx.display:
-                await ctx.send(
+                await ctx.send_pages(
                     "\u2796 **{title}** by {uploader} "
                     "removed from the playlist.".format(**removed)
                 )

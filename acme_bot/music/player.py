@@ -188,10 +188,10 @@ class MusicPlayer(MusicQueue):
     def remove(self, offset):
         """Remove a track from the player's queue."""
         removed = self._pop(offset)
-        if self.is_empty():  # If the queue is now empty, stop the player.
+        if self.is_empty():
             self.__state = PlayerState.IDLE
             self.__ctx.voice_client.stop()
-        elif offset == 0:  # If the current track is removed, start playing the next.
+        elif offset == 0:  # Current track was removed, start playing the next one.
             self.__next_offset = 0
             self.__ctx.voice_client.stop()
         return removed
@@ -237,21 +237,19 @@ class MusicPlayer(MusicQueue):
             if err:
                 log.error(err)
                 return
-            # Stop if queue looping is off and the last song has finished playing
             if (
                 self._should_stop(self.__next_offset)
                 and self.__state == PlayerState.PLAYING
             ):
                 self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
-                    self.__ctx.send("The queue is empty, resume to keep playing."),
+                    self.__ctx.send("\u2757 The queue is empty, stopping the player."),
                     self.__ctx.bot.loop,
                 )
                 return
-            # Advance the queue if it's not empty
             if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
                 current = self._next(self.__next_offset)
-                self.__next_offset = 1  # Reset next_offset to the default value of 1
+                self.__next_offset = 1  # Set next_offset back to the default value of 1
                 run_coroutine_threadsafe(
                     self.start_player(current), self.__ctx.bot.loop
                 )
