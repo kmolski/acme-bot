@@ -194,7 +194,9 @@ class MusicModule(commands.Cog, CogFactory):
             head, tail, _ = player.split_view()
             await self.__delete_player(player)
         if ctx.display:
-            await ctx.send("\u23CF Quitting the voice channel.")
+            await ctx.send(
+                f"\u23CF Quitting voice channel **{ctx.voice_client.channel.name}**."
+            )
         return format_entry_lists(export_entry, head, tail)
 
     @commands.command()
