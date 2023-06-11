@@ -115,6 +115,7 @@ class MusicModule(commands.Cog, CogFactory):
         "default_search": "auto",
         "source_address": "0.0.0.0",
     }
+    EMBED_COLOR = 0xFF0000
 
     def __init__(self, bot, extractor):
         self.bot = bot
@@ -192,7 +193,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         async with self.__get_player(ctx) as player:
             player.stop()
-            head, tail, _ = player.split_view()
+            head, tail = player.get_tracks()
             await self.__delete_player(player)
         if ctx.display:
             await ctx.send(
@@ -410,15 +411,19 @@ class MusicModule(commands.Cog, CogFactory):
             The track URLs as a string.
         """
         async with self.__get_player(ctx) as player:
-            head, tail, split = player.split_view()
+            head, tail = player.get_tracks()
             if ctx.display:
-                queue_info = format_entry_lists(
-                    display_entry,
-                    enumerate(head),
-                    enumerate(tail, start=split),
-                    header="\U0001F3BC Current queue:",
+                channel_name = ctx.voice_client.channel.name
+                embed = Embed(
+                    title=f"\U0001F3BC Track queue for channel '{channel_name}'",
+                    description=f"Total tracks: {len(head) + len(tail)}",
+                    color=self.EMBED_COLOR,
                 )
-                await ctx.send_pages(queue_info)
+
+                entries = (head + (tail if player.loop else []))[:10]
+                for entry in enumerate(entries, start=1):
+                    embed.add_field(name="", value=display_entry(entry), inline=False)
+                await ctx.send(embed=embed)
             return format_entry_lists(export_entry, head, tail)
 
     @commands.command(aliases=["resu"])
@@ -436,7 +441,7 @@ class MusicModule(commands.Cog, CogFactory):
             The removed track URLs as a string.
         """
         async with self.__get_player(ctx) as player:
-            head, tail, _ = player.split_view()
+            head, tail = player.get_tracks()
             player.clear()
             if ctx.display:
                 await ctx.send("\u2716 Queue cleared.")
@@ -482,7 +487,7 @@ class MusicModule(commands.Cog, CogFactory):
                 embed = Embed(
                     title=f"\u25B6 Now playing: {current['title']}",
                     description=f"by {current['uploader']}",
-                    color=0xFF0000,
+                    color=self.EMBED_COLOR,
                     url=current["webpage_url"],
                 )
                 if "thumbnail" in current:

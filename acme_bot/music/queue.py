@@ -40,12 +40,11 @@ class MusicQueue:
         """Return True if the queue is empty."""
         return not self.__playlist
 
-    def split_view(self):
-        """Return the queue head, tail and split offset."""
+    def get_tracks(self):
+        """Return the queue head and tail."""
         return (
             self.__playlist[self.__index :],
             self.__playlist[: self.__index],
-            len(self.__playlist) - self.__index,
         )
 
     def _clear(self):
