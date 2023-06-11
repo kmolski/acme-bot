@@ -57,7 +57,7 @@ class MusicQueue:
         if self.is_empty():
             raise IndexError("queue index out of range")
 
-        self.__index = (self.__index + offset) % len(self.__playlist)
+        self.__index = self.__next_index(offset)
         return self.current
 
     def _should_stop(self, offset):
@@ -71,4 +71,7 @@ class MusicQueue:
         if self.is_empty():
             raise IndexError("queue index out of range")
 
-        return self.__playlist.pop((self.__index + offset) % len(self.__playlist))
+        return self.__playlist.pop(self.__next_index(offset))
+
+    def __next_index(self, offset):
+        return (self.__index + offset) % len(self.__playlist)
