@@ -22,7 +22,7 @@ from itertools import chain
 from random import choices
 from shutil import which
 
-from discord import Embed
+from discord import Embed, ButtonStyle, ui
 from discord.ext import commands
 from yt_dlp import YoutubeDL
 
@@ -58,19 +58,6 @@ def pred_select(ctx, results):
     return pred
 
 
-def pred_confirm(ctx, menu_msg):
-    """Create a predicate function for use with wait_for and confirmations."""
-
-    def pred(resp, user):
-        return (
-            resp.message.id == menu_msg.id
-            and user == ctx.author
-            and resp.emoji in ("\u2714", "\u274C")
-        )
-
-    return pred
-
-
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     return "{}. **{title}** - {uploader} - {duration_string}".format(
@@ -83,18 +70,44 @@ def export_entry(entry):
     return "{webpage_url}    {title} - {duration_string}".format(**entry)
 
 
-def format_entry_lists(fmt, *iterables, header=None):
-    """Export entry iterables using the given formatting function."""
-    lines = [header] * (header is not None)
-    for entry in chain.from_iterable(iterables):
-        lines.append(fmt(entry))
+def export_entry_list(*iterables):
+    """Export entry iterables using export_entry."""
+    lines = [export_entry(entry) for entry in chain.from_iterable(iterables)]
     lines.append("")
     return "\n".join(lines)
 
 
-def extract_urls(urls):
+def strip_urls(urls):
     """Strip entry strings from their title and duration, leaving the URL."""
     return (line.split()[0] for line in urls.split("\n") if line)
+
+
+class ConfirmAddTracks(ui.View):
+    def __init__(self, player, results):
+        super().__init__()
+        self.__player = player
+        self.__results = results
+
+    @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
+    async def add_to_queue(self, interaction, _):
+        await interaction.message.edit(
+            content=f"\u2795 {len(self.__results)} tracks added to the queue.",
+            view=None,
+        )
+
+        async with self.__player as player:
+            for track in self.__results:
+                add_expire_time(track)
+            player.extend(self.__results)
+
+            if player.state == PlayerState.IDLE:
+                await player.start_player(self.__results[0])
+
+    @ui.button(label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary)
+    async def cancel(self, interaction, _):
+        await interaction.message.edit(
+            content="\U0001F6AB *Action cancelled.*", view=None
+        )
 
 
 @autoloaded
@@ -102,7 +115,7 @@ class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
-    ACTION_TIMEOUT = 30.0
+    ACTION_TIMEOUT = 60.0
 
     DOWNLOAD_OPTIONS = {
         "format": "bestaudio/best",
@@ -199,7 +212,7 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.send(
                 f"\u23CF Quitting voice channel **{ctx.voice_client.channel.name}**."
             )
-        return format_entry_lists(export_entry, head, tail)
+        return export_entry_list(head, tail)
 
     @commands.command()
     async def play(self, ctx, *query):
@@ -296,41 +309,14 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(extract_urls(url_list))
-            menu_msg = await ctx.send(
-                f"\u2049 Do you want to add {len(results)} tracks to the queue?"
-            )
-            # Add reactions to confirm or cancel the action
-            await menu_msg.add_reaction("\u2714")
-            await menu_msg.add_reaction("\u274C")
+            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
 
-        try:
-            response, _ = await self.bot.wait_for(
-                "reaction_add",
-                check=pred_confirm(ctx, menu_msg),
-                timeout=self.ACTION_TIMEOUT,
-            )
-        except asyncio.exceptions.TimeoutError:
-            await menu_msg.edit(content="\u231B *Action expired.*")
-            return
-
-        if response.emoji == "\u274C":
-            await menu_msg.edit(content="\u274C *Action cancelled.*")
-            return
-
-        await menu_msg.delete()
-        if ctx.display:
-            await ctx.send(f"\u2795 {len(results)} tracks added to the queue.")
-
-        async with self.__get_player(ctx) as player:
-            for track in results:
-                add_expire_time(track)
-            player.extend(results)
-
-            if player.state == PlayerState.IDLE:
-                await player.start_player(results[0])
-
-        return format_entry_lists(export_entry, results)
+        await ctx.send(
+            f"\u2705 Extracted {len(results)} tracks.",
+            view=ConfirmAddTracks(self.__get_player(ctx), results),
+            delete_after=self.ACTION_TIMEOUT,
+        )
+        return export_entry_list(results)
 
     @commands.command(name="list-urls", aliases=["lurl"])
     async def list_urls(self, ctx, *urls):
@@ -345,11 +331,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(extract_urls(url_list))
+            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
         if ctx.display:
             await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
 
-        return format_entry_lists(export_entry, results)
+        return export_entry_list(results)
 
     @commands.command(aliases=["prev"])
     async def previous(self, ctx, offset: int = 1):
@@ -424,7 +410,7 @@ class MusicModule(commands.Cog, CogFactory):
                 for entry in enumerate(entries, start=1):
                     embed.add_field(name="", value=display_entry(entry), inline=False)
                 await ctx.send(embed=embed)
-            return format_entry_lists(export_entry, head, tail)
+            return export_entry_list(head, tail)
 
     @commands.command(aliases=["resu"])
     async def resume(self, ctx):
@@ -445,7 +431,7 @@ class MusicModule(commands.Cog, CogFactory):
             player.clear()
             if ctx.display:
                 await ctx.send("\u2716 Queue cleared.")
-            return format_entry_lists(export_entry, head, tail)
+            return export_entry_list(head, tail)
 
     @commands.command()
     async def stop(self, ctx):
