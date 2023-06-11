@@ -83,6 +83,8 @@ def strip_urls(urls):
 
 
 class ConfirmAddTracks(ui.View):
+    """Confirm/cancel menu view for the play-url command."""
+
     def __init__(self, player, results):
         super().__init__()
         self.__player = player
@@ -90,6 +92,7 @@ class ConfirmAddTracks(ui.View):
 
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
+        """Confirm adding tracks to the player."""
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
             view=None,
@@ -105,6 +108,7 @@ class ConfirmAddTracks(ui.View):
 
     @ui.button(label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary)
     async def cancel(self, interaction, _):
+        """Cancel adding tracks to the player."""
         await interaction.message.edit(
             content="\U0001F6AB *Action cancelled.*", view=None
         )
