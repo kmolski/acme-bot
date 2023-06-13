@@ -90,7 +90,7 @@ class MusicExtractor:
     def init_downloader(cls, constructor, *args):
         """Initialize the YoutubeDL instance for the current worker process."""
         cls.__DOWNLOADER = constructor(*args)
-        log.info("Created the YoutubeDL instance for worker (PID %s)", getpid())
+        log.info("Created YoutubeDL instance for worker (PID %s)", getpid())
 
     def shutdown_executor(self):
         """Clean up the executor associated with this MusicExtractor."""
