@@ -34,35 +34,19 @@ from acme_bot.music.player import MusicPlayer, PlayerState
 log = logging.getLogger(__name__)
 
 
-def assemble_menu(header, entries):
-    """Create a menu with the given header and information about the queue entries."""
-    menu = header
-    for index, entry in enumerate(entries):
-        menu += "\n{}. **{title}** - {uploader} - {duration_string}".format(
-            index, **entry
-        )
-    return menu
-
-
-def pred_select(ctx, results):
-    """Create a predicate function for use with wait_for and selections from a list."""
-
-    def pred(msg):
-        return (
-            msg.channel == ctx.channel
-            and msg.author == ctx.author
-            and msg.content.isnumeric()
-            and (0 <= int(msg.content) < len(results))
-        )
-
-    return pred
-
-
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     return "{}. **{title}** - {uploader} - {duration_string}".format(
         entry[0], **entry[1]
     )
+
+
+def assemble_menu(header, entries):
+    """Create a menu with the given header and information about the queue entries."""
+    menu = header
+    for entry in enumerate(entries, start=1):
+        menu += f"\n{display_entry(entry)}"
+    return menu
 
 
 def export_entry(entry):
