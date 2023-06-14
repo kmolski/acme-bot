@@ -95,6 +95,7 @@ class ConfirmAddTracks(ui.View):
         """Confirm adding tracks to the player."""
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
+            delete_after=None,
             view=None,
         )
 
