@@ -65,15 +65,21 @@ class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
     messages: list[str]
-    files: list[Optional[str]]
     tts: list[bool]
+    files: list[Optional[str]]
+    delete_after: list[float]
+    views: list[object]
 
     voice_client: FakeVoiceClient
 
-    async def send(self, content, *, tts=False, file=None):
+    async def send(
+        self, content, *, tts=False, file=None, delete_after=None, view=None
+    ):
         self.messages.append(content)
-        self.files.append(file)
         self.tts.append(tts)
+        self.files.append(file)
+        self.delete_after.append(delete_after)
+        self.views.append(view)
 
 
 @pytest.fixture
@@ -187,7 +193,7 @@ def fake_voice_client(stub_channel):
 
 @pytest.fixture
 def fake_ctx(fake_voice_client):
-    return FakeContext([], [], [], fake_voice_client)
+    return FakeContext([], [], [], [], [], fake_voice_client)
 
 
 @pytest.fixture
