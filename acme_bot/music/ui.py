@@ -20,8 +20,8 @@ from acme_bot.music.extractor import add_expire_time
 from acme_bot.music.player import PlayerState
 
 
-class View(ui.View):
-    """Generic view with a timeout and interaction user verification."""
+class VerifiedView(ui.View):
+    """Generic view with interaction user verification."""
 
     ACTION_TIMEOUT = 60.0
 
@@ -33,7 +33,7 @@ class View(ui.View):
         return interaction.user == self.__user
 
 
-class ConfirmAddTracks(View):
+class ConfirmAddTracks(VerifiedView):
     """Confirm/cancel menu view for the play-url command."""
 
     def __init__(self, user, player, results):
@@ -66,7 +66,7 @@ class ConfirmAddTracks(View):
         )
 
 
-class SelectTrack(View):
+class SelectTrack(VerifiedView):
     """Select menu view for the play/play-snd command."""
 
     def __init__(self, user, player, return_queue, results):
