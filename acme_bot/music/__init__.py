@@ -510,11 +510,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         offset = int(offset)
         async with self.__get_player(ctx) as player:
-            removed = player.remove(offset)
+            removed = player.remove(offset - 1 if offset >= 1 else offset)
             if ctx.display:
                 await ctx.send_pages(
                     "\u2796 **{title}** by {uploader} "
-                    "removed from the playlist.".format(**removed)
+                    "removed from the queue.".format(**removed)
                 )
             return export_entry(removed)
 
