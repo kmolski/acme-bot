@@ -136,13 +136,11 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.Cog.listener("on_voice_state_update")
     async def _quit_channel_if_empty(self, _, before, after):
         """Leave voice channels that don't contain any human users."""
-        if before.channel is not None and after.channel is None:
-            if all(user.bot for user in before.channel.members):
-                log.info(
-                    "Voice channel ID %s is now empty, disconnecting",
-                    before.channel.id,
-                )
-                player = self.__players[before.channel.id]
+        voice = before.channel
+        if voice is not None and after.channel is None:
+            if voice.id in self.__players and all(user.bot for user in voice.members):
+                log.info("Voice channel ID %s is now empty, disconnecting", voice.id)
+                player = self.__players[voice.id]
                 await self.__delete_player(player)
 
     @commands.command()

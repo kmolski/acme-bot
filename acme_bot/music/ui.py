@@ -62,7 +62,7 @@ class ConfirmAddTracks(VerifiedView):
     async def cancel(self, interaction, _):
         """Cancel adding tracks to the player."""
         await interaction.message.edit(
-            content="\U0001F6AB *Action cancelled.*", view=None
+            content="\U0001F6AB *Action canceled.*", view=None
         )
 
 
@@ -106,7 +106,7 @@ class SelectTrack(VerifiedView):
 
         async def button_pressed(interaction):
             await interaction.message.edit(
-                content="\U0001F6AB *Action cancelled.*", view=None
+                content="\U0001F6AB *Action canceled.*", view=None
             )
 
         button = ui.Button(
