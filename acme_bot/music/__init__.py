@@ -69,10 +69,16 @@ def strip_urls(urls):
 class ConfirmAddTracks(ui.View):
     """Confirm/cancel menu view for the play-url command."""
 
-    def __init__(self, player, results):
-        super().__init__()
+    ACTION_TIMEOUT = 60.0
+
+    def __init__(self, user, player, results):
+        super().__init__(timeout=self.ACTION_TIMEOUT)
+        self.__user = user
         self.__player = player
         self.__results = results
+
+    async def interaction_check(self, interaction):
+        return interaction.user == self.__user
 
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
@@ -102,15 +108,21 @@ class ConfirmAddTracks(ui.View):
 class SelectTrack(ui.View):
     """Select menu view for the play/play-snd command."""
 
-    def __init__(self, player, return_queue, results):
-        super().__init__()
+    ACTION_TIMEOUT = 60.0
 
+    def __init__(self, user, player, return_queue, results):
+        super().__init__(timeout=self.ACTION_TIMEOUT)
+
+        self.__user = user
         self.__player = player
         self.__return_queue = return_queue
 
         for index, new in enumerate(results, start=1):
             self.add_select_button(index, new)
         self.add_cancel_button()
+
+    async def interaction_check(self, interaction):
+        return interaction.user == self.__user
 
     def add_select_button(self, index, new):
         """Create a button that adds the given track to the player."""
@@ -271,8 +283,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = asyncio.Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(self.__get_player(ctx), new, results),
-            delete_after=self.ACTION_TIMEOUT,
+            view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
         )
 
         new_entry = await new.get()
@@ -296,8 +307,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = asyncio.Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(self.__get_player(ctx), new, results),
-            delete_after=self.ACTION_TIMEOUT,
+            view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
         )
 
         new_entry = await new.get()
@@ -320,8 +330,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         await ctx.send(
             f"\u2705 Extracted {len(results)} tracks.",
-            view=ConfirmAddTracks(self.__get_player(ctx), results),
-            delete_after=self.ACTION_TIMEOUT,
+            view=ConfirmAddTracks(ctx.author, self.__get_player(ctx), results),
         )
         return export_entry_list(results)
 
