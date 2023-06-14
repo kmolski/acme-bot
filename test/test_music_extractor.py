@@ -1,4 +1,4 @@
-from acme_bot.music import add_expire_time
+from acme_bot.music.extractor import add_expire_time
 
 
 def test_add_expire_time_with_youtube_query(youtube_entry_query):
