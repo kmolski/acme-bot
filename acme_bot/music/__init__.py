@@ -115,6 +115,56 @@ class ConfirmAddTracks(ui.View):
         )
 
 
+class SelectTrack(ui.View):
+    """Select menu view for the play/play-snd command."""
+
+    def __init__(self, player, return_queue, results):
+        super().__init__()
+
+        self.__player = player
+        self.__return_queue = return_queue
+
+        for index, new in enumerate(results, start=1):
+            self.add_select_button(index, new)
+        self.add_cancel_button()
+
+    def add_select_button(self, index, new):
+        """Create a button that adds the given track to the player."""
+
+        async def button_pressed(interaction):
+            add_expire_time(new)
+            async with self.__player as player:
+                player.append(new)
+
+                if player.state == PlayerState.IDLE:
+                    msg = "\u2795 **{title}** by {uploader} added to the queue.".format(
+                        **new
+                    )
+                    await player.start_player(new)
+                    await interaction.message.edit(
+                        content=msg, delete_after=None, view=None
+                    )
+            await self.__return_queue.put(new)
+
+        button = ui.Button(label=str(index), style=ButtonStyle.secondary)
+        button.callback = button_pressed
+        self.add_item(button)
+
+    def add_cancel_button(self):
+        """Cancel adding tracks to the player."""
+
+        async def button_pressed(interaction):
+            await interaction.message.edit(
+                content="\U0001F6AB *Action cancelled.*", view=None
+            )
+
+        button = ui.Button(
+            label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary
+        )
+        button.callback = button_pressed
+        self.add_item(button)
+
+
 @autoloaded
 class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
@@ -232,33 +282,17 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_query("ytsearch10:", query)
-            menu_msg = await ctx.send_pages(
-                assemble_menu("\u2049 Choose one of the following results:", results)
-            )
+            results = await self.extractor.get_entries_by_query("ytsearch8:", query)
 
-        try:
-            response = await self.bot.wait_for(
-                "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
-            )
-        except asyncio.exceptions.TimeoutError:
-            await menu_msg.edit(content="\u231B *Action expired.*")
-            return
+        new = asyncio.Queue()
+        await ctx.send_pages(
+            assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
+            view=SelectTrack(self.__get_player(ctx), new, results),
+            delete_after=self.ACTION_TIMEOUT,
+        )
 
-        new = results[int(response.content)]
-        add_expire_time(new)
-
-        async with self.__get_player(ctx) as player:
-            player.append(new)
-
-            if player.state == PlayerState.IDLE:
-                await player.start_player(new)
-            elif ctx.display:
-                await ctx.send_pages(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-                )
-
-        return export_entry(new)
+        new_entry = await new.get()
+        return export_entry(new_entry)
 
     @commands.command(name="play-snd", aliases=["psnd"])
     async def play_snd(self, ctx, *query):
@@ -273,33 +307,17 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_query("scsearch10:", query)
-            menu_msg = await ctx.send_pages(
-                assemble_menu("\u2049 Choose one of the following results:", results)
-            )
+            results = await self.extractor.get_entries_by_query("scsearch8:", query)
 
-        try:
-            response = await self.bot.wait_for(
-                "message", check=pred_select(ctx, results), timeout=self.ACTION_TIMEOUT
-            )
-        except asyncio.exceptions.TimeoutError:
-            await menu_msg.edit(content="\u231B *Action expired.*")
-            return
+        new = asyncio.Queue()
+        await ctx.send_pages(
+            assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
+            view=SelectTrack(self.__get_player(ctx), new, results),
+            delete_after=self.ACTION_TIMEOUT,
+        )
 
-        new = results[int(response.content)]
-        add_expire_time(new)
-
-        async with self.__get_player(ctx) as player:
-            player.append(new)
-
-            if player.state == PlayerState.IDLE:
-                await player.start_player(new)
-            elif ctx.display:
-                await ctx.send_pages(
-                    "\u2795 **{title}** by {uploader} added to the queue.".format(**new)
-                )
-
-        return export_entry(new)
+        new_entry = await new.get()
+        return export_entry(new_entry)
 
     @commands.command(name="play-url", aliases=["purl"])
     async def play_url(self, ctx, *urls):
