@@ -1,7 +1,7 @@
 import pytest
 from discord.ext import commands
 
-from acme_bot.music import PlayerState
+from acme_bot.music.player import PlayerState
 
 
 def test_access_code_returns_passed_value(player):

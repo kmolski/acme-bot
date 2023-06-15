@@ -1,4 +1,6 @@
-from itertools import cycle, islice, repeat
+from itertools import cycle, islice
+
+from discord.ui import View
 
 from acme_bot.textutils import escape_md_block, send_pages
 
@@ -21,7 +23,7 @@ async def test_send_pages_long_multiline_split_into_multiple_messages(fake_ctx):
     long = "much much longer\n" * 4
 
     await send_pages(fake_ctx, long, max_length=20)
-    assert fake_ctx.messages == list(islice(repeat("much much longer"), 4))
+    assert fake_ctx.messages == ["much much longer"] * 4
 
 
 async def test_send_pages_preserves_empty_lines(fake_ctx):
@@ -52,6 +54,23 @@ async def test_send_pages_escapes_markdown_blocks_in_content(fake_ctx):
 
     await send_pages(fake_ctx, content, escape_md_blocks=True)
     assert "```" not in fake_ctx.messages[0]
+
+
+async def test_send_pages_sends_view_in_last_chunk(fake_ctx):
+    long = "much much longer\n" * 4
+    view = View()
+
+    await send_pages(fake_ctx, long, max_length=20, view=view)
+    assert fake_ctx.views[:3] == [None] * 3
+    assert fake_ctx.views[3] == view
+
+
+async def test_send_pages_accepts_message_reference(fake_ctx):
+    long = "much much longer\n" * 4
+    message = {}
+
+    await send_pages(fake_ctx, long, max_length=20, reference=message)
+    assert fake_ctx.references == [message] * 4
 
 
 def test_escape_md_block_preserves_non_block_code():

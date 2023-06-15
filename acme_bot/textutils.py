@@ -45,7 +45,15 @@ def _split_message(text, limit):
 
 
 async def send_pages(
-    ctx, content, *, fmt=None, escape_md_blocks=False, max_length=MAX_MESSAGE_LENGTH
+    ctx,
+    content,
+    *,
+    fmt=None,
+    view=None,
+    reference=None,
+    delete_after=None,
+    escape_md_blocks=False,
+    max_length=MAX_MESSAGE_LENGTH
 ):
     """Split and send a message with the specified content and format."""
     if escape_md_blocks:
@@ -53,10 +61,14 @@ async def send_pages(
     if fmt is not None:
         max_length -= len(fmt)
 
-    for chunk in _split_message(content, max_length):
+    msg_chunks = _split_message(content, max_length)
+    for i, chunk in enumerate(msg_chunks, start=1):
         if fmt is not None:
             chunk = fmt.format(chunk)
-        await ctx.send(chunk)
+        chunk_view = view if i == len(msg_chunks) else None
+        await ctx.send(
+            chunk, delete_after=delete_after, reference=reference, view=chunk_view
+        )
 
 
 def escape_md_block(text):

@@ -53,13 +53,13 @@ def test_should_stop_with_loop_off(queue_with_tracks):
     assert queue_with_tracks._should_stop(1) is True
 
 
-def test_split_view_with_empty_queue(queue):
-    assert queue.split_view() == ([], [], 0)
+def test_get_tracks_with_empty_queue(queue):
+    assert queue.get_tracks() == ([], [])
 
 
-def test_split_view_with_second_track(queue_with_tracks):
+def test_get_tracks_with_second_track(queue_with_tracks):
     queue_with_tracks._next(1)
-    assert queue_with_tracks.split_view() == (["two"], ["one"], 1)
+    assert queue_with_tracks.get_tracks() == (["two"], ["one"])
 
 
 def test_clear_removes_tracks(queue_with_tracks):
@@ -76,21 +76,21 @@ def test_next_advances_the_queue(queue_with_tracks):
     result = queue_with_tracks._next(1)
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.split_view()[1]
+    assert queue_with_tracks.get_tracks()[1]
 
 
 def test_next_with_negative_offset_returns(queue_with_tracks):
     result = queue_with_tracks._next(-1)
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.split_view()[1]
+    assert queue_with_tracks.get_tracks()[1]
 
 
 def test_next_with_overflow_offset_returns(queue_with_tracks):
     result = queue_with_tracks._next(201)
 
     assert queue_with_tracks.current == result == "two"
-    assert queue_with_tracks.split_view()[1]
+    assert queue_with_tracks.get_tracks()[1]
 
 
 def test_pop_with_empty_queue_throws(queue):
