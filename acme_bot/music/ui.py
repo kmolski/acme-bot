@@ -46,7 +46,6 @@ class ConfirmAddTracks(VerifiedView):
         """Confirm adding tracks to the player."""
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
-            delete_after=None,
             view=None,
         )
 
@@ -84,17 +83,18 @@ class SelectTrack(VerifiedView):
 
         async def button_pressed(interaction):
             add_expire_time(new)
+            await interaction.message.edit(
+                content="\u2795 **{title}** by {uploader} added to the queue.".format(
+                    **new
+                ),
+                view=None,
+            )
+
             async with self.__player as player:
                 player.append(new)
 
                 if player.state == PlayerState.IDLE:
-                    msg = "\u2795 **{title}** by {uploader} added to the queue.".format(
-                        **new
-                    )
                     await player.start_player(new)
-                    await interaction.message.edit(
-                        content=msg, delete_after=None, view=None
-                    )
             await self.__return_queue.put(new)
 
         button = ui.Button(label=str(index), style=ButtonStyle.secondary)
