@@ -65,6 +65,14 @@ async def test_send_pages_sends_view_in_last_chunk(fake_ctx):
     assert fake_ctx.views[3] == view
 
 
+async def test_send_pages_accepts_message_reference(fake_ctx):
+    long = "much much longer\n" * 4
+    message = {}
+
+    await send_pages(fake_ctx, long, max_length=20, reference=message)
+    assert fake_ctx.references == [message] * 4
+
+
 def test_escape_md_block_preserves_non_block_code():
     with_code = "foo `code section` bar"
     assert escape_md_block(with_code) == with_code

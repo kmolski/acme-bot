@@ -50,6 +50,7 @@ async def send_pages(
     *,
     fmt=None,
     view=None,
+    reference=None,
     delete_after=None,
     escape_md_blocks=False,
     max_length=MAX_MESSAGE_LENGTH
@@ -65,7 +66,9 @@ async def send_pages(
         if fmt is not None:
             chunk = fmt.format(chunk)
         chunk_view = view if i == len(msg_chunks) else None
-        await ctx.send(chunk, view=chunk_view, delete_after=delete_after)
+        await ctx.send(
+            chunk, delete_after=delete_after, reference=reference, view=chunk_view
+        )
 
 
 def escape_md_block(text):

@@ -188,6 +188,7 @@ class MusicModule(commands.Cog, CogFactory):
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
+            reference=ctx.message,
         )
 
         new_entry = await new.get()
@@ -212,6 +213,7 @@ class MusicModule(commands.Cog, CogFactory):
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
+            reference=ctx.message,
         )
 
         new_entry = await new.get()
@@ -235,6 +237,7 @@ class MusicModule(commands.Cog, CogFactory):
         await ctx.send(
             f"\u2705 Extracted {len(results)} tracks.",
             view=ConfirmAddTracks(ctx.author, self.__get_player(ctx), results),
+            reference=ctx.message,
         )
         return export_entry_list(results)
 

@@ -1,4 +1,4 @@
-from asyncio import get_running_loop
+from asyncio import get_running_loop, Queue
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import Optional
@@ -8,6 +8,7 @@ import pytest
 from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer
 from acme_bot.music.queue import MusicQueue
+from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
 
 
 @dataclass
@@ -28,6 +29,13 @@ class StubChannel:
     """Stub discord.py voice channel object."""
 
     id: int = 123456789
+
+
+@dataclass
+class StubUser:
+    """Stub discord.py user account object."""
+
+    id: int = 987654321
 
 
 @dataclass
@@ -68,17 +76,26 @@ class FakeContext:
     tts: list[bool]
     files: list[Optional[str]]
     delete_after: list[float]
+    references: list[object]
     views: list[object]
 
     voice_client: FakeVoiceClient
 
     async def send(
-        self, content, *, tts=False, file=None, delete_after=None, view=None
+        self,
+        content,
+        *,
+        tts=False,
+        file=None,
+        delete_after=None,
+        reference=None,
+        view=None
     ):
         self.messages.append(content)
         self.tts.append(tts)
         self.files.append(file)
         self.delete_after.append(delete_after)
+        self.references.append(reference)
         self.views.append(view)
 
 
@@ -187,13 +204,18 @@ def stub_channel():
 
 
 @pytest.fixture
+def stub_user():
+    return StubUser()
+
+
+@pytest.fixture
 def fake_voice_client(stub_channel):
     return FakeVoiceClient([], stub_channel, None)
 
 
 @pytest.fixture
 def fake_ctx(fake_voice_client):
-    return FakeContext([], [], [], [], [], fake_voice_client)
+    return FakeContext([], [], [], [], [], [], fake_voice_client)
 
 
 @pytest.fixture
@@ -206,3 +228,13 @@ async def player_with_tracks(fake_ctx, stub_extractor, youtube_playlist):
     player = MusicPlayer(fake_ctx, stub_extractor, 123456)
     player.extend(youtube_playlist)
     return player
+
+
+@pytest.fixture
+async def confirm_add_tracks_view(stub_user, player, youtube_playlist):
+    return ConfirmAddTracks(stub_user, player, youtube_playlist)
+
+
+@pytest.fixture
+async def select_track_view(stub_user, player, youtube_playlist):
+    return SelectTrack(stub_user, player, Queue(), youtube_playlist)
