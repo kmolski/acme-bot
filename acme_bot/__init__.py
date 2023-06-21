@@ -29,7 +29,7 @@ from textx.exceptions import TextXSyntaxError
 from acme_bot.autoloader import get_autoloaded_cogs
 from acme_bot.config import load_config
 from acme_bot.config.properties import DISCORD_TOKEN, COMMAND_PREFIX, LOG_LEVEL
-from acme_bot.shell import ShellModule
+from acme_bot.shell.interpreter import META_MODEL
 from acme_bot.textutils import send_pages
 
 log = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ def run():
             message = ctx.message.content
             command = message.removeprefix(ctx.prefix)
             try:
-                model = ShellModule.META_MODEL.model_from_str(command.strip())
+                model = META_MODEL.model_from_str(command.strip())
                 await model.eval(ctx)
             except (
                 commands.CommandError,  # Command validation errors

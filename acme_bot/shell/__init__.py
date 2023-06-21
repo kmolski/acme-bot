@@ -76,21 +76,6 @@ async def execute_system_cmd(name, *args, stdin=None):
 class ShellModule(commands.Cog, CogFactory):
     """Shell utility commands."""
 
-    META_MODEL = metamodel_from_file(
-        join(dirname(__file__), "grammar.tx"),
-        classes=[
-            ExprSeq,
-            ExprComp,
-            Command,
-            StrLiteral,
-            IntLiteral,
-            BoolLiteral,
-            FileContent,
-            ExprSubst,
-        ],
-        use_regexp_group=True,
-    )
-
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGiovwx]+")
 
     @classmethod
