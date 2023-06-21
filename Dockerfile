@@ -10,7 +10,7 @@ RUN apt-get update
 FROM base AS builder
 
 ENV BUILD_DEPS="build-essential curl git libffi-dev"
-RUN apt-get install -y --no-install-recommends ${BUILD_DEPS}
+RUN apt-get install --yes --no-install-recommends ${BUILD_DEPS}
 RUN pip install poetry
 RUN python -m venv /venv
 
@@ -23,8 +23,8 @@ RUN . /venv/bin/activate && poetry build
 FROM base AS final
 
 ENV RUNTIME_DEPS="ffmpeg grep units"
-RUN apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends ${RUNTIME_DEPS} \
+RUN apt-get upgrade --yes \
+    && apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} \
     && apt-get clean \
     && rm -rf -- /var/lib/apt/lists/*
 
@@ -32,5 +32,5 @@ COPY --from=builder /venv /venv
 COPY --from=builder /app/dist .
 RUN . /venv/bin/activate && pip install *.whl
 
-COPY docker-entrypoint.sh ./
-ENTRYPOINT ["./docker-entrypoint.sh"]
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
