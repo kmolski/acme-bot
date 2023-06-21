@@ -116,19 +116,7 @@ def run():
                 f"For more information, refer to `{ctx.prefix}help {cmd.name}`."
             )
         else:
-            await ctx.send(f"Error: {error}")
-
-    @client.event
-    async def on_disconnect():
-        """Handle the termination of connections to Discord servers."""
-        # client.get_cog("MusicModule").pause_players()
-        log.warning("Connection closed, will attempt to reconnect")
-
-    @client.event
-    async def on_resumed():
-        """Handle restarts of connections to Discord servers."""
-        # client.get_cog("MusicModule").resume_players()
-        log.info("Connection resumed")
+            await ctx.send_pages(f"Error: {error}")
 
     async def eval_command(ctx):
         if ctx.invoked_with:
