@@ -110,7 +110,7 @@ class ShellModule(commands.Cog, CogFactory):
         """
         content = "".join(str(arg) for arg in arguments)
         if ctx.display:
-            await ctx.send_pages(content)
+            await ctx.send_pages(content, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
         return content
 
     @commands.command()
@@ -224,7 +224,7 @@ class ShellModule(commands.Cog, CogFactory):
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -268,7 +268,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -290,7 +290,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -330,7 +330,7 @@ class ShellModule(commands.Cog, CogFactory):
         count = len(data)
 
         if ctx.display:
-            await ctx.send_pages(f"```\n{count}\n```")
+            await ctx.send_pages(str(count), fmt=MD_BLOCK_FMT)
 
         return count
 
@@ -353,7 +353,7 @@ class ShellModule(commands.Cog, CogFactory):
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -372,7 +372,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(sorted(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -391,7 +391,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(line for line, _ in groupby(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output
 
@@ -411,6 +411,6 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
 
         return output

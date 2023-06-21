@@ -21,6 +21,8 @@ from textwrap import wrap
 # According to https://discord.com/developers/docs/resources/channel
 MAX_MESSAGE_LENGTH = 2000
 
+MD_BLOCK_FMT = "```\n{}\n```"
+
 
 def _split_message(text, limit):
     """Split a message into chunks with the specified maximum length.
