@@ -17,21 +17,18 @@
 import asyncio
 import logging
 import re
-from copy import copy
 from datetime import datetime
 from io import StringIO
 from itertools import groupby
-from os.path import dirname, join
 from random import shuffle
 from shutil import which
 
 from discord import File
 from discord.ext import commands
-from textx import metamodel_from_file
 
 from acme_bot.autoloader import CogFactory, autoloaded
-
-__MD_BLOCK_FMT = "```\n{}\n```"
+from acme_bot.shell.interpreter import FileContent
+from acme_bot.textutils import MD_BLOCK_FMT
 
 
 def validate_options(args, regex):
@@ -45,7 +42,7 @@ def validate_options(args, regex):
 def trim_double_newline(string):
     """Trim down double newlines at the end of the string, such that
     'abc\n\n' becomes 'abc\n', but 'abc\n' is still 'abc\n'."""
-    return string if string[-2:] != "\n\n" else string[:-1]
+    return string[:-1] if string[-2:] == "\n\n" else string
 
 
 async def execute_system_cmd(name, *args, stdin=None):
@@ -73,158 +70,6 @@ async def execute_system_cmd(name, *args, stdin=None):
             raise commands.CommandError(str(error_msg, errors="replace"))
 
     return str(stdout, errors="replace")
-
-
-class ExprSeq:
-    """This class represents expression sequences for use in the TextX metamodel."""
-
-    def __init__(self, parent=None, expr_comps=None):
-        self.parent = parent
-        self.expr_comps = expr_comps
-
-    async def eval(self, ctx):
-        """Evaluate an expression sequence by evaluating its components and
-        concatenating their return values."""
-        result = ""
-        for elem in self.expr_comps:
-            ret = await elem.eval(ctx)
-            if ret is not None:
-                result += str(ret)
-        return result
-
-
-class ExprComp:
-    """This class represents expression compositions for use in the TextX metamodel."""
-
-    def __init__(self, parent, exprs):
-        self.parent = parent
-        self.exprs = exprs
-
-    async def eval(self, ctx):
-        """Evaluate an expression composition by evaluating the components and
-        passing the return value of the previous expression to the input of the
-        following commands."""
-        data, result = None, ""
-        end = len(self.exprs) - 1
-        for index, elem in enumerate(self.exprs):
-            # Only display outputs if this expression is the last one in sequence.
-            temp_ctx = copy(ctx)
-            temp_ctx.display = ctx.display and (index == end)
-            try:
-                result = await elem.eval(temp_ctx, data)
-            except (commands.CommandError, TypeError):
-                # Set the current command to the actual command throwing the exception.
-                ctx.command = temp_ctx.command
-                raise
-            data = result
-        return result
-
-
-class Command:
-    """This class represents the bot's commands for use in the TextX metamodel."""
-
-    def __init__(self, parent, name, args):
-        self.parent = parent
-        self.name = name
-        self.args = args
-
-    async def eval(self, ctx, pipe):
-        """Execute a command by evaluating its arguments, and calling its callback
-        using the data piped in from the previous expression."""
-        cmd = ctx.bot.get_command(self.name)
-        if cmd is None:
-            raise commands.CommandError(f"Command '{self.name}' not found")
-
-        ctx.command = cmd
-        if not await cmd.can_run(ctx):
-            raise commands.CommandError(f"Checks for {cmd.qualified_name} failed")
-        await cmd.call_before_hooks(ctx)
-
-        # Set display to False so that argument evaluation doesn't print outputs.
-        temp_ctx = copy(ctx)
-        temp_ctx.display = False
-        args = (
-            ([ctx] if cmd.cog is None else [cmd.cog, ctx])
-            + ([pipe] if pipe is not None else [])  # Use the pipe if it's not empty
-            + ([await elem.eval(temp_ctx) for elem in self.args])
-        )
-        result = await cmd.callback(*args)
-
-        await cmd.call_after_hooks(ctx)
-        return result
-
-
-class StrLiteral:
-    """This class represents string literals for use in the TextX metamodel."""
-
-    def __init__(self, parent, value):
-        self.parent = parent
-        self.value = value
-
-    async def eval(self, ctx, *_, **__):
-        """Evaluate the string literal, printing it in a code block if necessary."""
-        if ctx.display:
-            await ctx.send_pages(self.value, fmt=__MD_BLOCK_FMT, escape_md_blocks=True)
-        return self.value
-
-
-class IntLiteral:
-    """This class represents integer literals for use in the TextX metamodel."""
-
-    def __init__(self, parent, value):
-        self.parent = parent
-        self.value = value
-
-    async def eval(self, *_, **__):
-        """Evaluate the integer literal."""
-        return self.value
-
-
-class BoolLiteral:
-    """This class represents boolean literals for use in the TextX metamodel."""
-
-    def __init__(self, parent, value):
-        self.parent = parent
-        self.value = value.lower() in ("yes", "true", "enable", "on")
-
-    async def eval(self, *_, **__):
-        """Evaluate the boolean literal."""
-        return self.value
-
-
-class FileContent:
-    """This class represents file contents for use in the TextX metamodel."""
-
-    def __init__(self, parent, name):
-        self.parent = parent
-        self.name = name
-
-    async def eval(self, ctx, *_, **__):
-        """Extract the file contents."""
-        async for msg in ctx.history(limit=1000):
-            for elem in msg.attachments:
-                if elem.filename == self.name:
-                    content = str(await elem.read(), errors="replace")
-                    if ctx.display:
-                        await ctx.send_pages(
-                            content, fmt=__MD_BLOCK_FMT, escape_md_blocks=True
-                        )
-                    return content
-
-        raise commands.CommandError("No such file!")
-
-
-class ExprSubst:
-    """This class represents expression substitutions for use in the TextX metamodel."""
-
-    def __init__(self, parent, expr_seq):
-        self.parent = parent
-        self.expr_seq = expr_seq
-
-    async def eval(self, ctx, *_, **__):
-        """Evaluate the expression sequence in the substitution."""
-        result = await self.expr_seq.eval(ctx)
-        return result
 
 
 @autoloaded
