@@ -27,6 +27,7 @@ from discord import File
 from discord.ext import commands
 
 from acme_bot.autoloader import CogFactory, autoloaded
+from acme_bot.convutils import to_int
 from acme_bot.shell.interpreter import FileContent
 from acme_bot.textutils import MD_BLOCK_FMT
 
@@ -127,12 +128,12 @@ class ShellModule(commands.Cog, CogFactory):
         RETURN VALUE
             The unchanged input data as a string.
         """
-        content = str(content)
+        content, file_format = str(content), str(file_format)
         if ctx.display:
             await ctx.send_pages(
                 content, fmt=f"```{file_format}\n{{}}\n```", escape_md_blocks=True
             )
-        return f"```{file_format}\n{content}\n```"
+        return content
 
     @commands.command(name="to-file", aliases=["tfil", "tee"])
     async def to_file(self, ctx, content, file_name):
@@ -165,8 +166,7 @@ class ShellModule(commands.Cog, CogFactory):
         RETURN VALUE
             The contents of the file as a string.
         """
-        file_name = str(file_name)
-        file_content = FileContent(None, file_name)
+        file_content = FileContent(None, str(file_name))
         return await file_content.eval(ctx)
 
     @commands.command(enabled=which("grep"))
@@ -247,7 +247,9 @@ class ShellModule(commands.Cog, CogFactory):
         RETURN VALUE
             The last [line_count] lines of input data as a string.
         """
-        data, line_count = str(data), int(line_count)
+        data, line_count = str(data), to_int(line_count)
+        if line_count <= 0:
+            raise commands.CommandError("Argument `line_count` must be positive.")
 
         lines = data.splitlines()[-line_count:]
         output = "\n".join(lines)
@@ -269,7 +271,9 @@ class ShellModule(commands.Cog, CogFactory):
         RETURN VALUE
             The first [line_count] lines of input data as a string.
         """
-        data, line_count = str(data), int(line_count)
+        data, line_count = str(data), to_int(line_count)
+        if line_count <= 0:
+            raise commands.CommandError("Argument `line_count` must be positive.")
 
         lines = data.splitlines()[:line_count]
         output = "\n".join(lines)
@@ -292,13 +296,21 @@ class ShellModule(commands.Cog, CogFactory):
         RETURN VALUE
             The selected input data lines as a string.
         """
-        start, end = int(start) - 1, int(end)
+        start, end = to_int(start), to_int(end)
+        if start <= 0:
+            raise commands.CommandError("Argument `start` must be positive.")
         if start > end:
             raise commands.CommandError(
-                f"Argument `start` = {start} must not be greater than `end` = {end}."
+                "Argument `start` must not be greater than `end`."
             )
 
-        return await self.tail(ctx, await self.head(ctx, data, end), end - start)
+        lines = data.splitlines()[start - 1 : end]
+        output = "\n".join(lines)
+
+        if ctx.display:
+            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+
+        return output
 
     @commands.command(aliases=["wc"])
     async def count(self, ctx, data):
