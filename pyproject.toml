@@ -14,7 +14,7 @@ aio-pika = "^9.1.2"
 "discord.py" = {version = "^2.3.0", extras = ["voice"]}
 python-dotenv = "^1.0.0"
 textX = "^3.1.1"
-yt-dlp = "^2023.3.4"
+yt-dlp = "^2023.6.22"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.3.2"
