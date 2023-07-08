@@ -200,7 +200,7 @@ class ShellModule(commands.Cog, CogFactory):
         opts = [str(option) for option in opts]
         validate_options(opts, self.__GREP_ARGS)
         # Filter out empty lines that produce all-matching patterns.
-        patterns = "\n".join(p for p in patterns.split("\n") if p)
+        patterns = "\n".join(p for p in patterns.splitlines() if p)
 
         output = trim_double_newline(
             await execute_system_cmd(
