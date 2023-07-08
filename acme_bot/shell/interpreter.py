@@ -36,12 +36,12 @@ class ExprSeq:
     async def eval(self, ctx):
         """Evaluate an expression sequence by evaluating its components and
         concatenating their return values."""
-        result = ""
+        results = []
         for elem in self.expr_comps:
             ret = await elem.eval(ctx)
             if ret is not None:
-                result += str(ret)
-        return result
+                results += str(ret)
+        return "".join(results)
 
 
 class ExprComp:
@@ -58,7 +58,7 @@ class ExprComp:
         """Evaluate an expression composition by evaluating the components and
         passing the return value of the previous expression to the input of the
         following commands."""
-        data, result = None, ""
+        data, result = None, None
         for index, elem in enumerate(self.exprs, start=1):
             # Display should only be enabled for the last expression in sequence.
             temp_ctx = copy(ctx)
@@ -178,8 +178,7 @@ class FileContent:
                             content, fmt=MD_BLOCK_FMT, escape_md_blocks=True
                         )
                     return content
-
-        raise commands.CommandError("No such file!")
+        raise commands.CommandError(f"File `{self.name}` not found")
 
 
 class ExprSubst:
