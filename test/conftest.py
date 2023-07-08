@@ -1,4 +1,4 @@
-from asyncio import get_running_loop, AbstractEventLoop, Queue
+from asyncio import get_running_loop, sleep, AbstractEventLoop, Queue
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import Optional
@@ -9,6 +9,8 @@ from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
 from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
+from acme_bot.shell import ShellModule
+from acme_bot.textutils import send_pages
 
 
 @dataclass
@@ -36,6 +38,7 @@ class StubUser:
     """Stub discord.py user account object."""
 
     id: int = 987654321
+    name: str = "Test User"
 
 
 @dataclass
@@ -76,6 +79,30 @@ class FakeVoiceClient:
 
 
 @dataclass
+class FakeMessage:
+    """Fake discord.py message object."""
+
+    content: str = ""
+    reactions: list[str] = None
+    delete_after: float = None
+    view: object = None
+
+    async def edit(self, *, content=None, delete_after=None, view=None):
+        if content is not None:
+            self.content = content
+        if delete_after is not None:
+            self.delete_after = delete_after
+        if view is not None:
+            self.view = view
+
+    async def add_reaction(self, reaction):
+        if self.reactions is None:
+            self.reactions = []
+        self.reactions.append(reaction)
+        await sleep(0.1)
+
+
+@dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
@@ -87,7 +114,10 @@ class FakeContext:
     views: list[object]
 
     bot: StubBot
+    author: StubUser
+    message: FakeMessage
     voice_client: FakeVoiceClient
+    display: bool = True
 
     async def send(
         self,
@@ -106,22 +136,8 @@ class FakeContext:
         self.references.append(reference)
         self.views.append(view)
 
-
-@dataclass
-class FakeMessage:
-    """Fake discord.py message object."""
-
-    content: str = ""
-    delete_after: float = None
-    view: object = None
-
-    async def edit(self, *, content=None, delete_after=None, view=None):
-        if content is not None:
-            self.content = content
-        if delete_after is not None:
-            self.delete_after = delete_after
-        if view is not None:
-            self.view = view
+    async def send_pages(self, *args, **kwargs):
+        await send_pages(self, *args, **kwargs)
 
 
 class FakePlayer(MusicQueue):
@@ -270,8 +286,10 @@ def fake_voice_client(stub_channel):
 
 
 @pytest.fixture
-def fake_ctx(stub_bot, fake_voice_client):
-    return FakeContext([], [], [], [], [], [], stub_bot, fake_voice_client)
+def fake_ctx(stub_bot, stub_user, fake_message, fake_voice_client):
+    return FakeContext(
+        [], [], [], [], [], [], stub_bot, stub_user, fake_message, fake_voice_client
+    )
 
 
 @pytest.fixture
@@ -309,3 +327,8 @@ async def confirm_add_tracks_view(stub_user, fake_player, youtube_playlist):
 @pytest.fixture
 async def select_track_view(stub_user, fake_player, youtube_playlist):
     return SelectTrack(stub_user, fake_player, Queue(), youtube_playlist)
+
+
+@pytest.fixture
+def shell_module():
+    return ShellModule()
