@@ -59,8 +59,7 @@ class HelpCommand(commands.DefaultHelpCommand):
     # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None):
         # Defining this attribute is necessary for the help command to work
-        # pylint: disable=attribute-defined-outside-init
-        self.context = ctx
+        self.context = ctx  # pylint: disable=attribute-defined-outside-init
         return await super().command_callback(ctx, command=command)
 
 
@@ -105,12 +104,12 @@ def run():
     async def on_command_error(ctx, error):
         """Handle exceptions raised during command execution."""
         if isinstance(error, commands.CommandError) and hasattr(error, "original"):
-            await ctx.send(f"Error: {error.original}")
+            await ctx.send_pages(f"Error: {error.original}")
         elif isinstance(error, TextXSyntaxError):
-            await ctx.send(f"Syntax error: {error.message}")
-        elif isinstance(error, TypeError):
+            await ctx.send_pages(f"Syntax error: {error.message}")
+        elif isinstance(error, (TypeError, ValueError)):
             cmd = ctx.command
-            await ctx.send(
+            await ctx.send_pages(
                 f"Error: {error}\n"
                 f"Command usage: `{ctx.prefix}{cmd.qualified_name} {cmd.signature}`\n"
                 f"For more information, refer to `{ctx.prefix}help {cmd.name}`."
@@ -132,8 +131,7 @@ def run():
             ) as exc:
                 client.dispatch("command_error", ctx, exc)
             # Log the unhandled exceptions for later analysis
-            # pylint: disable=broad-except
-            except Exception as error:
+            except Exception as error:  # pylint: disable=broad-except
                 log.exception(
                     "Unhandled exception caused by message '%s':",
                     ctx.message.content,

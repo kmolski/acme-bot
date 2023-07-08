@@ -30,6 +30,9 @@ class ExprSeq:
         self.parent = parent
         self.expr_comps = expr_comps
 
+    def __eq__(self, other):
+        return self.expr_comps == other.expr_comps
+
     async def eval(self, ctx):
         """Evaluate an expression sequence by evaluating its components and
         concatenating their return values."""
@@ -47,6 +50,9 @@ class ExprComp:
     def __init__(self, parent, exprs):
         self.parent = parent
         self.exprs = exprs
+
+    def __eq__(self, other):
+        return self.exprs == other.exprs
 
     async def eval(self, ctx):
         """Evaluate an expression composition by evaluating the components and
@@ -75,12 +81,15 @@ class Command:
         self.name = name
         self.args = args
 
+    def __eq__(self, other):
+        return self.name == other.name and self.args == other.args
+
     async def eval(self, ctx, pipe):
         """Execute a command by evaluating its arguments, and calling its callback
         using the data piped in from the previous expression."""
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
-            raise commands.CommandError(f"Command '{self.name}' not found")
+            raise commands.CommandError(f"Command `{self.name}` not found")
 
         ctx.command = cmd
         if not await cmd.can_run(ctx):
@@ -108,6 +117,9 @@ class StrLiteral:
         self.parent = parent
         self.value = value
 
+    def __eq__(self, other):
+        return self.value == other.value
+
     async def eval(self, ctx, *_, **__):
         """Evaluate the string literal, printing it in a code block if necessary."""
         if ctx.display:
@@ -122,6 +134,9 @@ class IntLiteral:
         self.parent = parent
         self.value = value
 
+    def __eq__(self, other):
+        return self.value == other.value
+
     async def eval(self, *_, **__):
         """Evaluate the integer literal."""
         return self.value
@@ -134,6 +149,9 @@ class BoolLiteral:
         self.parent = parent
         self.value = value.lower() in ("yes", "true", "enable", "on")
 
+    def __eq__(self, other):
+        return self.value == other.value
+
     async def eval(self, *_, **__):
         """Evaluate the boolean literal."""
         return self.value
@@ -145,6 +163,9 @@ class FileContent:
     def __init__(self, parent, name):
         self.parent = parent
         self.name = name
+
+    def __eq__(self, other):
+        return self.name == other.name
 
     async def eval(self, ctx, *_, **__):
         """Extract the file contents."""
@@ -167,6 +188,9 @@ class ExprSubst:
     def __init__(self, parent, expr_seq):
         self.parent = parent
         self.expr_seq = expr_seq
+
+    def __eq__(self, other):
+        return self.expr_seq == other.expr_seq
 
     async def eval(self, ctx, *_, **__):
         """Evaluate the expression sequence in the substitution."""
