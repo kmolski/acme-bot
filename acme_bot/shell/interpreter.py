@@ -24,7 +24,7 @@ from acme_bot.textutils import MD_BLOCK_FMT
 
 
 class ExprSeq:
-    """This class represents expression sequences for use in the TextX metamodel."""
+    """Expression sequence AST node."""
 
     def __init__(self, parent=None, expr_comps=None):
         self.parent = parent
@@ -34,8 +34,7 @@ class ExprSeq:
         return self.expr_comps == other.expr_comps
 
     async def eval(self, ctx):
-        """Evaluate an expression sequence by evaluating its components and
-        concatenating their return values."""
+        """Evaluate sequence components and join their return values."""
         results = []
         for elem in self.expr_comps:
             ret = await elem.eval(ctx)
@@ -45,7 +44,7 @@ class ExprSeq:
 
 
 class ExprComp:
-    """This class represents expression compositions for use in the TextX metamodel."""
+    """Expression composition AST node."""
 
     def __init__(self, parent, exprs):
         self.parent = parent
@@ -55,9 +54,8 @@ class ExprComp:
         return self.exprs == other.exprs
 
     async def eval(self, ctx):
-        """Evaluate an expression composition by evaluating the components and
-        passing the return value of the previous expression to the input of the
-        following commands."""
+        """Evaluate composition components, passing the return value of the
+        previous expression to the input of the following commands."""
         data, result = None, None
         for index, elem in enumerate(self.exprs, start=1):
             # Display should only be enabled for the last expression in sequence.
@@ -74,7 +72,7 @@ class ExprComp:
 
 
 class Command:
-    """This class represents the bot's commands for use in the TextX metamodel."""
+    """Bot command AST node."""
 
     def __init__(self, parent, name, args):
         self.parent = parent
@@ -85,8 +83,7 @@ class Command:
         return self.name == other.name and self.args == other.args
 
     async def eval(self, ctx, pipe):
-        """Execute a command by evaluating its arguments, and calling its callback
-        using the data piped in from the previous expression."""
+        """Execute the command by evaluating its arguments and calling its callback."""
         cmd = ctx.bot.get_command(self.name)
         if cmd is None:
             raise commands.CommandError(f"Command `{self.name}` not found")
@@ -111,7 +108,7 @@ class Command:
 
 
 class StrLiteral:
-    """This class represents string literals for use in the TextX metamodel."""
+    """String literal AST node."""
 
     def __init__(self, parent, value):
         self.parent = parent
@@ -121,14 +118,14 @@ class StrLiteral:
         return self.value == other.value
 
     async def eval(self, ctx, *_, **__):
-        """Evaluate the string literal, printing it in a code block if necessary."""
+        """Evaluate the literal, printing it in a code block if necessary."""
         if ctx.display:
             await ctx.send_pages(self.value, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
         return self.value
 
 
 class IntLiteral:
-    """This class represents integer literals for use in the TextX metamodel."""
+    """Integer literal AST node."""
 
     def __init__(self, parent, value):
         self.parent = parent
@@ -143,7 +140,7 @@ class IntLiteral:
 
 
 class BoolLiteral:
-    """This class represents boolean literals for use in the TextX metamodel."""
+    """Boolean literal AST node."""
 
     def __init__(self, parent, value):
         self.parent = parent
@@ -158,7 +155,7 @@ class BoolLiteral:
 
 
 class FileContent:
-    """This class represents file contents for use in the TextX metamodel."""
+    """Discord file content AST node."""
 
     def __init__(self, parent, name):
         self.parent = parent
@@ -168,7 +165,7 @@ class FileContent:
         return self.name == other.name
 
     async def eval(self, ctx, *_, **__):
-        """Extract the file contents."""
+        """Read file contents from the first attachment found in the current channel."""
         async for msg in ctx.history(limit=1000):
             for elem in msg.attachments:
                 if elem.filename == self.name:
@@ -182,7 +179,7 @@ class FileContent:
 
 
 class ExprSubst:
-    """This class represents expression substitutions for use in the TextX metamodel."""
+    """Expression substitution AST node."""
 
     def __init__(self, parent, expr_seq):
         self.parent = parent
@@ -192,7 +189,7 @@ class ExprSubst:
         return self.expr_seq == other.expr_seq
 
     async def eval(self, ctx, *_, **__):
-        """Evaluate the expression sequence in the substitution."""
+        """Evaluate the sequence in the substitution."""
         result = await self.expr_seq.eval(ctx)
         return result
 
