@@ -29,7 +29,7 @@ class CogFactory:
         return True
 
     @classmethod
-    def create_cog(cls, bot):
+    async def create_cog(cls, bot):
         """Create a cog instance. Dependencies on other cogs should be injected here."""
         raise NotImplementedError()
 
@@ -37,7 +37,7 @@ class CogFactory:
     async def load(cls, bot):
         """Create a cog instance and add it to the bot."""
         if cls.is_available():
-            cog_instance = cls.create_cog(bot)
+            cog_instance = await cls.create_cog(bot)
             await bot.add_cog(cog_instance)
 
 

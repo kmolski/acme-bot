@@ -80,7 +80,7 @@ class ShellModule(commands.Cog, CogFactory):
     __GREP_ARGS = re.compile(r"-[0-9ABCEFGiovwx]+")
 
     @classmethod
-    def create_cog(cls, bot):
+    async def create_cog(cls, bot):
         return cls()
 
     @commands.command(aliases=["conc", "cat"])

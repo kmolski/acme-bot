@@ -27,8 +27,8 @@ def test_add_expire_time_default():
     assert "expire" in entry
 
 
-async def test_get_entries_by_urls(stub_extractor):
-    results = await stub_extractor.get_entries_by_urls(
+async def test_get_entries_by_urls(extractor):
+    results = await extractor.get_entries_by_urls(
         [
             "https://www.youtube.com/watch?v=3SdSKZFoUa0",
             "https://www.youtube.com/playlist?list=000",
@@ -46,8 +46,8 @@ async def test_get_entries_by_urls(stub_extractor):
     assert all(t["url"] is not None for t in results)
 
 
-async def test_get_entries_by_query(stub_extractor):
-    results = await stub_extractor.get_entries_by_query("ytsearch10:", "bar")
+async def test_get_entries_by_query(extractor):
+    results = await extractor.get_entries_by_query("ytsearch10:", "bar")
 
     assert list(t["id"] for t in results) == ["Ee_uujKuJM0", "FNKPYhXmzo0"]
     assert all(t["uploader"] == "bar" for t in results)
@@ -56,10 +56,10 @@ async def test_get_entries_by_query(stub_extractor):
     assert all(t["url"] is not None for t in results)
 
 
-async def test_update_entry(stub_extractor):
+async def test_update_entry(extractor):
     entry = {"webpage_url": "https://www.youtube.com/watch?v=3SdSKZFoUa0"}
     assert "expire" not in entry
 
-    await stub_extractor.update_entry(entry)
+    await extractor.update_entry(entry)
     assert "expire" in entry
     assert entry["expire"] == 1523355910

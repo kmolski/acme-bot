@@ -247,7 +247,7 @@ def soundcloud_entry():
 
 
 @pytest.fixture
-async def stub_extractor(youtube_entry_query, youtube_playlist, soundcloud_entry):
+async def extractor(youtube_entry_query, youtube_playlist, soundcloud_entry):
     stub_config = {
         "https://www.youtube.com/watch?v=3SdSKZFoUa0": youtube_entry_query,
         "https://www.youtube.com/playlist?list=000": {
@@ -293,13 +293,13 @@ def fake_ctx(stub_bot, stub_user, fake_message, fake_voice_client):
 
 
 @pytest.fixture
-async def player(fake_ctx, stub_extractor):
-    return MusicPlayer(fake_ctx, stub_extractor, 123456)
+async def player(fake_ctx, extractor):
+    return MusicPlayer(fake_ctx, extractor, 123456)
 
 
 @pytest.fixture
-async def player_with_tracks(fake_ctx, stub_extractor, youtube_playlist):
-    player = MusicPlayer(fake_ctx, stub_extractor, 123456)
+async def player_with_tracks(fake_ctx, extractor, youtube_playlist):
+    player = MusicPlayer(fake_ctx, extractor, 123456)
     player.extend(youtube_playlist)
     return player
 

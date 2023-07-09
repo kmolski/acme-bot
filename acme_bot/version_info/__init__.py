@@ -79,7 +79,7 @@ The source code of this build is available here: {}.
         self.build_info = build_info
 
     @classmethod
-    def create_cog(cls, bot):
+    async def create_cog(cls, bot):
         version_number = version("acme-bot")
         commit_hash, commit_date = get_commit_info_from_module()
         build_info = BuildInfo(version_number, commit_hash, commit_date)

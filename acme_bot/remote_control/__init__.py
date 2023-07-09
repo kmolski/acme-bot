@@ -1,4 +1,4 @@
-"""External music player control using an AMQP message broker."""
+"""Remote music player control using an AMQP message broker."""
 #  Copyright (C) 2022-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,6 @@
 
 import json
 import logging
-from asyncio import run_coroutine_threadsafe
 
 import aio_pika
 from aiormq.tools import censor_url
@@ -31,38 +30,42 @@ log = logging.getLogger(__name__)
 
 
 @autoloaded
-class ExternalControlModule(commands.Cog, CogFactory):
-    """External music player control using an AMQP message broker."""
+class RemoteControlModule(commands.Cog, CogFactory):
+    """Remote music player control using an AMQP message broker."""
 
-    def __init__(self, bot, uri, music_module):
+    def __init__(self, bot, connection, music_module):
         self.bot = bot
-        self.uri = uri
+        self.connection = connection
         self.music_module = music_module
 
     @classmethod
     def is_available(cls):
         if not MusicModule.is_available():
-            log.info("Cannot load ExternalControlModule: MusicModule not available")
+            log.info("Cannot load RemoteControlModule: MusicModule not available")
             return False
 
         if RABBITMQ_URI.get() is None:
-            log.info("Cannot load ExternalControlModule: RABBITMQ_URI is not set")
+            log.info("Cannot load RemoteControlModule: RABBITMQ_URI is not set")
             return False
 
         return True
 
     @classmethod
-    def create_cog(cls, bot):
-        ext_control = cls(bot, RABBITMQ_URI(), bot.get_cog(MusicModule.__name__))
-        run_coroutine_threadsafe(ext_control.__process_messages(), bot.loop)
+    async def create_cog(cls, bot):
+        connection = await aio_pika.connect_robust(RABBITMQ_URI())
+        ext_control = cls(bot, connection, bot.get_cog(MusicModule.__name__))
         return ext_control
 
-    # pylint: disable=unused-private-member
+    async def cog_load(self):
+        self.bot.loop.create_task(self.__process_messages())
+
+    async def cog_unload(self):
+        await self.connection.close()
+
     async def __process_messages(self):
-        connection = await aio_pika.connect_robust(self.uri)
-        log.info("Connected to AMQP broker at '%s'", censor_url(self.uri))
-        async with connection:
-            channel = await connection.channel()
+        log.info("Connected to AMQP broker at '%s'", censor_url(self.connection.url))
+        async with self.connection:
+            channel = await self.connection.channel()
             exchange = await channel.declare_exchange(
                 "acme_bot_remote", aio_pika.ExchangeType.FANOUT, durable=True
             )
