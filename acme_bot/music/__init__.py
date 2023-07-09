@@ -102,7 +102,7 @@ class MusicModule(commands.Cog, CogFactory):
         return True
 
     @classmethod
-    def create_cog(cls, bot):
+    async def create_cog(cls, bot):
         executor = ProcessPoolExecutor(
             max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
             initializer=MusicExtractor.init_downloader,
