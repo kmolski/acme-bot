@@ -10,7 +10,7 @@ include = ["acme_bot/version_info/commit.txt"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-aio-pika = "^9.1.3"
+aio-pika = "^9.1.4"
 "discord.py" = {version = "^2.3.1", extras = ["voice"]}
 python-dotenv = "^1.0.0"
 textX = "^3.1.1"
