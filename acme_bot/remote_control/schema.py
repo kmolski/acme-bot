@@ -58,6 +58,6 @@ class ResumeCommand(RemoteCommand, BaseModel):
 
 
 class RemoteCommandModel(RootModel):
-    """Root pydantic model for remote control commands."""
+    """Root model for remote control commands."""
 
     root: Union[PauseCommand, StopCommand, ResumeCommand]
