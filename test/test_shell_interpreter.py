@@ -9,13 +9,10 @@ from acme_bot.shell.interpreter import (
 
 def test_parse_simple_command():
     expected = ExprSeq(
-        parent=None,
         expr_comps=[
             ExprComp(
-                None,
                 exprs=[
                     Command(
-                        None,
                         name="echo",
                         args=[StrLiteral(None, value=s) for s in ["hello", "world"]],
                     ),

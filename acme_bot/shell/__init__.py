@@ -32,6 +32,9 @@ from acme_bot.shell.interpreter import FileContent
 from acme_bot.textutils import MD_BLOCK_FMT
 
 
+log = logging.getLogger(__name__)
+
+
 def validate_options(args, regex):
     """Validate each argument in args against the provided regex.
     If any argument does not match fully, a CommandError is raised."""
@@ -61,7 +64,7 @@ async def execute_system_cmd(name, *args, stdin=None):
     (stdout, stderr) = await proc.communicate(stdin)
 
     if proc.returncode != 0:
-        logging.warning(
+        log.warning(
             "%s (PID %s) terminated with return code of %s",
             name,
             proc.pid,
