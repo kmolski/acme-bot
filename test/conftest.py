@@ -9,6 +9,7 @@ from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
 from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
+from acme_bot.remote_control import RemoteControlModule
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
@@ -327,6 +328,13 @@ async def confirm_add_tracks_view(stub_user, fake_player, youtube_playlist):
 @pytest.fixture
 async def select_track_view(stub_user, fake_player, youtube_playlist):
     return SelectTrack(stub_user, fake_player, Queue(), youtube_playlist)
+
+
+@pytest.fixture
+async def remote_control_module(stub_bot, player):
+    cog = RemoteControlModule(stub_bot, None)
+    await cog._handle_player_created(player)
+    return cog
 
 
 @pytest.fixture

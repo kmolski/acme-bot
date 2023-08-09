@@ -14,9 +14,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import asyncio
 import logging
 import string
+from asyncio import Queue, Lock
 from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
 from random import choices
@@ -72,8 +72,6 @@ class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
-    ACTION_TIMEOUT = 60.0
-
     DOWNLOAD_OPTIONS = {
         "format": "bestaudio/best",
         "noplaylist": True,
@@ -88,10 +86,11 @@ class MusicModule(commands.Cog, CogFactory):
     EMBED_COLOR = 0xFF0000
 
     def __init__(self, bot, extractor):
+        self.__lock = Lock()
+        self.__players = {}
+
         self.bot = bot
         self.extractor = extractor
-        self.__players = {}
-        self.players_by_code = {}
 
     @classmethod
     def is_available(cls):
@@ -119,14 +118,14 @@ class MusicModule(commands.Cog, CogFactory):
         return self.__players[ctx.voice_client.channel.id]
 
     def __generate_access_code(self):
-        while code := "".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH)):
-            if code not in self.players_by_code:
+        while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
+            if not any(player.access_code == code for player in self.__players):
                 return code
         assert False
 
     async def __delete_player(self, player):
-        del self.players_by_code[player.access_code]
         del self.__players[player.channel_id]
+        self.bot.dispatch("acme_bot_player_deleted", player)
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
@@ -136,12 +135,13 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.Cog.listener("on_voice_state_update")
     async def _quit_channel_if_empty(self, _, before, after):
         """Leave voice channels that don't contain any human users."""
-        voice = before.channel
-        if voice is not None and after.channel is None:
-            if voice.id in self.__players and all(user.bot for user in voice.members):
-                log.info("Voice channel ID %s is now empty, disconnecting", voice.id)
-                player = self.__players[voice.id]
-                await self.__delete_player(player)
+        prev = before.channel
+        if prev is not None and after.channel is None:
+            async with self.__lock:
+                if prev.id in self.__players and all(user.bot for user in prev.members):
+                    log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
+                    player = self.__players[prev.id]
+                    await self.__delete_player(player)
 
     @commands.command()
     async def join(self, ctx):
@@ -159,14 +159,14 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The deleted track URLs as a string.
         """
-        async with self.__get_player(ctx) as player:
-            player.stop()
-            head, tail = player.get_tracks()
-            await self.__delete_player(player)
         if ctx.display:
             await ctx.send(
                 f"\u23CF Quitting voice channel **{ctx.voice_client.channel.name}**."
             )
+        async with self.__lock, self.__get_player(ctx) as player:
+            player.stop()
+            head, tail = player.get_tracks()
+            await self.__delete_player(player)
         return export_entry_list(head, tail)
 
     @commands.command()
@@ -184,7 +184,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with ctx.typing():
             results = await self.extractor.get_entries_by_query("ytsearch8:", query)
 
-        new = asyncio.Queue()
+        new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
@@ -209,7 +209,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with ctx.typing():
             results = await self.extractor.get_entries_by_query("scsearch8:", query)
 
-        new = asyncio.Queue()
+        new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
@@ -439,22 +439,22 @@ class MusicModule(commands.Cog, CogFactory):
             if author_voice := ctx.author.voice:
                 await author_voice.channel.connect()
 
-                access_code = self.__generate_access_code()
+                async with self.__lock:
+                    access_code = self.__generate_access_code()
+                    player = MusicPlayer(ctx, self.extractor, access_code)
+
+                    self.__players[player.channel_id] = player
+                    self.bot.dispatch("acme_bot_player_created", player)
+
                 await ctx.send(
                     f"\U0001F5DD The access code for this player is {access_code}."
                 )
-
-                channel_id = ctx.voice_client.channel.id
-                player = MusicPlayer(ctx, self.extractor, access_code)
                 log.info(
                     "Created a MusicPlayer instance with "
                     "access code %s for Channel ID %s",
                     access_code,
-                    channel_id,
+                    player.channel_id,
                 )
-
-                self.__players[channel_id] = player
-                self.players_by_code[access_code] = player
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
 
