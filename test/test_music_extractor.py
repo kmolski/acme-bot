@@ -1,3 +1,6 @@
+import pytest
+from discord.ext import commands
+
 from acme_bot.music.extractor import add_expire_time
 
 
@@ -46,6 +49,11 @@ async def test_get_entries_by_urls(extractor):
     assert all(t["url"] is not None for t in results)
 
 
+async def test_get_entries_by_urls_unknown(extractor):
+    with pytest.raises(commands.CommandError):
+        await extractor.get_entries_by_urls("https://yourcoffee.zip/")
+
+
 async def test_get_entries_by_query(extractor):
     results = await extractor.get_entries_by_query("ytsearch10:", "bar")
 
@@ -54,6 +62,11 @@ async def test_get_entries_by_query(extractor):
     assert all(t["extractor"] == "youtube" for t in results)
     assert all(t["duration_string"] is not None for t in results)
     assert all(t["url"] is not None for t in results)
+
+
+async def test_get_entries_by_query_no_results(extractor):
+    with pytest.raises(commands.CommandError):
+        await extractor.get_entries_by_query("ytsearch10:", "null")
 
 
 async def test_update_entry(extractor):
