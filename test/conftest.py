@@ -80,13 +80,25 @@ class FakeVoiceClient:
 
 
 @dataclass
+class StubFile:
+    """Fake discord.py file object."""
+
+    filename: str = "stub_file"
+    content: bytes = b"Hello, world!\xf0\x28\x8c\xbc"
+
+    async def read(self):
+        return self.content
+
+
+@dataclass
 class FakeMessage:
     """Fake discord.py message object."""
 
     content: str = ""
-    reactions: list[str] = None
-    delete_after: float = None
     view: object = None
+    delete_after: float = None
+    reactions: list[str] = None
+    attachments: list[StubFile] = None
 
     async def edit(self, *, content=None, delete_after=None, view=None):
         if content is not None:
@@ -102,23 +114,41 @@ class FakeMessage:
         self.reactions.append(reaction)
         await sleep(0.1)
 
+    def add_attachment(self, attachment):
+        if self.attachments is None:
+            self.attachments = []
+        self.attachments.append(attachment)
+        return self
+
+
+class AsyncList(list):
+    """Python list with an async interator interface."""
+
+    async def __aiter__(self):
+        for item in self:
+            yield item
+
 
 @dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
-    messages: list[str]
     tts: list[bool]
-    files: list[Optional[str]]
-    delete_after: list[float]
-    references: list[object]
+    messages: list[str]
     views: list[object]
+    hist: AsyncList[object]
+    references: list[object]
+    delete_after: list[float]
+    files: list[Optional[str]]
 
     bot: StubBot
     author: StubUser
     message: FakeMessage
     voice_client: FakeVoiceClient
     display: bool = True
+
+    def history(self, **_):
+        return self.hist
 
     async def send(
         self,
@@ -289,7 +319,34 @@ def fake_voice_client(stub_channel):
 @pytest.fixture
 def fake_ctx(stub_bot, stub_user, fake_message, fake_voice_client):
     return FakeContext(
-        [], [], [], [], [], [], stub_bot, stub_user, fake_message, fake_voice_client
+        [],
+        [],
+        [],
+        AsyncList(),
+        [],
+        [],
+        [],
+        stub_bot,
+        stub_user,
+        fake_message,
+        fake_voice_client,
+    )
+
+
+@pytest.fixture
+def fake_ctx_history(stub_bot, stub_user, stub_file_message, fake_voice_client):
+    return FakeContext(
+        [],
+        [],
+        [],
+        AsyncList([stub_file_message]),
+        [],
+        [],
+        [],
+        stub_bot,
+        stub_user,
+        fake_message,
+        fake_voice_client,
     )
 
 
@@ -308,6 +365,16 @@ async def player_with_tracks(fake_ctx, extractor, youtube_playlist):
 @pytest.fixture
 def fake_message():
     return FakeMessage()
+
+
+@pytest.fixture
+def stub_file():
+    return StubFile()
+
+
+@pytest.fixture
+def stub_file_message(stub_file):
+    return FakeMessage().add_attachment(stub_file)
 
 
 @pytest.fixture

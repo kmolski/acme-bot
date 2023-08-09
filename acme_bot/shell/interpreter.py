@@ -46,9 +46,9 @@ class ExprSeq:
 class ExprComp:
     """Expression composition AST node."""
 
-    def __init__(self, parent, exprs):
+    def __init__(self, parent=None, exprs=None):
         self.parent = parent
-        self.exprs = exprs
+        self.exprs = exprs if exprs is not None else []
 
     def __eq__(self, other):
         return self.exprs == other.exprs
@@ -74,10 +74,10 @@ class ExprComp:
 class Command:
     """Bot command AST node."""
 
-    def __init__(self, parent, name, args):
+    def __init__(self, parent=None, name=None, args=None):
         self.parent = parent
         self.name = name
-        self.args = args
+        self.args = args if args is not None else []
 
     def __eq__(self, other):
         return self.name == other.name and self.args == other.args

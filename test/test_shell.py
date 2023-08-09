@@ -47,6 +47,17 @@ async def test_to_file_writes_the_file(fake_ctx, shell_module):
     assert "foo" in fake_ctx.files[0].fp
 
 
+async def test_open_returns_existing_file(fake_ctx_history, stub_file, shell_module):
+    expected = "Hello, world!�(��"
+    assert await shell_module.open(None, fake_ctx_history, "stub_file") == expected
+    assert fake_ctx_history.messages[0] == f"```\n{expected}\n```"
+
+
+async def test_open_throws_with_nonexistent_file(fake_ctx, shell_module):
+    with pytest.raises(commands.CommandError):
+        await shell_module.open(None, fake_ctx, "stub_file")
+
+
 async def test_tail_returns_the_last_lines(fake_ctx, shell_module):
     assert await shell_module.tail(None, fake_ctx, "foo\nbar\nbaz", 2) == "bar\nbaz"
     assert fake_ctx.messages[0] == "```\nbar\nbaz\n```"
