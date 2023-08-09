@@ -183,7 +183,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with ctx.typing():
             results = await self.extractor.get_entries_by_query("ytsearch8:", query)
 
-        new = asyncio.Queue()
+        new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
@@ -208,7 +208,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with ctx.typing():
             results = await self.extractor.get_entries_by_query("scsearch8:", query)
 
-        new = asyncio.Queue()
+        new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
             view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
