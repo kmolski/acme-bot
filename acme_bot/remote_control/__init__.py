@@ -14,17 +14,18 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import logging
+from asyncio import Lock
 
 import aio_pika
 from aiormq.tools import censor_url
 from discord.ext import commands
+from pydantic import ValidationError
 
+from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import RABBITMQ_URI
 from acme_bot.music import MusicModule
-from acme_bot.autoloader import CogFactory, autoloaded
-
+from acme_bot.remote_control.schema import RemoteCommandModel
 
 log = logging.getLogger(__name__)
 
@@ -33,10 +34,12 @@ log = logging.getLogger(__name__)
 class RemoteControlModule(commands.Cog, CogFactory):
     """Remote music player control using an AMQP message broker."""
 
-    def __init__(self, bot, connection, music_module):
-        self.bot = bot
-        self.connection = connection
-        self.music_module = music_module
+    def __init__(self, bot, connection):
+        self.__lock = Lock()
+        self.__players = {}
+
+        self.__bot = bot
+        self.__connection = connection
 
     @classmethod
     def is_available(cls):
@@ -53,46 +56,48 @@ class RemoteControlModule(commands.Cog, CogFactory):
     @classmethod
     async def create_cog(cls, bot):
         connection = await aio_pika.connect_robust(RABBITMQ_URI())
-        ext_control = cls(bot, connection, bot.get_cog(MusicModule.__name__))
+        ext_control = cls(bot, connection)
         return ext_control
 
     async def cog_load(self):
-        self.bot.loop.create_task(self.__process_messages())
+        self.__bot.loop.create_task(self.__handle_command_stream())
 
     async def cog_unload(self):
-        await self.connection.close()
+        await self.__connection.close()
 
-    async def __process_messages(self):
-        log.info("Connected to AMQP broker at '%s'", censor_url(self.connection.url))
-        async with self.connection:
-            channel = await self.connection.channel()
+    @commands.Cog.listener("on_acme_bot_player_created")
+    async def _handle_player_created(self, player):
+        async with self.__lock:
+            self.__players[player.access_code] = player
+
+    @commands.Cog.listener("on_acme_bot_player_deleted")
+    async def _handle_player_deleted(self, player):
+        async with self.__lock:
+            del self.__players[player.access_code]
+
+    async def _run_command(self, message):
+        log.debug("Received message: %s", message)
+        command = RemoteCommandModel.model_validate_json(message).root
+        async with self.__lock, self.__players[command.code] as player:
+            await command.run(player)
+
+    async def __handle_command_stream(self):
+        log.info("Connected to AMQP broker at '%s'", censor_url(self.__connection.url))
+        async with self.__connection:
+            channel = await self.__connection.channel()
             exchange = await channel.declare_exchange(
                 "acme_bot_remote", aio_pika.ExchangeType.FANOUT, durable=True
             )
             queue = await channel.declare_queue(auto_delete=True)
             await queue.bind(exchange)
-            async with queue.iterator() as queue_iter:
-                async for message in queue_iter:
-                    async with message.process():
-                        log.info("Processing message '%s'", message.body)
-
+            async with queue.iterator() as message_stream:
+                async for msg in message_stream:
+                    async with msg.process():
                         try:
-                            message_dict = json.loads(message.body)
-
-                            operation = message_dict["op"]
-                            access_code = message_dict["code"]
-
-                            player = self.music_module.players_by_code[access_code]
-                            if operation == "resume":
-                                await player.resume()
-                            elif operation == "pause":
-                                player.pause()
-                            elif operation == "stop":
-                                player.stop()
-
-                        except (json.JSONDecodeError, KeyError) as exc:
-                            log.exception(
-                                "Exception caused by message %s:",
-                                message.body,
-                                exc_info=exc,
-                            )
+                            await self._run_command(msg.body)
+                        except KeyError as exc:
+                            log.debug("Invalid access code: '%s'", exc.args[0])
+                        except (ValidationError, ValueError) as exc:
+                            log.exception("Invalid command: %s", msg.body, exc_info=exc)
+                        except commands.CommandError as exc:
+                            log.exception("Command failed: %s", msg.body, exc_info=exc)
