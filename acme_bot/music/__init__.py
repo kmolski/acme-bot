@@ -14,9 +14,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import asyncio
 import logging
 import string
+from asyncio import Queue, Lock
 from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
 from random import choices
@@ -72,8 +72,6 @@ class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
-    ACTION_TIMEOUT = 60.0
-
     DOWNLOAD_OPTIONS = {
         "format": "bestaudio/best",
         "noplaylist": True,
@@ -88,10 +86,11 @@ class MusicModule(commands.Cog, CogFactory):
     EMBED_COLOR = 0xFF0000
 
     def __init__(self, bot, extractor):
+        self.__lock = Lock()
+        self.__players = {}
+
         self.bot = bot
         self.extractor = extractor
-        self.__players = {}
-        self.players_by_code = {}
 
     @classmethod
     def is_available(cls):
@@ -119,8 +118,8 @@ class MusicModule(commands.Cog, CogFactory):
         return self.__players[ctx.voice_client.channel.id]
 
     def __generate_access_code(self):
-        while code := "".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH)):
-            if code not in self.players_by_code:
+        while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
+            if not any(player.access_code == code for player in self.__players):
                 return code
         assert False
 
