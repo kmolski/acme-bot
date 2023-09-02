@@ -442,7 +442,7 @@ async def select_track_view(stub_user, fake_player, youtube_playlist):
 @pytest.fixture
 async def remote_control_module(fake_bot, player):
     cog = RemoteControlModule(fake_bot, None)
-    await cog._handle_player_created(player)
+    await cog._register_player(player)
     return cog
 
 

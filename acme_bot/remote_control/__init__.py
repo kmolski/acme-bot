@@ -67,12 +67,12 @@ class RemoteControlModule(commands.Cog, CogFactory):
         await self.__connection.close()
 
     @commands.Cog.listener("on_acme_bot_player_created")
-    async def _handle_player_created(self, player):
+    async def _register_player(self, player):
         async with self.__lock:
             self.__players[player.access_code] = player
 
     @commands.Cog.listener("on_acme_bot_player_deleted")
-    async def _handle_player_deleted(self, player):
+    async def _delete_player(self, player):
         async with self.__lock:
             del self.__players[player.access_code]
 
