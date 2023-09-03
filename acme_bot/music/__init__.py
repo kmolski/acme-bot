@@ -28,6 +28,7 @@ from yt_dlp import YoutubeDL
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import MUSIC_EXTRACTOR_MAX_WORKERS
+from acme_bot.convutils import to_int
 from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer
 from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
@@ -265,7 +266,7 @@ class MusicModule(commands.Cog, CogFactory):
         ARGUMENTS
             offset - number of tracks to rewind (default: 1)
         """
-        offset = int(offset)
+        offset = to_int(offset)
         async with self.__get_player(ctx) as player:
             player.move(-offset)
 
@@ -277,7 +278,7 @@ class MusicModule(commands.Cog, CogFactory):
         ARGUMENTS
             offset - number of tracks to skip (default: 1)
         """
-        offset = int(offset)
+        offset = to_int(offset)
         async with self.__get_player(ctx) as player:
             player.move(offset)
 
@@ -372,7 +373,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The new volume value as an integer.
         """
-        volume = int(volume)
+        volume = to_int(volume)
         async with self.__get_player(ctx) as player:
             player.volume = volume
         if ctx.display:
@@ -412,7 +413,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The removed track URL as a string.
         """
-        offset = int(offset)
+        offset = to_int(offset)
         async with self.__get_player(ctx) as player:
             removed = player.remove(offset - 1 if offset >= 1 else offset)
             if ctx.display:
