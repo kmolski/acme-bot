@@ -44,11 +44,6 @@ class ConfirmAddTracks(VerifiedView):
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
         """Confirm adding tracks to the player."""
-        await interaction.message.edit(
-            content=f"\u2795 {len(self.__results)} tracks added to the queue.",
-            view=None,
-        )
-
         async with self.__player as player:
             for track in self.__results:
                 add_expire_time(track)
@@ -56,6 +51,11 @@ class ConfirmAddTracks(VerifiedView):
 
             if player.state == PlayerState.IDLE:
                 await player.start_player(self.__results[0])
+
+        await interaction.message.edit(
+            content=f"\u2795 {len(self.__results)} tracks added to the queue.",
+            view=None,
+        )
 
     @ui.button(label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary)
     async def cancel(self, interaction, _):
@@ -69,7 +69,7 @@ class SelectTrack(VerifiedView):
     """Select menu view for the play/play-snd command."""
 
     def __init__(self, user, player, return_queue, results):
-        super().__init__(user, timeout=self.ACTION_TIMEOUT)
+        super().__init__(user, self.ACTION_TIMEOUT)
 
         self.__player = player
         self.__return_queue = return_queue
@@ -83,18 +83,18 @@ class SelectTrack(VerifiedView):
 
         async def button_pressed(interaction):
             add_expire_time(new)
+            async with self.__player as player:
+                player.append(new)
+
+                if player.state == PlayerState.IDLE:
+                    await player.start_player(new)
+
             await interaction.message.edit(
                 content="\u2795 **{title}** by {uploader} added to the queue.".format(
                     **new
                 ),
                 view=None,
             )
-
-            async with self.__player as player:
-                player.append(new)
-
-                if player.state == PlayerState.IDLE:
-                    await player.start_player(new)
             await self.__return_queue.put(new)
 
         button = ui.Button(label=str(index), style=ButtonStyle.secondary)
