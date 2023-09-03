@@ -62,6 +62,10 @@ class StubBot:
     """Stub discord.py bot instance object."""
 
     loop: AbstractEventLoop
+    events: list[object] = field(default_factory=list)
+
+    def dispatch(self, event, *args):
+        self.events.append((event, *args))
 
 
 @dataclass
