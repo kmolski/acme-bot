@@ -53,16 +53,15 @@ async def execute_system_cmd(name, *args, stdin=None):
     """Execute a system command and communicates with the process.
     The `stdin` argument is encoded and passed into the standard input.
     Therefore, it must be convertible into a `bytes` object."""
-    stdin = stdin.encode() if stdin else None
+    stdin = stdin.encode() if stdin is not None else None
     proc = await asyncio.create_subprocess_exec(
         name,
         *args,
-        stdin=asyncio.subprocess.PIPE if stdin else None,
+        stdin=asyncio.subprocess.PIPE if stdin is not None else None,
         stdout=asyncio.subprocess.PIPE,
     )
 
     (stdout, stderr) = await proc.communicate(stdin)
-
     if proc.returncode != 0:
         log.warning(
             "%s (PID %s) terminated with return code of %s",
