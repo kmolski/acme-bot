@@ -112,37 +112,6 @@ class MusicModule(commands.Cog, CogFactory):
     async def cog_unload(self):
         self.extractor.shutdown_executor()
 
-    def _get_player(self, ctx):
-        """Return a MusicPlayer instance for the channel in the current context."""
-        return self.__players[ctx.voice_client.channel.id]
-
-    def __generate_access_code(self):
-        while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
-            if code not in self.__access_codes:
-                return code
-        assert False
-
-    async def __delete_player(self, player):
-        del self.__players[player.channel_id]
-        self.__access_codes.remove(player.access_code)
-        self.bot.dispatch("acme_bot_player_deleted", player)
-        log.info(
-            "Deleted the MusicPlayer instance for Channel ID %s",
-            player.channel_id,
-        )
-        await player.disconnect()
-
-    @commands.Cog.listener("on_voice_state_update")
-    async def _quit_channel_if_empty(self, _, before, after):
-        """Leave voice channels that don't contain any human users."""
-        prev = before.channel
-        if prev is not None and after.channel is None:
-            async with self.__lock:
-                if prev.id in self.__players and all(user.bot for user in prev.members):
-                    log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
-                    player = self.__players[prev.id]
-                    await self.__delete_player(player)
-
     @commands.command()
     async def join(self, ctx):
         """Join the sender's current voice channel."""
@@ -425,6 +394,21 @@ class MusicModule(commands.Cog, CogFactory):
                 )
             return export_entry(removed)
 
+    def _get_player(self, ctx):
+        """Return a MusicPlayer instance for the channel in the current context."""
+        return self.__players[ctx.voice_client.channel.id]
+
+    @commands.Cog.listener("on_voice_state_update")
+    async def _quit_channel_if_empty(self, _, before, after):
+        """Leave voice channels that don't contain any human users."""
+        prev = before.channel
+        if prev is not None and after.channel is None:
+            async with self.__lock:
+                if prev.id in self.__players and all(user.bot for user in prev.members):
+                    log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
+                    with self.__players[prev.id] as player:
+                        await self.__delete_player(player)
+
     @join.before_invoke
     @play.before_invoke
     @play_snd.before_invoke
@@ -486,3 +470,19 @@ class MusicModule(commands.Cog, CogFactory):
         await self._ensure_voice_or_fail(ctx)
         if self._get_player(ctx).is_empty():
             raise commands.CommandError("The queue is empty!")
+
+    def __generate_access_code(self):
+        while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
+            if code not in self.__access_codes:
+                return code
+        assert False
+
+    async def __delete_player(self, player):
+        del self.__players[player.channel_id]
+        self.__access_codes.remove(player.access_code)
+        self.bot.dispatch("acme_bot_player_deleted", player)
+        log.info(
+            "Deleted the MusicPlayer instance for Channel ID %s",
+            player.channel_id,
+        )
+        await player.disconnect()
