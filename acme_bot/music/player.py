@@ -140,7 +140,7 @@ class MusicPlayer(MusicQueue):
 
     @property
     def access_code(self):
-        """Return the player's access code."""
+        """Return the player's globally unique access code."""
         return self.__access_code
 
     @property
@@ -202,7 +202,6 @@ class MusicPlayer(MusicQueue):
             self.__state = PlayerState.PLAYING
             self.__ctx.voice_client.resume()
         elif self.__state == PlayerState.STOPPED:
-            self.__state = PlayerState.PLAYING
             await self.start_player(self.current)
         else:
             raise commands.CommandError("This player is not paused!")
@@ -236,18 +235,16 @@ class MusicPlayer(MusicQueue):
         with self.__lock:
             if err:
                 log.error(err)
-                return
-            if (
+            elif (
                 self._should_stop(self.__next_offset)
                 and self.__state == PlayerState.PLAYING
             ):
                 self.__state = PlayerState.STOPPED
                 run_coroutine_threadsafe(
-                    self.__ctx.send("\u2757 The queue is empty, stopping the player."),
+                    self.__ctx.send("\u2757\uFE0F The queue is empty, player stopped."),
                     self.__ctx.bot.loop,
                 )
-                return
-            if self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
+            elif self.__state in (PlayerState.PLAYING, PlayerState.PAUSED):
                 current = self._next(self.__next_offset)
                 self.__next_offset = 1  # Set next_offset back to the default value of 1
                 run_coroutine_threadsafe(

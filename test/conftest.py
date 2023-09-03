@@ -1,10 +1,11 @@
 from asyncio import get_running_loop, sleep, AbstractEventLoop, Queue
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import pytest
 
+from acme_bot.music import MusicModule
 from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
@@ -32,6 +33,20 @@ class StubChannel:
     """Stub discord.py voice channel object."""
 
     id: int = 123456789
+    name: str = "Test Channel"
+    ctx: Optional[object] = None
+    members: list[object] = field(default_factory=list)
+
+    async def connect(self):
+        if self.ctx is not None:
+            self.ctx.voice_client = FakeVoiceClient([], None)
+
+
+@dataclass
+class StubVoice:
+    """Stub discord.py voice object."""
+
+    channel: StubChannel = field(default_factory=StubChannel)
 
 
 @dataclass
@@ -40,13 +55,18 @@ class StubUser:
 
     id: int = 987654321
     name: str = "Test User"
+    voice: StubVoice = field(default_factory=StubVoice)
 
 
 @dataclass
-class StubBot:
+class FakeBot:
     """Stub discord.py bot instance object."""
 
     loop: AbstractEventLoop
+    events: list[object] = field(default_factory=list)
+
+    def dispatch(self, event, *args):
+        self.events.append((event, *args))
 
 
 @dataclass
@@ -54,11 +74,11 @@ class FakeVoiceClient:
     """Fake discord.py voice client object."""
 
     played_tracks: list[object]
-    channel: StubChannel
     source: Optional[object]
     stopped: bool = False
     paused: bool = False
     disconnected: bool = False
+    channel: StubChannel = field(default_factory=StubChannel)
 
     def is_playing(self):
         return not (self.stopped or self.paused)
@@ -96,9 +116,9 @@ class FakeMessage:
 
     content: str = ""
     view: object = None
-    delete_after: float = None
-    reactions: list[str] = None
-    attachments: list[StubFile] = None
+    delete_after: Optional[float] = None
+    reactions: list[str] = field(default_factory=list)
+    attachments: list[StubFile] = field(default_factory=list)
 
     async def edit(self, *, content=None, delete_after=None, view=None):
         if content is not None:
@@ -109,14 +129,10 @@ class FakeMessage:
             self.view = view
 
     async def add_reaction(self, reaction):
-        if self.reactions is None:
-            self.reactions = []
         self.reactions.append(reaction)
         await sleep(0.1)
 
     def add_attachment(self, attachment):
-        if self.attachments is None:
-            self.attachments = []
         self.attachments.append(attachment)
         return self
 
@@ -129,6 +145,16 @@ class AsyncList(list):
             yield item
 
 
+class AsyncContextManager:
+    """Object with an async context manager."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+
 @dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
@@ -136,28 +162,34 @@ class FakeContext:
     tts: list[bool]
     messages: list[str]
     views: list[object]
+    embeds: list[object]
     hist: AsyncList[object]
     references: list[object]
     delete_after: list[float]
     files: list[Optional[str]]
 
-    bot: StubBot
-    author: StubUser
-    message: FakeMessage
-    voice_client: FakeVoiceClient
+    bot: FakeBot
+    voice_client: Optional[FakeVoiceClient]
+
     display: bool = True
+    author: StubUser = field(default_factory=StubUser)
+    message: FakeMessage = field(default_factory=FakeMessage)
 
     def history(self, **_):
         return self.hist
 
+    def typing(self):
+        return AsyncContextManager()
+
     async def send(
         self,
-        content,
+        content="",
         *,
         tts=False,
         file=None,
         delete_after=None,
         reference=None,
+        embed=None,
         view=None
     ):
         self.messages.append(content)
@@ -165,6 +197,7 @@ class FakeContext:
         self.files.append(file)
         self.delete_after.append(delete_after)
         self.references.append(reference)
+        self.embeds.append(embed)
         self.views.append(view)
 
     async def send_pages(self, *args, **kwargs):
@@ -194,7 +227,7 @@ class FakePlayer(MusicQueue):
 class StubInteraction:
     """Stub discord.py interaction object."""
 
-    message: FakeMessage
+    message: FakeMessage = field(default_factory=FakeMessage)
 
 
 @pytest.fixture
@@ -297,28 +330,24 @@ async def extractor(youtube_entry_query, youtube_playlist, soundcloud_entry):
 
 
 @pytest.fixture
-def stub_channel():
-    return StubChannel()
-
-
-@pytest.fixture
 def stub_user():
     return StubUser()
 
 
 @pytest.fixture
-async def stub_bot():
-    return StubBot(get_running_loop())
+async def fake_bot():
+    return FakeBot(get_running_loop())
 
 
 @pytest.fixture
-def fake_voice_client(stub_channel):
-    return FakeVoiceClient([], stub_channel, None)
+def fake_voice_client():
+    return FakeVoiceClient([], None)
 
 
 @pytest.fixture
-def fake_ctx(stub_bot, stub_user, fake_message, fake_voice_client):
+def fake_ctx(fake_bot, fake_message, fake_voice_client):
     return FakeContext(
+        [],
         [],
         [],
         [],
@@ -326,16 +355,15 @@ def fake_ctx(stub_bot, stub_user, fake_message, fake_voice_client):
         [],
         [],
         [],
-        stub_bot,
-        stub_user,
-        fake_message,
+        fake_bot,
         fake_voice_client,
     )
 
 
 @pytest.fixture
-def fake_ctx_history(stub_bot, stub_user, stub_file_message, fake_voice_client):
+def fake_ctx_history(fake_bot, stub_file_message, fake_voice_client):
     return FakeContext(
+        [],
         [],
         [],
         [],
@@ -343,10 +371,24 @@ def fake_ctx_history(stub_bot, stub_user, stub_file_message, fake_voice_client):
         [],
         [],
         [],
-        stub_bot,
-        stub_user,
-        fake_message,
+        fake_bot,
         fake_voice_client,
+    )
+
+
+@pytest.fixture
+def fake_ctx_no_voice(fake_bot, fake_message):
+    return FakeContext(
+        [],
+        [],
+        [],
+        [],
+        AsyncList(),
+        [],
+        [],
+        [],
+        fake_bot,
+        None,
     )
 
 
@@ -398,8 +440,8 @@ async def select_track_view(stub_user, fake_player, youtube_playlist):
 
 
 @pytest.fixture
-async def remote_control_module(stub_bot, player):
-    cog = RemoteControlModule(stub_bot, None)
+async def remote_control_module(fake_bot, player):
+    cog = RemoteControlModule(fake_bot, None)
     await cog._handle_player_created(player)
     return cog
 
@@ -407,3 +449,11 @@ async def remote_control_module(stub_bot, player):
 @pytest.fixture
 def shell_module():
     return ShellModule()
+
+
+@pytest.fixture
+def music_module(fake_bot, extractor, player_with_tracks):
+    cog = MusicModule(fake_bot, extractor)
+    cog._MusicModule__players[StubChannel.id] = player_with_tracks
+    cog._MusicModule__access_codes.add(player_with_tracks.access_code)
+    return cog
