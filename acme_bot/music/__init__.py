@@ -117,7 +117,7 @@ class MusicModule(commands.Cog, CogFactory):
 
     def __generate_access_code(self):
         while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
-            if not any(player.access_code == code for player in self.__players):
+            if not any(player.access_code == code for player in self.__players.values()):
                 return code
         assert False
 
