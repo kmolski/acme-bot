@@ -5,6 +5,7 @@ from typing import Optional
 
 import pytest
 
+from acme_bot.music import MusicModule
 from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
@@ -32,6 +33,7 @@ class StubChannel:
     """Stub discord.py voice channel object."""
 
     id: int = 123456789
+    name: str = "Test Channel"
 
 
 @dataclass
@@ -407,3 +409,8 @@ async def remote_control_module(stub_bot, player):
 @pytest.fixture
 def shell_module():
     return ShellModule()
+
+
+@pytest.fixture
+def music_module(stub_bot, extractor):
+    return MusicModule(stub_bot, extractor)
