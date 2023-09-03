@@ -35,6 +35,7 @@ class StubChannel:
     id: int = 123456789
     name: str = "Test Channel"
     ctx: Optional[object] = None
+    members: list[object] = field(default_factory=list)
 
     async def connect(self):
         if self.ctx is not None:
@@ -161,6 +162,7 @@ class FakeContext:
     tts: list[bool]
     messages: list[str]
     views: list[object]
+    embeds: list[object]
     hist: AsyncList[object]
     references: list[object]
     delete_after: list[float]
@@ -181,12 +183,13 @@ class FakeContext:
 
     async def send(
         self,
-        content,
+        content="",
         *,
         tts=False,
         file=None,
         delete_after=None,
         reference=None,
+        embed=None,
         view=None
     ):
         self.messages.append(content)
@@ -194,6 +197,7 @@ class FakeContext:
         self.files.append(file)
         self.delete_after.append(delete_after)
         self.references.append(reference)
+        self.embeds.append(embed)
         self.views.append(view)
 
     async def send_pages(self, *args, **kwargs):
@@ -346,6 +350,7 @@ def fake_ctx(fake_bot, fake_message, fake_voice_client):
         [],
         [],
         [],
+        [],
         AsyncList(),
         [],
         [],
@@ -361,6 +366,7 @@ def fake_ctx_history(fake_bot, stub_file_message, fake_voice_client):
         [],
         [],
         [],
+        [],
         AsyncList([stub_file_message]),
         [],
         [],
@@ -373,6 +379,7 @@ def fake_ctx_history(fake_bot, stub_file_message, fake_voice_client):
 @pytest.fixture
 def fake_ctx_no_voice(fake_bot, fake_message):
     return FakeContext(
+        [],
         [],
         [],
         [],
