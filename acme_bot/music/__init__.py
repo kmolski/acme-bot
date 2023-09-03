@@ -44,22 +44,19 @@ def display_entry(entry):
 
 def assemble_menu(header, entries):
     """Create a menu with the given header and information about the queue entries."""
-    menu = header
-    for entry in enumerate(entries, start=1):
-        menu += f"\n{display_entry(entry)}"
-    return menu
+    lines = [header] + [display_entry(entry) for entry in enumerate(entries, start=1)]
+    return "\n".join(lines)
 
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    return "{webpage_url}    {title} - {duration_string}".format(**entry)
+    return "{webpage_url}    {title} - {duration_string}\n".format(**entry)
 
 
 def export_entry_list(*iterables):
     """Export entry iterables using export_entry."""
     lines = [export_entry(entry) for entry in chain.from_iterable(iterables)]
-    lines.append("")
-    return "\n".join(lines)
+    return "".join(lines)
 
 
 def strip_urls(urls):
@@ -148,7 +145,7 @@ class MusicModule(commands.Cog, CogFactory):
         """Join the sender's current voice channel."""
         if ctx.display:
             await ctx.send(
-                f"\u27A1 Joining voice channel **{ctx.voice_client.channel.name}**."
+                f"\u27A1\uFE0F Joining channel **{ctx.voice_client.channel.name}**."
             )
 
     @commands.command()
@@ -161,7 +158,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         if ctx.display:
             await ctx.send(
-                f"\u23CF Quitting voice channel **{ctx.voice_client.channel.name}**."
+                f"\u23CF\uFE0F Quitting channel **{ctx.voice_client.channel.name}**."
             )
         async with self.__lock, self.__get_player(ctx) as player:
             player.stop()
@@ -235,7 +232,7 @@ class MusicModule(commands.Cog, CogFactory):
             results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
 
         await ctx.send(
-            f"\u2705 Extracted {len(results)} tracks.",
+            f"\u2705\uFE0F Extracted {len(results)} tracks.",
             view=ConfirmAddTracks(ctx.author, self.__get_player(ctx), results),
             reference=ctx.message,
         )
@@ -256,7 +253,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with ctx.typing():
             results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
         if ctx.display:
-            await ctx.send(f"\u2705 Extracted {len(results)} tracks.")
+            await ctx.send(f"\u2705\uFE0F Extracted {len(results)} tracks.")
 
         return export_entry_list(results)
 
@@ -309,7 +306,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__get_player(ctx) as player:
             player.pause()
         if ctx.display:
-            await ctx.send("\u23F8 Paused.")
+            await ctx.send("\u23F8\uFE0F Paused.")
 
     @commands.command()
     async def queue(self, ctx):
@@ -353,7 +350,7 @@ class MusicModule(commands.Cog, CogFactory):
             head, tail = player.get_tracks()
             player.clear()
             if ctx.display:
-                await ctx.send("\u2716 Queue cleared.")
+                await ctx.send("\u2716\uFE0F Queue cleared.")
             return export_entry_list(head, tail)
 
     @commands.command()
@@ -362,7 +359,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__get_player(ctx) as player:
             player.stop()
         if ctx.display:
-            await ctx.send("\u23F9 Stopped.")
+            await ctx.send("\u23F9\uFE0F Stopped.")
 
     @commands.command(aliases=["volu"])
     async def volume(self, ctx, volume: int):
@@ -394,7 +391,7 @@ class MusicModule(commands.Cog, CogFactory):
             current = player.current
             if ctx.display:
                 embed = Embed(
-                    title=f"\u25B6 Now playing: {current['title']}",
+                    title=f"\u25B6\uFE0F Now playing: {current['title']}",
                     description=f"by {current['uploader']}",
                     color=self.EMBED_COLOR,
                     url=current["webpage_url"],
