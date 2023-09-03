@@ -58,7 +58,7 @@ class StubUser:
 
 
 @dataclass
-class StubBot:
+class FakeBot:
     """Stub discord.py bot instance object."""
 
     loop: AbstractEventLoop
@@ -156,7 +156,7 @@ class FakeContext:
     delete_after: list[float]
     files: list[Optional[str]]
 
-    bot: StubBot
+    bot: FakeBot
     voice_client: Optional[FakeVoiceClient]
 
     display: bool = True
@@ -318,8 +318,8 @@ def stub_user():
 
 
 @pytest.fixture
-async def stub_bot():
-    return StubBot(get_running_loop())
+async def fake_bot():
+    return FakeBot(get_running_loop())
 
 
 @pytest.fixture
@@ -328,7 +328,7 @@ def fake_voice_client():
 
 
 @pytest.fixture
-def fake_ctx(stub_bot, fake_message, fake_voice_client):
+def fake_ctx(fake_bot, fake_message, fake_voice_client):
     return FakeContext(
         [],
         [],
@@ -337,13 +337,13 @@ def fake_ctx(stub_bot, fake_message, fake_voice_client):
         [],
         [],
         [],
-        stub_bot,
+        fake_bot,
         fake_voice_client,
     )
 
 
 @pytest.fixture
-def fake_ctx_history(stub_bot, stub_file_message, fake_voice_client):
+def fake_ctx_history(fake_bot, stub_file_message, fake_voice_client):
     return FakeContext(
         [],
         [],
@@ -352,13 +352,13 @@ def fake_ctx_history(stub_bot, stub_file_message, fake_voice_client):
         [],
         [],
         [],
-        stub_bot,
+        fake_bot,
         fake_voice_client,
     )
 
 
 @pytest.fixture
-def fake_ctx_no_voice(stub_bot, fake_message):
+def fake_ctx_no_voice(fake_bot, fake_message):
     return FakeContext(
         [],
         [],
@@ -367,7 +367,7 @@ def fake_ctx_no_voice(stub_bot, fake_message):
         [],
         [],
         [],
-        stub_bot,
+        fake_bot,
         None,
     )
 
@@ -420,8 +420,8 @@ async def select_track_view(stub_user, fake_player, youtube_playlist):
 
 
 @pytest.fixture
-async def remote_control_module(stub_bot, player):
-    cog = RemoteControlModule(stub_bot, None)
+async def remote_control_module(fake_bot, player):
+    cog = RemoteControlModule(fake_bot, None)
     await cog._handle_player_created(player)
     return cog
 
@@ -432,5 +432,5 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(stub_bot, extractor):
-    return MusicModule(stub_bot, extractor)
+def music_module(fake_bot, extractor):
+    return MusicModule(fake_bot, extractor)
