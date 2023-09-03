@@ -432,5 +432,8 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(fake_bot, extractor):
-    return MusicModule(fake_bot, extractor)
+def music_module(fake_bot, extractor, player_with_tracks):
+    cog = MusicModule(fake_bot, extractor)
+    cog._MusicModule__players[StubChannel.id] = player_with_tracks
+    cog._MusicModule__access_codes.add(player_with_tracks.access_code)
+    return cog

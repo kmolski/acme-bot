@@ -86,6 +86,7 @@ class MusicModule(commands.Cog, CogFactory):
     def __init__(self, bot, extractor):
         self.__lock = Lock()
         self.__players = {}
+        self.__access_codes = set()
 
         self.bot = bot
         self.extractor = extractor
@@ -117,12 +118,13 @@ class MusicModule(commands.Cog, CogFactory):
 
     def __generate_access_code(self):
         while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
-            if not any(player.access_code == code for player in self.__players.values()):
+            if code not in self.__access_codes:
                 return code
         assert False
 
     async def __delete_player(self, player):
         del self.__players[player.channel_id]
+        self.__access_codes.remove(player.access_code)
         self.bot.dispatch("acme_bot_player_deleted", player)
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
@@ -442,6 +444,7 @@ class MusicModule(commands.Cog, CogFactory):
                     player = MusicPlayer(ctx, self.extractor, access_code)
 
                     self.__players[player.channel_id] = player
+                    self.__access_codes.add(access_code)
                     self.bot.dispatch("acme_bot_player_created", player)
 
                 await ctx.send(
