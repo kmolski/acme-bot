@@ -144,6 +144,16 @@ class AsyncList(list):
             yield item
 
 
+class AsyncContextManager:
+    """Object with an async context manager."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+
 @dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
@@ -165,6 +175,9 @@ class FakeContext:
 
     def history(self, **_):
         return self.hist
+
+    def typing(self):
+        return AsyncContextManager()
 
     async def send(
         self,
