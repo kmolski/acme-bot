@@ -111,7 +111,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def cog_unload(self):
         self.extractor.shutdown_executor()
 
-    def __get_player(self, ctx):
+    def _get_player(self, ctx):
         """Return a MusicPlayer instance for the channel in the current context."""
         return self.__players[ctx.voice_client.channel.id]
 
@@ -161,7 +161,7 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.send(
                 f"\u23CF\uFE0F Quitting channel **{ctx.voice_client.channel.name}**."
             )
-        async with self.__lock, self.__get_player(ctx) as player:
+        async with self.__lock, self._get_player(ctx) as player:
             player.stop()
             head, tail = player.get_tracks()
             await self.__delete_player(player)
@@ -185,7 +185,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
+            view=SelectTrack(ctx.author, self._get_player(ctx), new, results),
             reference=ctx.message,
         )
 
@@ -210,7 +210,7 @@ class MusicModule(commands.Cog, CogFactory):
         new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(ctx.author, self.__get_player(ctx), new, results),
+            view=SelectTrack(ctx.author, self._get_player(ctx), new, results),
             reference=ctx.message,
         )
 
@@ -234,7 +234,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         await ctx.send(
             f"\u2705\uFE0F Extracted {len(results)} tracks.",
-            view=ConfirmAddTracks(ctx.author, self.__get_player(ctx), results),
+            view=ConfirmAddTracks(ctx.author, self._get_player(ctx), results),
             reference=ctx.message,
         )
         return export_entry_list(results)
@@ -267,7 +267,7 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to rewind (default: 1)
         """
         offset = to_int(offset)
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.move(-offset)
 
     @commands.command(aliases=["next"])
@@ -279,7 +279,7 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to skip (default: 1)
         """
         offset = to_int(offset)
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.move(offset)
 
     @commands.command()
@@ -294,7 +294,7 @@ class MusicModule(commands.Cog, CogFactory):
             The loop parameter as a boolean.
         """
         do_loop = bool(do_loop)
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.loop = do_loop
         if ctx.display:
             msg = "on" if do_loop else "off"
@@ -304,7 +304,7 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command()
     async def pause(self, ctx):
         """Pause the player."""
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.pause()
         if ctx.display:
             await ctx.send("\u23F8\uFE0F Paused.")
@@ -317,7 +317,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The track URLs as a string.
         """
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             head, tail = player.get_tracks()
             if ctx.display:
                 channel_name = ctx.voice_client.channel.name
@@ -336,7 +336,7 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command(aliases=["resu"])
     async def resume(self, ctx):
         """Resume playing the current track."""
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             await player.resume()
 
     @commands.command()
@@ -347,7 +347,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The removed track URLs as a string.
         """
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             head, tail = player.get_tracks()
             player.clear()
             if ctx.display:
@@ -357,7 +357,7 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command()
     async def stop(self, ctx):
         """Stop playing the current track."""
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.stop()
         if ctx.display:
             await ctx.send("\u23F9\uFE0F Stopped.")
@@ -374,7 +374,7 @@ class MusicModule(commands.Cog, CogFactory):
             The new volume value as an integer.
         """
         volume = to_int(volume)
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             player.volume = volume
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
@@ -388,7 +388,7 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The current track URL as a string.
         """
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             current = player.current
             if ctx.display:
                 embed = Embed(
@@ -414,7 +414,7 @@ class MusicModule(commands.Cog, CogFactory):
             The removed track URL as a string.
         """
         offset = to_int(offset)
-        async with self.__get_player(ctx) as player:
+        async with self._get_player(ctx) as player:
             removed = player.remove(offset - 1 if offset >= 1 else offset)
             if ctx.display:
                 await ctx.send_pages(
@@ -429,7 +429,7 @@ class MusicModule(commands.Cog, CogFactory):
     @play_url.before_invoke
     @volume.before_invoke
     # pylint: disable=unused-private-member
-    async def __ensure_voice_or_join(self, ctx):
+    async def _ensure_voice_or_join(self, ctx):
         """Ensure that the sender is in a voice channel,
         otherwise join the sender's voice channel."""
 
@@ -463,7 +463,7 @@ class MusicModule(commands.Cog, CogFactory):
     @resume.before_invoke
     @stop.before_invoke
     # pylint: disable=unused-private-member
-    async def __ensure_voice_or_fail(self, ctx):
+    async def _ensure_voice_or_fail(self, ctx):
         """Ensure that the sender is in a voice channel, or throw
         an exception that will prevent the command from executing."""
 
@@ -476,10 +476,10 @@ class MusicModule(commands.Cog, CogFactory):
     @remove.before_invoke
     @skip.before_invoke
     # pylint: disable=unused-private-member
-    async def __ensure_voice_and_non_empty_queue(self, ctx):
+    async def _ensure_voice_and_non_empty_queue(self, ctx):
         """Ensure that the sender is in a voice channel, a MusicPlayer
         for that channel exists and the queue is not empty."""
 
-        await self.__ensure_voice_or_fail(ctx)
-        if self.__get_player(ctx).is_empty():
+        await self._ensure_voice_or_fail(ctx)
+        if self._get_player(ctx).is_empty():
             raise commands.CommandError("The queue is empty!")
