@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from acme_bot.music import MusicPlayer
 from acme_bot.music.player import PlayerState
-from test.conftest import StubChannel, StubVoice
+from conftest import StubChannel, StubVoice
 
 
 async def test_leave_channel_returns_tracks(
