@@ -414,7 +414,6 @@ class MusicModule(commands.Cog, CogFactory):
     @play_snd.before_invoke
     @play_url.before_invoke
     @volume.before_invoke
-    # pylint: disable=unused-private-member
     async def _ensure_voice_or_join(self, ctx):
         """Ensure that the sender is in a voice channel,
         otherwise join the sender's voice channel."""
@@ -449,7 +448,6 @@ class MusicModule(commands.Cog, CogFactory):
     @pause.before_invoke
     @resume.before_invoke
     @stop.before_invoke
-    # pylint: disable=unused-private-member
     async def _ensure_voice_or_fail(self, ctx):
         """Ensure that the sender is in a voice channel, or throw
         an exception that will prevent the command from executing."""
@@ -462,7 +460,6 @@ class MusicModule(commands.Cog, CogFactory):
     @queue.before_invoke
     @remove.before_invoke
     @skip.before_invoke
-    # pylint: disable=unused-private-member
     async def _ensure_voice_and_non_empty_queue(self, ctx):
         """Ensure that the sender is in a voice channel, a MusicPlayer
         for that channel exists and the queue is not empty."""
