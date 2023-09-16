@@ -60,6 +60,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         return ext_control
 
     async def cog_load(self):
+        self.__connection.reconnect_callbacks.add(self.__handle_command_stream)
         self.__bot.loop.create_task(self.__handle_command_stream())
 
     async def cog_unload(self):
@@ -81,7 +82,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         async with self.__lock, self.__players[command.code] as player:
             await command.run(player)
 
-    async def __handle_command_stream(self):
+    async def __handle_command_stream(self, *_):
         log.info("Connected to AMQP broker at '%s'", censor_url(self.__connection.url))
         async with self.__connection:
             channel = await self.__connection.channel()
