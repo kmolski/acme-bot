@@ -1,34 +1,38 @@
-import pytest
-from pydantic import ValidationError
-
 from acme_bot.music.player import PlayerState
 
 
-async def test_run_command_throws_on_invalid_json(remote_control_module):
-    with pytest.raises(ValueError):
-        await remote_control_module._run_command(b"garbage")
+async def test_run_command_handles_invalid_json(remote_control_module):
+    await remote_control_module._run_command(b"garbage")
 
 
-async def test_run_command_throws_on_invalid_command(remote_control_module):
+async def test_run_command_handles_invalid_command(remote_control_module):
     message = b"""
         {
             "command": "null",
             "args": []
         }
     """
-    with pytest.raises(ValidationError):
-        await remote_control_module._run_command(message)
+    await remote_control_module._run_command(message)
 
 
-async def test_run_command_throws_on_nonexistent_player(remote_control_module):
+async def test_run_command_handles_nonexistent_player(remote_control_module):
     message = b"""
         {
             "op": "resume",
             "code": 1234
         }
     """
-    with pytest.raises(KeyError):
-        await remote_control_module._run_command(message)
+    await remote_control_module._run_command(message)
+
+
+async def test_run_command_handles_command_error(remote_control_module):
+    message = b"""
+        {
+            "op": "resume",
+            "code": 123456
+        }
+    """
+    await remote_control_module._run_command(message)
 
 
 async def test_run_command_pauses_on_pause_command(

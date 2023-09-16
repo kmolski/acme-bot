@@ -78,9 +78,16 @@ class RemoteControlModule(commands.Cog, CogFactory):
 
     async def _run_command(self, message):
         log.debug("Received message: %s", message)
-        command = RemoteCommandModel.model_validate_json(message).root
-        async with self.__lock, self.__players[command.code] as player:
-            await command.run(player)
+        try:
+            command = RemoteCommandModel.model_validate_json(message).root
+            async with self.__lock, self.__players[command.code] as player:
+                await command.run(player)
+        except KeyError as exc:
+            log.debug("Invalid access code: '%s'", exc.args[0])
+        except (ValidationError, ValueError) as exc:
+            log.exception("Invalid command: %s", message, exc_info=exc)
+        except (commands.CommandError, IndexError) as exc:
+            log.exception("Command failed: %s", message, exc_info=exc)
 
     async def __handle_command_stream(self, *_):
         log.info("Connected to AMQP broker at '%s'", censor_url(self.__connection.url))
@@ -94,11 +101,4 @@ class RemoteControlModule(commands.Cog, CogFactory):
             async with queue.iterator() as message_stream:
                 async for msg in message_stream:
                     async with msg.process():
-                        try:
-                            await self._run_command(msg.body)
-                        except KeyError as exc:
-                            log.debug("Invalid access code: '%s'", exc.args[0])
-                        except (ValidationError, ValueError) as exc:
-                            log.exception("Invalid command: %s", msg.body, exc_info=exc)
-                        except commands.CommandError as exc:
-                            log.exception("Command failed: %s", msg.body, exc_info=exc)
+                        await self._run_command(msg.body)

@@ -274,6 +274,7 @@ def youtube_playlist():
                 "https://rr3---sn-oxup5-3ufs.googlevideo.com/videoplayback"
                 + "?expire=1582257033"
             ),
+            "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
         },
         {
             "id": "FNKPYhXmzo0",
