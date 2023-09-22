@@ -50,4 +50,4 @@ Dependencies
 License
 -------
 
-[GNU Affero General Public License v3](https://opensource.org/licenses/AGPL-3.0)
+[GNU Affero General Public License v3](https://opensource.org/license/agpl-v3)
