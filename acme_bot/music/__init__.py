@@ -27,11 +27,20 @@ from discord.ext import commands
 from yt_dlp import YoutubeDL
 
 from acme_bot.autoloader import CogFactory, autoloaded
-from acme_bot.config.properties import MUSIC_EXTRACTOR_MAX_WORKERS
+from acme_bot.config.properties import (
+    MUSIC_REMOTE_BASE_URL,
+    MUSIC_EXTRACTOR_MAX_WORKERS,
+)
 from acme_bot.convutils import to_int
 from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer
-from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
+from acme_bot.music.ui import (
+    EMBED_COLOR,
+    ConfirmAddTracks,
+    SelectTrack,
+    current_track_embed,
+    remote_embed,
+)
 
 log = logging.getLogger(__name__)
 
@@ -81,7 +90,6 @@ class MusicModule(commands.Cog, CogFactory):
         "default_search": "auto",
         "source_address": "0.0.0.0",
     }
-    EMBED_COLOR = 0xFF0000
 
     def __init__(self, bot, extractor):
         self.__lock = Lock()
@@ -296,7 +304,7 @@ class MusicModule(commands.Cog, CogFactory):
                 embed = Embed(
                     title=f"\U0001F3BC Track queue for channel '{channel_name}'",
                     description=f"Total tracks: {len(head) + len(tail)}",
-                    color=self.EMBED_COLOR,
+                    color=EMBED_COLOR,
                 )
 
                 entries = (head + (tail if player.loop else []))[:10]
@@ -363,15 +371,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock, self._get_player(ctx) as player:
             current = player.current
             if ctx.display:
-                embed = Embed(
-                    title=f"\u25B6\uFE0F Now playing: {current['title']}",
-                    description=f"by {current['uploader']}",
-                    color=self.EMBED_COLOR,
-                    url=current["webpage_url"],
-                )
-                if "thumbnail" in current:
-                    embed.set_thumbnail(url=current["thumbnail"])
-                await ctx.send(embed=embed)
+                await ctx.send(embed=current_track_embed(current))
             return export_entry(current)
 
     @commands.command(aliases=["remo"])
@@ -438,12 +438,14 @@ class MusicModule(commands.Cog, CogFactory):
                     self.__access_codes.add(access_code)
                     self.bot.dispatch("acme_bot_player_created", player)
 
-                await ctx.send(
-                    f"\U0001F5DD The access code for this player is {access_code}."
-                )
+                if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
+                    await ctx.send(
+                        embed=remote_embed(
+                            MUSIC_REMOTE_BASE_URL(), self.__remote_id, access_code
+                        )
+                    )
                 log.info(
-                    "Created a MusicPlayer instance with "
-                    "access code %s for Channel ID %s",
+                    "Created MusicPlayer with access code %s for Channel ID %s",
                     access_code,
                     player.channel_id,
                 )
