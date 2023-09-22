@@ -156,6 +156,16 @@ class AsyncContextManager:
 
 
 @dataclass
+class FakeAmqpMessage:
+    """Fake aio_pika message object."""
+
+    body: bytes = b""
+
+    def process(self):
+        return AsyncContextManager()
+
+
+@dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
