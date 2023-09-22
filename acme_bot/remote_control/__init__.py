@@ -16,6 +16,7 @@
 
 import logging
 from asyncio import Lock
+from uuid import uuid4
 
 import aio_pika
 from aiormq.tools import censor_url
@@ -39,6 +40,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         self.__players = {}
 
         self.__bot = bot
+        self.__uuid = uuid4()
         self.__connection = connection
 
     @classmethod

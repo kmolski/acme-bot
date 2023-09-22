@@ -87,6 +87,7 @@ class MusicModule(commands.Cog, CogFactory):
         self.__lock = Lock()
         self.__players = {}
         self.__access_codes = set()
+        self.__remote_id = None
 
         self.bot = bot
         self.extractor = extractor
@@ -408,6 +409,13 @@ class MusicModule(commands.Cog, CogFactory):
                     log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
                     async with self.__players[prev.id] as player:
                         await self.__delete_player(player)
+
+    @commands.Cog.listener("on_acme_bot_remote_id")
+    async def _register_remote_id(self, remote_id):
+        """Register the remote ID of the current instance."""
+        async with self.__lock:
+            self.__remote_id = remote_id
+            log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
 
     @join.before_invoke
     @play.before_invoke
