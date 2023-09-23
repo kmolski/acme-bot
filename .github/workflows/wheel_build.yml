@@ -20,7 +20,9 @@ jobs:
       - uses: actions/cache@v3
         id: cached-poetry
         with:
-          path: ~/.local
+          path: |
+            ~/.local
+            ~/.cache/pypoetry/virtualenvs
           key: poetry-0
 
       - uses: snok/install-poetry@v1

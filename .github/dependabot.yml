@@ -4,6 +4,15 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "black"
+          - "flake8"
+          - "pylint"
+      test-dependencies:
+        patterns:
+          - "pytest*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
