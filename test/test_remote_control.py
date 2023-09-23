@@ -1,5 +1,5 @@
 from acme_bot.music.player import PlayerState
-from test.conftest import FakeAmqpMessage
+from conftest import FakeAmqpMessage
 
 
 async def test_run_command_handles_invalid_json(remote_control_module):
