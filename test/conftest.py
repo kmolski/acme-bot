@@ -156,6 +156,16 @@ class AsyncContextManager:
 
 
 @dataclass
+class FakeAmqpMessage:
+    """Fake aio_pika message object."""
+
+    body: bytes = b""
+
+    def process(self):
+        return AsyncContextManager()
+
+
+@dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
@@ -274,6 +284,7 @@ def youtube_playlist():
                 "https://rr3---sn-oxup5-3ufs.googlevideo.com/videoplayback"
                 + "?expire=1582257033"
             ),
+            "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
         },
         {
             "id": "FNKPYhXmzo0",
@@ -442,7 +453,7 @@ async def select_track_view(stub_user, fake_player, youtube_playlist):
 @pytest.fixture
 async def remote_control_module(fake_bot, player):
     cog = RemoteControlModule(fake_bot, None)
-    await cog._handle_player_created(player)
+    await cog._register_player(player)
     return cog
 
 

@@ -16,6 +16,7 @@
 
 import logging
 from asyncio import Lock
+from uuid import uuid4
 
 import aio_pika
 from aiormq.tools import censor_url
@@ -39,6 +40,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         self.__players = {}
 
         self.__bot = bot
+        self.__uuid = uuid4()
         self.__connection = connection
 
     @classmethod
@@ -60,45 +62,43 @@ class RemoteControlModule(commands.Cog, CogFactory):
         return ext_control
 
     async def cog_load(self):
-        self.__connection.reconnect_callbacks.add(self.__handle_command_stream)
-        self.__bot.loop.create_task(self.__handle_command_stream())
+        await self.__declare_command_queue()
+        self.__connection.reconnect_callbacks.add(self.__declare_command_queue)
+        self.__bot.dispatch("acme_bot_remote_id", self.__uuid.hex)
 
     async def cog_unload(self):
         await self.__connection.close()
 
     @commands.Cog.listener("on_acme_bot_player_created")
-    async def _handle_player_created(self, player):
+    async def _register_player(self, player):
         async with self.__lock:
             self.__players[player.access_code] = player
 
     @commands.Cog.listener("on_acme_bot_player_deleted")
-    async def _handle_player_deleted(self, player):
+    async def _delete_player(self, player):
         async with self.__lock:
             del self.__players[player.access_code]
 
     async def _run_command(self, message):
-        log.debug("Received message: %s", message)
-        command = RemoteCommandModel.model_validate_json(message).root
-        async with self.__lock, self.__players[command.code] as player:
-            await command.run(player)
+        async with message.process():
+            content = message.body
+            log.debug("Received message: %s", content)
+            try:
+                command = RemoteCommandModel.model_validate_json(content).root
+                async with self.__lock, self.__players[command.code] as player:
+                    await command.run(player)
+            except KeyError as exc:
+                log.debug("Invalid access code: '%s'", exc.args[0])
+            except (ValidationError, ValueError) as exc:
+                log.exception("Invalid command: %s", content, exc_info=exc)
+            except (commands.CommandError, IndexError) as exc:
+                log.exception("Command failed: %s", content, exc_info=exc)
 
-    async def __handle_command_stream(self, *_):
+    async def __declare_command_queue(self, *_):
         log.info("Connected to AMQP broker at '%s'", censor_url(self.__connection.url))
-        async with self.__connection:
-            channel = await self.__connection.channel()
-            exchange = await channel.declare_exchange(
-                "acme_bot_remote", aio_pika.ExchangeType.FANOUT, durable=True
-            )
-            queue = await channel.declare_queue(auto_delete=True)
-            await queue.bind(exchange)
-            async with queue.iterator() as message_stream:
-                async for msg in message_stream:
-                    async with msg.process():
-                        try:
-                            await self._run_command(msg.body)
-                        except KeyError as exc:
-                            log.debug("Invalid access code: '%s'", exc.args[0])
-                        except (ValidationError, ValueError) as exc:
-                            log.exception("Invalid command: %s", msg.body, exc_info=exc)
-                        except commands.CommandError as exc:
-                            log.exception("Command failed: %s", msg.body, exc_info=exc)
+        channel = await self.__connection.channel()
+        exchange = await channel.declare_exchange("acme_bot_remote", durable=True)
+        queue = await channel.declare_queue(auto_delete=True)
+        await queue.bind(exchange, routing_key=self.__uuid.hex)
+        await queue.consume(self._run_command)
+        log.info("Listening for remote commands with ID %s", self.__uuid.hex)

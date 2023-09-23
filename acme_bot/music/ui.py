@@ -14,10 +14,12 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from discord import ui, ButtonStyle
+from discord import ui, ButtonStyle, Embed
 
 from acme_bot.music.extractor import add_expire_time
 from acme_bot.music.player import PlayerState
+
+EMBED_COLOR = 0xFF0000
 
 
 class VerifiedView(ui.View):
@@ -114,3 +116,27 @@ class SelectTrack(VerifiedView):
         )
         button.callback = button_pressed
         self.add_item(button)
+
+
+def current_track_embed(current):
+    """Create an embed describing the current track."""
+    embed = Embed(
+        title=f"\u25B6\uFE0F Now playing: {current['title']}",
+        description=f"by {current['uploader']}",
+        color=EMBED_COLOR,
+        url=current["webpage_url"],
+    )
+    if "thumbnail" in current:
+        embed.set_thumbnail(url=current["thumbnail"])
+    return embed
+
+
+def remote_embed(base_url, remote_id, access_code):
+    """Create an embed with a link to the remote control application."""
+    url = base_url % {"rid": remote_id, "ac": access_code}
+    embed = Embed(
+        title="\u27A1\uFE0F Click here to access the web player.",
+        color=EMBED_COLOR,
+        url=url,
+    )
+    return embed

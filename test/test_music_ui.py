@@ -1,4 +1,7 @@
+from yarl import URL
+
 from acme_bot.music.player import PlayerState
+from acme_bot.music.ui import remote_embed
 
 
 async def test_confirm_add_has_add_and_cancel_buttons(confirm_add_tracks_view):
@@ -102,3 +105,10 @@ async def test_select_cancels(
     assert fake_message.view is None
     assert player.get_tracks() == ([], [])
     assert player.state == PlayerState.IDLE
+
+
+def test_remote_embed_has_valid_link():
+    remote_id = "e2329439f3f046bf9fd6045bcccb154d"
+    access_code = 123456
+    embed = remote_embed(URL("https://example.com/?rcs=foo"), remote_id, access_code)
+    assert embed.url == f"https://example.com/?rcs=foo&rid={remote_id}&ac={access_code}"
