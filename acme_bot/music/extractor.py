@@ -83,7 +83,7 @@ class MusicExtractor:
         "soundcloud:playlist",
         "soundcloud:set",
     )
-    __DOWNLOADER: Optional[yt_dlp.YoutubeDL] = None
+    __DOWNLOADER: Optional[yt_dlp.YoutubeDL] = None  # private to the worker process
 
     def __init__(self, executor, loop):
         self.__executor = executor
