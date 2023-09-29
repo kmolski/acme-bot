@@ -26,6 +26,9 @@ from urllib.parse import urlparse, parse_qs
 
 import yt_dlp
 from discord.ext import commands
+from pydantic import ValidationError
+
+from acme_bot.music.schema import QueueEntryValidator
 
 yt_dlp.utils.bug_reports_message = lambda: ""
 
@@ -80,7 +83,7 @@ class MusicExtractor:
         "soundcloud:playlist",
         "soundcloud:set",
     )
-    __DOWNLOADER: Optional[yt_dlp.YoutubeDL] = None
+    __DOWNLOADER: Optional[yt_dlp.YoutubeDL] = None  # private to the worker process
 
     def __init__(self, executor, loop):
         self.__executor = executor
@@ -143,4 +146,9 @@ class MusicExtractor:
 
     @classmethod
     def _extract_in_subprocess(cls, url):
-        return cls.__DOWNLOADER.extract_info(url, download=False)
+        try:
+            result = cls.__DOWNLOADER.extract_info(url, download=False)
+            return QueueEntryValidator.validate_python(result)
+        except ValidationError as exc:
+            log.exception("Invalid entry: %s", result, exc_info=exc)
+            return None
