@@ -16,6 +16,7 @@
 
 from typing import Optional, Union
 
+from pydantic import TypeAdapter
 from typing_extensions import TypedDict
 
 
@@ -33,3 +34,6 @@ class QueueEntry(TypedDict, total=False):
     duration_string: str
     thumbnail: Optional[str]
     extractor: str
+
+
+QueueEntryValidator = TypeAdapter(QueueEntry)
