@@ -5,14 +5,13 @@ updates:
     schedule:
       interval: "monthly"
     groups:
-      dev-dependencies:
-        patterns:
-          - "black"
-          - "flake8"
-          - "pylint"
-      test-dependencies:
-        patterns:
-          - "pytest*"
+      dev:
+        patterns: ["black", "flake8", "pylint"]
+      test:
+        patterns: ["pytest*"]
+      semver-patch:
+        update-types: ["patch"]
+        exclude-patterns: ["black", "yt-dlp"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
