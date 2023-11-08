@@ -18,7 +18,7 @@ from pydantic import TypeAdapter
 from typing_extensions import TypedDict
 
 
-class QueueEntry(TypedDict, total=False):  # pylint:ignore=too-many-ancestors
+class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
     """Data model for a MusicQueue entry."""
 
     id: str
