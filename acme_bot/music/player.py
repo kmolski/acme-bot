@@ -198,13 +198,14 @@ class MusicPlayer(MusicQueue):
 
     async def resume(self):
         """Resume the player."""
-        if self.__state == PlayerState.PAUSED:
-            self.__state = PlayerState.PLAYING
-            self.__ctx.voice_client.resume()
-        elif self.__state == PlayerState.STOPPED:
-            await self.start_player(self.current)
-        else:
-            raise commands.CommandError("This player is not paused!")
+        match self.__state:
+            case PlayerState.PAUSED:
+                self.__state = PlayerState.PLAYING
+                self.__ctx.voice_client.resume()
+            case PlayerState.STOPPED:
+                await self.start_player(self.current)
+            case _:
+                raise commands.CommandError("This player is not paused!")
 
     async def start_player(self, current):
         """Start playing the given track."""
