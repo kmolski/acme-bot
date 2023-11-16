@@ -46,7 +46,7 @@ def _split_message(text, limit):
     return messages
 
 
-async def send_pages(
+async def send_pages(  # pylint: disable=too-many-arguments; extra args are optional
     ctx,
     content,
     *,

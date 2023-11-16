@@ -17,7 +17,7 @@
 
 from json import dumps
 
-from acme_bot.remote_control import RemoteCommandModel
+from acme_bot.remote_control.schema import RemoteCommandModel
 
 schema = RemoteCommandModel.model_json_schema()
 print(dumps(schema, indent=2))

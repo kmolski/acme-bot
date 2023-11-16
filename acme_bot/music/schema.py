@@ -14,13 +14,11 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Union
-
 from pydantic import TypeAdapter
 from typing_extensions import TypedDict
 
 
-class QueueEntry(TypedDict, total=False):
+class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
     """Data model for a MusicQueue entry."""
 
     id: str
@@ -28,11 +26,11 @@ class QueueEntry(TypedDict, total=False):
     title: str
     entries: list["QueueEntry"]
     uploader: str
-    duration: Union[int, float]
+    duration: int | float
     webpage_url: str
-    uploader_url: Optional[str]
+    uploader_url: str | None
     duration_string: str
-    thumbnail: Optional[str]
+    thumbnail: str | None
     extractor: str
 
 

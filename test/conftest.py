@@ -1,7 +1,6 @@
 from asyncio import get_running_loop, sleep, AbstractEventLoop, Queue
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional
 
 import pytest
 
@@ -34,7 +33,7 @@ class StubChannel:
 
     id: int = 123456789
     name: str = "Test Channel"
-    ctx: Optional[object] = None
+    ctx: object | None = None
     members: list[object] = field(default_factory=list)
 
     async def connect(self):
@@ -74,7 +73,7 @@ class FakeVoiceClient:
     """Fake discord.py voice client object."""
 
     played_tracks: list[object]
-    source: Optional[object]
+    source: object | None
     stopped: bool = False
     paused: bool = False
     disconnected: bool = False
@@ -116,7 +115,7 @@ class FakeMessage:
 
     content: str = ""
     view: object = None
-    delete_after: Optional[float] = None
+    delete_after: float | None = None
     reactions: list[str] = field(default_factory=list)
     attachments: list[StubFile] = field(default_factory=list)
 
@@ -176,10 +175,10 @@ class FakeContext:
     hist: AsyncList[object]
     references: list[object]
     delete_after: list[float]
-    files: list[Optional[str]]
+    files: list[str | None]
 
     bot: FakeBot
-    voice_client: Optional[FakeVoiceClient]
+    voice_client: FakeVoiceClient | None
 
     display: bool = True
     author: StubUser = field(default_factory=StubUser)

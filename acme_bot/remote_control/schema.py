@@ -14,12 +14,12 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Literal, Union
+from typing import Literal
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, RootModel, Field
 
 
-class RemoteCommand:
+class RemoteCommand(BaseModel):
     """Template method for remote control commands."""
 
     op: str
@@ -30,7 +30,7 @@ class RemoteCommand:
         raise NotImplementedError()
 
 
-class PauseCommand(RemoteCommand, BaseModel):
+class PauseCommand(RemoteCommand):
     """Remote command to pause the player."""
 
     op: Literal["pause"]
@@ -39,7 +39,7 @@ class PauseCommand(RemoteCommand, BaseModel):
         player.pause()
 
 
-class StopCommand(RemoteCommand, BaseModel):
+class StopCommand(RemoteCommand):
     """Remote command to stop the player."""
 
     op: Literal["stop"]
@@ -48,7 +48,7 @@ class StopCommand(RemoteCommand, BaseModel):
         player.stop()
 
 
-class ResumeCommand(RemoteCommand, BaseModel):
+class ResumeCommand(RemoteCommand):
     """Remote command to resume the player."""
 
     op: Literal["resume"]
@@ -60,4 +60,4 @@ class ResumeCommand(RemoteCommand, BaseModel):
 class RemoteCommandModel(RootModel):
     """Root model for remote control commands."""
 
-    root: Union[PauseCommand, StopCommand, ResumeCommand]
+    root: PauseCommand | StopCommand | ResumeCommand = Field(discriminator="op")

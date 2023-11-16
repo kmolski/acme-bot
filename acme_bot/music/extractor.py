@@ -21,7 +21,6 @@ from json import loads
 from os import getpid
 from pathlib import PurePosixPath
 from time import time
-from typing import Optional
 from urllib.parse import urlparse, parse_qs
 
 import yt_dlp
@@ -83,7 +82,7 @@ class MusicExtractor:
         "soundcloud:playlist",
         "soundcloud:set",
     )
-    __DOWNLOADER: Optional[yt_dlp.YoutubeDL] = None  # private to the worker process
+    __DOWNLOADER: yt_dlp.YoutubeDL | None = None  # private to the worker process
 
     def __init__(self, executor, loop):
         self.__executor = executor

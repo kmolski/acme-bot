@@ -103,19 +103,20 @@ def run():
     @client.event
     async def on_command_error(ctx, error):
         """Handle exceptions raised during command execution."""
-        if isinstance(error, commands.CommandError) and hasattr(error, "original"):
-            await ctx.send_pages(f"Error: {error.original}")
-        elif isinstance(error, TextXSyntaxError):
-            await ctx.send_pages(f"Syntax error: {error.message}")
-        elif isinstance(error, (TypeError, ValueError)):
-            cmd = ctx.command
-            await ctx.send_pages(
-                f"Error: {error}\n"
-                f"Command usage: `{ctx.prefix}{cmd.qualified_name} {cmd.signature}`\n"
-                f"For more information, refer to `{ctx.prefix}help {cmd.name}`."
-            )
-        else:
-            await ctx.send_pages(f"Error: {error}")
+        match error:
+            case commands.CommandError(original=_):
+                await ctx.send_pages(f"Error: {error.original}")
+            case TextXSyntaxError():
+                await ctx.send_pages(f"Syntax error: {error.message}")
+            case TypeError() | ValueError():
+                cmd = ctx.command
+                await ctx.send_pages(
+                    f"Error: {error}\n"
+                    f"Command usage: `{ctx.prefix}{cmd.name} {cmd.signature}`\n"
+                    f"For more information, refer to `{ctx.prefix}help {cmd.name}`."
+                )
+            case _:
+                await ctx.send_pages(f"Error: {error}")
 
     async def eval_command(ctx):
         if ctx.invoked_with:
@@ -131,11 +132,11 @@ def run():
             ) as exc:
                 client.dispatch("command_error", ctx, exc)
             # Log the unhandled exceptions for later analysis
-            except Exception as error:  # pylint: disable=broad-except
+            except Exception as exc:  # pylint: disable=broad-except
                 log.exception(
                     "Unhandled exception caused by message '%s':",
                     ctx.message.content,
-                    exc_info=error,
+                    exc_info=exc,
                 )
             else:
                 client.dispatch("command_completion", ctx)

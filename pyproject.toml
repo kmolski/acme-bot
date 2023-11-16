@@ -9,21 +9,21 @@ repository = "https://github.com/kmolski/acme-bot"
 include = ["acme_bot/version_info/commit.txt"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 aio-pika = "^9.3.0"
 "discord.py" = {version = "^2.3.2", extras = ["voice"]}
 pydantic = "^2.4.2"
 python-dotenv = "^1.0.0"
 textX = "^3.1.1"
-yt-dlp = "2023.9.24"
+yt-dlp = "2023.11.14"
 
 [tool.poetry.group.dev.dependencies]
-black = "23.9.1"
+black = "23.10.1"
 flake8 = "^6.1.0"
-pylint = "^2.17.7"
+pylint = "^3.0.2"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.4.2"
+pytest = "^7.4.3"
 pytest-asyncio = "^0.21.1"
 
 [tool.poetry.build]

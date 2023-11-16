@@ -58,7 +58,16 @@
       "type": "object"
     }
   },
-  "anyOf": [
+  "description": "Root model for remote control commands.",
+  "discriminator": {
+    "mapping": {
+      "pause": "#/$defs/PauseCommand",
+      "resume": "#/$defs/ResumeCommand",
+      "stop": "#/$defs/StopCommand"
+    },
+    "propertyName": "op"
+  },
+  "oneOf": [
     {
       "$ref": "#/$defs/PauseCommand"
     },
@@ -69,6 +78,5 @@
       "$ref": "#/$defs/ResumeCommand"
     }
   ],
-  "description": "Root model for remote control commands.",
   "title": "RemoteCommandModel"
 }
