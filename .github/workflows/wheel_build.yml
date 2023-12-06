@@ -106,6 +106,7 @@ jobs:
           body: ${{ needs.build-and-test.outputs.changelog }}
           fail_on_unmatched_files: true
           files: dist/*.whl
+          draft: true
 
       - name: Update development version
         run: poetry version '${{ needs.build-and-test.outputs.version }}-dev'
