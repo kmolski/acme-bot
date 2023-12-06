@@ -40,7 +40,7 @@ jobs:
         id: semrel
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          dry: inputs.create_release != true
+          dry: ${{ inputs.create_release != true }}
           changelog-generator-opt: "emojis=true"
 
       - name: Set release version number
