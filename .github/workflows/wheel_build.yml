@@ -15,9 +15,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    outputs:
-      changelog: ${{ steps.semrel.outputs.changelog }}
-      version: ${{ steps.semrel.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -103,7 +100,5 @@ jobs:
 
       - uses: softprops/action-gh-release@v1
         with:
-          body: ${{ needs.build-and-test.outputs.changelog }}
           fail_on_unmatched_files: true
           files: dist/*.whl
-          draft: true
