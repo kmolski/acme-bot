@@ -45,7 +45,7 @@ jobs:
 
       - name: Set release version number
         if: inputs.create_release == true
-        run: poetry version ${{ steps.semrel.outputs.version }}
+        run: poetry version '${{ steps.semrel.outputs.version }}'
 
       - name: Install system dependencies
         run: sudo apt-get install --yes --no-install-recommends build-essential curl git libffi-dev
