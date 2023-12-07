@@ -34,10 +34,10 @@ jobs:
         if: steps.cached-poetry.outputs.cache-hit != 'true'
 
       - uses: go-semantic-release/action@v1
+        if: inputs.create_release == true
         id: semrel
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          dry: ${{ inputs.create_release != true }}
           changelog-generator-opt: "emojis=true"
 
       - name: Set release version number
