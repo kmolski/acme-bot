@@ -66,7 +66,6 @@ def parse_ffmpeg_log(process):
         entry = process.stderr.readline()
         if entry:
             level, message, module = parse_log_entry(entry.decode(errors="replace"))
-            # Redirect to module logger only if the logged message is not expected
             if all(e not in message for e in __EXPECTED):
                 log.log(level, "ffmpeg/%s: %s", module, message)
         else:
@@ -191,7 +190,7 @@ class MusicPlayer(MusicQueue):
         if self.is_empty():
             self.__state = PlayerState.IDLE
             self.__ctx.voice_client.stop()
-        elif offset == 0:  # Current track was removed, start playing the next one.
+        elif offset == 0:  # Current track was removed, the next one is at offset 0.
             self.__next_offset = 0
             self.__ctx.voice_client.stop()
         return removed
@@ -209,7 +208,7 @@ class MusicPlayer(MusicQueue):
 
     async def start_player(self, current):
         """Start playing the given track."""
-        # Update the entry if it would expire during playback
+        # The entry needs to be updated if it would expire during playback
         if "expire" not in current or time() + current["duration"] > current["expire"]:
             await self.__extractor.update_entry(current)
 

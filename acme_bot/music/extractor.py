@@ -141,7 +141,7 @@ class MusicExtractor:
         if not result or (result["extractor"] not in ("youtube", "soundcloud")):
             raise commands.CommandError(f"Incorrect track URL: {entry_url}")
         add_expire_time(result)
-        entry.update(result)  # Update the entry in-place
+        entry.update(result)
 
     @classmethod
     def _extract_in_subprocess(cls, url):
