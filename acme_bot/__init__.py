@@ -58,7 +58,6 @@ class HelpCommand(commands.DefaultHelpCommand):
     # Declare `command` as positional, because the shell does not support keyword args
     # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None):
-        # Defining this attribute is necessary for the help command to work
         self.context = ctx  # pylint: disable=attribute-defined-outside-init
         return await super().command_callback(ctx, command=command)
 
