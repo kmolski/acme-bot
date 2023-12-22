@@ -25,7 +25,6 @@ FROM base AS final
 
 ENV RUNTIME_DEPS="ffmpeg grep units"
 RUN apt-get update \
-    && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} \
     && apt-get clean \
     && rm -rf -- /var/lib/apt/lists/*
