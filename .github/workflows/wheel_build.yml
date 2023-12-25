@@ -101,7 +101,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: python-wheel
-          path: dist
 
       - uses: softprops/action-gh-release@v1
         with:
@@ -109,4 +108,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/*.whl
-            dist/remote_api.json
+            remote_api.json
