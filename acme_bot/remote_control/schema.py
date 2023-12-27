@@ -14,9 +14,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Literal
+from typing import Literal, Union
 
-from pydantic import BaseModel, RootModel, Field
+from pydantic import BaseModel, Field, RootModel, conint
 
 
 class RemoteCommand(BaseModel):
@@ -57,7 +57,43 @@ class ResumeCommand(RemoteCommand):
         await player.resume()
 
 
+class ClearCommand(RemoteCommand):
+    """Remote command to clear the player's queue."""
+
+    op: Literal["clear"]
+
+    async def run(self, player):
+        player.clear()
+
+
+class LoopCommand(RemoteCommand):
+    """Remote command to set the player's loop."""
+
+    op: Literal["loop"]
+    enabled: bool
+
+    async def run(self, player):
+        player.loop = self.enabled
+
+
+class VolumeCommand(RemoteCommand):
+    """Remote command to set the player's volume."""
+
+    op: Literal["volume"]
+    value: conint(ge=0, le=100)
+
+    async def run(self, player):
+        player.volume = self.value
+
+
 class RemoteCommandModel(RootModel):
     """Root model for remote control commands."""
 
-    root: PauseCommand | StopCommand | ResumeCommand = Field(discriminator="op")
+    root: Union[
+        PauseCommand,
+        StopCommand,
+        ResumeCommand,
+        ClearCommand,
+        LoopCommand,
+        VolumeCommand,
+    ] = Field(discriminator="op")
