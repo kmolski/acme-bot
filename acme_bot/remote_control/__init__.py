@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from asyncio import Lock
+from asyncio import Lock, run_coroutine_threadsafe
 from uuid import uuid4
 
 import aio_pika
@@ -26,9 +26,38 @@ from pydantic import ValidationError
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import RABBITMQ_URI
 from acme_bot.music import MusicModule
+from acme_bot.music.schema import PlayerModel
 from acme_bot.remote_control.schema import RemoteCommandModel
 
 log = logging.getLogger(__name__)
+
+
+class MusicPlayerObserver:
+    """Observer class for communicating MusicPlayer changes to RabbitMQ."""
+
+    def __init__(self, exchange, player, loop):
+        self.__exchange = exchange
+        self.__player = player
+        self.__loop = loop
+
+    def update(self, player):
+        """Send a state update to all clients subscribing to the MusicPlayer."""
+        player_state = PlayerModel.serialize(player)
+        message = aio_pika.Message(
+            body=player_state.encode(),
+            content_type="application/json",
+            content_encoding="utf-8",
+        )
+        run_coroutine_threadsafe(self.__exchange.publish(message, ""), self.__loop)
+
+    async def consume(self, message):
+        """Process messages from a remote control client."""
+        if message.body == "":
+            self.__player.notify()
+
+    async def close(self):
+        """Close the RabbitMQ channel, exchanges and queues."""
+        await self.__exchange.channel.close()
 
 
 @autoloaded
@@ -74,9 +103,24 @@ class RemoteControlModule(commands.Cog, CogFactory):
         async with self.__lock:
             self.__players[player.access_code] = player
 
+    @commands.Cog.listener("on_acme_bot_player_created")
+    async def _bind_player_observer(self, player):
+        channel = await self.__connection.channel()
+        exchange = await channel.declare_exchange(
+            f"acme_bot_remote_{self.__uuid.hex}_{player.access_code}",
+            type=aio_pika.ExchangeType.FANOUT,
+            auto_delete=True,
+        )
+        observer = MusicPlayerObserver(exchange, player, self.__bot.loop)
+        queue = await channel.declare_queue(auto_delete=True)
+        await queue.bind(exchange)
+        await queue.consume(observer.consume)
+        player.observer = observer
+
     @commands.Cog.listener("on_acme_bot_player_deleted")
     async def _delete_player(self, player):
         async with self.__lock:
+            await player.observer.close()
             del self.__players[player.access_code]
 
     async def _run_command(self, message):
