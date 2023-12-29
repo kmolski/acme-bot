@@ -1,3 +1,5 @@
+import asyncio
+
 from conftest import FakeAmqpMessage
 
 from acme_bot.music.player import PlayerState
@@ -147,3 +149,34 @@ async def test_run_command_sets_volume_on_volume_command(
     )
     await remote_control_module._run_command(message)
     assert player.volume == 42
+
+
+async def test_observer_close_closes_channel(player_observer, amqp_exchange):
+    await player_observer.close()
+    assert amqp_exchange.channel.closed is True
+
+
+async def test_observer_consume_empty_message_triggers_notify(
+    player_observer, player, observer
+):
+    await player_observer.consume(FakeAmqpMessage(""))
+    assert observer.data is player
+
+
+async def test_observer_consume_other_message_does_not_notify(
+    player_observer, player, observer
+):
+    await player_observer.consume(FakeAmqpMessage("foo"))
+    assert observer.data is None
+
+
+async def test_observer_update_sends_player_state(
+    player_observer, player, amqp_exchange
+):
+    player.observer = player_observer
+    player_observer.update(player)
+    await asyncio.sleep(0.001)
+    assert (
+        amqp_exchange.messages[0].body
+        == b'{"loop":true,"volume":100,"state":"idle","queue":[]}'
+    )

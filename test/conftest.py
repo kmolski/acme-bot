@@ -9,7 +9,7 @@ from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
 from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
-from acme_bot.remote_control import RemoteControlModule
+from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
@@ -162,6 +162,27 @@ class FakeAmqpMessage:
 
     def process(self):
         return AsyncContextManager()
+
+
+@dataclass
+class FakeAmqpChannel:
+    """Fake aio_pika channel object."""
+
+    closed: bool = False
+
+    async def close(self):
+        self.closed = True
+
+
+@dataclass
+class FakeAmqpExchange:
+    """Fake aio_pika exchange object."""
+
+    channel: FakeAmqpChannel
+    messages: list[object] = field(default_factory=list)
+
+    async def publish(self, message, key):
+        self.messages.append(message)
 
 
 @dataclass
@@ -493,3 +514,18 @@ def music_module(fake_bot, extractor, player_with_tracks):
     cog._MusicModule__players[StubChannel.id] = player_with_tracks
     cog._MusicModule__access_codes.add(player_with_tracks.access_code)
     return cog
+
+
+@pytest.fixture
+def amqp_channel():
+    return FakeAmqpChannel()
+
+
+@pytest.fixture
+def amqp_exchange(amqp_channel):
+    return FakeAmqpExchange(amqp_channel)
+
+
+@pytest.fixture
+async def player_observer(amqp_exchange, player):
+    return MusicPlayerObserver(amqp_exchange, player, get_running_loop())
