@@ -16,7 +16,7 @@
 
 import logging
 from asyncio import run_coroutine_threadsafe
-from enum import Enum, auto
+from enum import Enum
 from re import match
 from subprocess import PIPE
 from threading import Lock, Thread
@@ -99,10 +99,11 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 class PlayerState(Enum):
     """State set for the MusicPlayer implementation."""
 
-    IDLE = auto()
-    PLAYING = auto()
-    PAUSED = auto()
-    STOPPED = auto()
+    IDLE = "idle"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+    DISCONNECTED = "disconnected"
 
 
 class MusicPlayer(MusicQueue):
@@ -164,6 +165,7 @@ class MusicPlayer(MusicQueue):
             self.__volume = volume / 100
             if source := self.__ctx.voice_client.source:
                 source.volume = self.__volume
+            self.notify()
         else:
             raise commands.CommandError("Incorrect volume value!")
 
@@ -172,17 +174,20 @@ class MusicPlayer(MusicQueue):
         self._clear()
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
+        self.notify()
 
     def move(self, offset):
         """Move to the track at the given offset."""
         self.__next_offset = offset
         if self.__ctx.voice_client.is_playing():
             self.__ctx.voice_client.stop()
+        self.notify()
 
     def pause(self):
         """Pause the player."""
         self.__state = PlayerState.PAUSED
         self.__ctx.voice_client.pause()
+        self.notify()
 
     def remove(self, offset):
         """Remove a track from the player's queue."""
@@ -193,6 +198,7 @@ class MusicPlayer(MusicQueue):
         elif offset == 0:  # Current track was removed, the next one is at offset 0.
             self.__next_offset = 0
             self.__ctx.voice_client.stop()
+        self.notify()
         return removed
 
     async def resume(self):
@@ -201,6 +207,7 @@ class MusicPlayer(MusicQueue):
             case PlayerState.PAUSED:
                 self.__state = PlayerState.PLAYING
                 self.__ctx.voice_client.resume()
+                self.notify()
             case PlayerState.STOPPED:
                 await self.start_player(self.current)
             case _:
@@ -219,16 +226,19 @@ class MusicPlayer(MusicQueue):
 
         self.__state = PlayerState.PLAYING
         self.__ctx.voice_client.play(audio, after=self.__play_next)
+        self.notify()
 
     def stop(self):
         """Stop the player."""
         self.__state = PlayerState.STOPPED
         self.__ctx.voice_client.stop()
+        self.notify()
 
     async def disconnect(self):
         """Disconnect the player from its voice channel."""
-        self.__state = PlayerState.STOPPED
+        self.__state = PlayerState.DISCONNECTED
         await self.__ctx.voice_client.disconnect()
+        self.notify()
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""

@@ -1,5 +1,7 @@
 import pytest
 
+from acme_bot.music.queue import Observable
+
 
 def test_current_with_empty_queue_throws(queue):
     with pytest.raises(IndexError):
@@ -10,17 +12,19 @@ def test_current_with_first_track_returns(queue_with_tracks):
     assert queue_with_tracks.current == "one"
 
 
-def test_append_to_empty_queue(queue):
+def test_append_to_empty_queue(queue, observer):
     entry = "new entry"
     queue.append(entry)
 
     assert queue.current is entry
     assert queue.is_empty() is False
+    assert observer.data is queue
 
 
-def test_extend_with_empty_list(queue):
+def test_extend_with_empty_list(queue, observer):
     queue.extend([])
     assert queue.is_empty() is True
+    assert observer.data is queue
 
 
 def test_extend_empty_queue(queue):
@@ -110,3 +114,10 @@ def test_pop_with_negative_offset_returns(queue_with_tracks):
 
 def test_pop_with_overflow_offset_returns(queue_with_tracks):
     assert queue_with_tracks._pop(201) == "two"
+
+
+def test_notify_calls_update_on_observer(observer):
+    observable = Observable()
+    observable.observer = observer
+    observable.notify()
+    assert observer.data is observable

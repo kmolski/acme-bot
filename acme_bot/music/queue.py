@@ -15,10 +15,23 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-class MusicQueue:
+class Observable:
+    """An observable object with a single observer."""
+
+    def __init__(self):
+        self.observer = None
+
+    def notify(self):
+        """Notify the observer about a change to the observable."""
+        if self.observer is not None:
+            self.observer.update(self)
+
+
+class MusicQueue(Observable):
     """Music queue that keeps track of the current entry and loops."""
 
     def __init__(self):
+        super().__init__()
         self.loop = True
         self.__index = 0
         self.__playlist = []
@@ -31,10 +44,12 @@ class MusicQueue:
     def append(self, new_elem):
         """Add a single new element to the queue."""
         self.__playlist.append(new_elem)
+        self.notify()
 
     def extend(self, elem_list):
         """Append an iterable of new elements to the queue."""
         self.__playlist.extend(elem_list)
+        self.notify()
 
     def is_empty(self):
         """Return True if the queue is empty."""

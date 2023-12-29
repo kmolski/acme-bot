@@ -9,7 +9,7 @@ from acme_bot.music.extractor import MusicExtractor
 from acme_bot.music.player import MusicPlayer, PlayerState
 from acme_bot.music.queue import MusicQueue
 from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
-from acme_bot.remote_control import RemoteControlModule
+from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
@@ -165,6 +165,27 @@ class FakeAmqpMessage:
 
 
 @dataclass
+class FakeAmqpChannel:
+    """Fake aio_pika channel object."""
+
+    closed: bool = False
+
+    async def close(self):
+        self.closed = True
+
+
+@dataclass
+class FakeAmqpExchange:
+    """Fake aio_pika exchange object."""
+
+    channel: FakeAmqpChannel
+    messages: list[object] = field(default_factory=list)
+
+    async def publish(self, message, key):
+        self.messages.append(message)
+
+
+@dataclass
 class FakeContext:
     """Fake discord.py context for testing modules that interact with the text chat."""
 
@@ -239,15 +260,31 @@ class StubInteraction:
     message: FakeMessage = field(default_factory=FakeMessage)
 
 
-@pytest.fixture
-def queue():
-    return MusicQueue()
+@dataclass
+class StubObserver:
+    """Stub observer object for remote control."""
+
+    data: object = None
+
+    def update(self, data):
+        self.data = data
+
+    async def close(self):
+        pass
 
 
 @pytest.fixture
-def queue_with_tracks():
+def queue(observer):
+    queue = MusicQueue()
+    queue.observer = observer
+    return queue
+
+
+@pytest.fixture
+def queue_with_tracks(observer):
     queue = MusicQueue()
     queue.extend(["one", "two"])
+    queue.observer = observer
     return queue
 
 
@@ -284,6 +321,7 @@ def youtube_playlist():
                 + "?expire=1582257033"
             ),
             "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
+            "uploader_url": "https://example.com",
         },
         {
             "id": "FNKPYhXmzo0",
@@ -297,6 +335,7 @@ def youtube_playlist():
                 "https://rr4---sn-oxup5-3ufs.googlevideo.com/videoplayback"
                 + "?expire=1582257034"
             ),
+            "uploader_url": "https://example.com",
         },
     ]
 
@@ -403,14 +442,22 @@ def fake_ctx_no_voice(fake_bot, fake_message):
 
 
 @pytest.fixture
-async def player(fake_ctx, extractor):
-    return MusicPlayer(fake_ctx, extractor, 123456)
+def observer():
+    return StubObserver()
 
 
 @pytest.fixture
-async def player_with_tracks(fake_ctx, extractor, youtube_playlist):
+async def player(fake_ctx, extractor, observer):
+    player = MusicPlayer(fake_ctx, extractor, 123456)
+    player.observer = observer
+    return player
+
+
+@pytest.fixture
+async def player_with_tracks(fake_ctx, extractor, youtube_playlist, observer):
     player = MusicPlayer(fake_ctx, extractor, 123456)
     player.extend(youtube_playlist)
+    player.observer = observer
     return player
 
 
@@ -467,3 +514,18 @@ def music_module(fake_bot, extractor, player_with_tracks):
     cog._MusicModule__players[StubChannel.id] = player_with_tracks
     cog._MusicModule__access_codes.add(player_with_tracks.access_code)
     return cog
+
+
+@pytest.fixture
+def amqp_channel():
+    return FakeAmqpChannel()
+
+
+@pytest.fixture
+def amqp_exchange(amqp_channel):
+    return FakeAmqpExchange(amqp_channel)
+
+
+@pytest.fixture
+async def player_observer(amqp_exchange, player):
+    return MusicPlayerObserver(amqp_exchange, player, get_running_loop())

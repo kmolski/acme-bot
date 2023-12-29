@@ -3,7 +3,7 @@ import re
 import pytest
 from discord.ext import commands
 
-from acme_bot.shell import validate_options, trim_double_newline
+from acme_bot.shell import validate_options, trim_double_newline, execute_system_cmd
 
 
 def test_validate_options_passes_on_valid_opt():
@@ -24,6 +24,11 @@ def test_trim_double_newline_with_single_newline():
 
 def test_trim_double_newline_with_double_newline():
     assert trim_double_newline("foo\n\n") == "foo\n"
+
+
+async def test_execute_system_cmd_returns_output():
+    result = await execute_system_cmd("echo", "foo")
+    assert result == "foo\n"
 
 
 async def test_concat_joins_arguments(fake_ctx, shell_module):

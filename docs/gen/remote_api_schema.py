@@ -17,7 +17,12 @@
 
 from json import dumps
 
+from pydantic.json_schema import models_json_schema
+
+from acme_bot.music.schema import PlayerModel
 from acme_bot.remote_control.schema import RemoteCommandModel
 
-schema = RemoteCommandModel.model_json_schema()
+_, schema = models_json_schema(
+    [(PlayerModel, "serialization"), (RemoteCommandModel, "serialization")]
+)
 print(dumps(schema, indent=2))

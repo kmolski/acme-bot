@@ -14,17 +14,40 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from pydantic import TypeAdapter
-from typing_extensions import TypedDict
+from pydantic import TypeAdapter, BaseModel, Field
+from typing_extensions import Annotated, TypedDict
+
+from acme_bot.music.player import PlayerState
 
 
-class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
+class PlayerModel(BaseModel):
+    """Data model for a MusicPlayer instance."""
+
+    loop: bool
+    volume: int
+    state: PlayerState
+    queue: list["QueueEntry"]
+
+    @classmethod
+    def serialize(cls, player):
+        """Serialize the MusicPlayer instance."""
+        head, tail = player.get_tracks()
+        model = PlayerModel(
+            loop=player.loop,
+            volume=player.volume,
+            state=player.state,
+            queue=head + tail,
+        )
+        return model.model_dump_json()
+
+
+class QueueEntry(TypedDict, total=False):
     """Data model for a MusicQueue entry."""
 
     id: str
-    url: str
+    url: Annotated[str, Field(exclude=True)]
     title: str
-    entries: list["QueueEntry"]
+    entries: list["QueueEntry"] | None
     uploader: str
     duration: int | float
     webpage_url: str
