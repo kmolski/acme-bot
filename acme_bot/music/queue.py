@@ -21,7 +21,7 @@ class Observable:
     def __init__(self):
         self.observer = None
 
-    def notify(self):
+    def _notify(self):
         """Notify the observer about a change to the observable."""
         if self.observer is not None:
             self.observer.update(self)
