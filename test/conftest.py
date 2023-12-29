@@ -300,6 +300,7 @@ def youtube_playlist():
                 + "?expire=1582257033"
             ),
             "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
+            "uploader_url": "https://example.com",
         },
         {
             "id": "FNKPYhXmzo0",
@@ -313,6 +314,7 @@ def youtube_playlist():
                 "https://rr4---sn-oxup5-3ufs.googlevideo.com/videoplayback"
                 + "?expire=1582257034"
             ),
+            "uploader_url": "https://example.com",
         },
     ]
 
