@@ -16,7 +16,7 @@
 
 import logging
 from asyncio import run_coroutine_threadsafe
-from enum import StrEnum, auto
+from enum import Enum
 from re import match
 from subprocess import PIPE
 from threading import Lock, Thread
@@ -96,14 +96,14 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
             raise ChildProcessError(msg)
 
 
-class PlayerState(StrEnum):
+class PlayerState(Enum):
     """State set for the MusicPlayer implementation."""
 
-    IDLE = auto()
-    PLAYING = auto()
-    PAUSED = auto()
-    STOPPED = auto()
-    DISCONNECTED = auto()
+    IDLE = "idle"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+    DISCONNECTED = "disconnected"
 
 
 class MusicPlayer(MusicQueue):
