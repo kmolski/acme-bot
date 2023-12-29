@@ -164,7 +164,7 @@ class MusicPlayer(MusicQueue):
             self.__volume = volume / 100
             if source := self.__ctx.voice_client.source:
                 source.volume = self.__volume
-            self._notify()
+            self.notify()
         else:
             raise commands.CommandError("Incorrect volume value!")
 
@@ -173,20 +173,20 @@ class MusicPlayer(MusicQueue):
         self._clear()
         self.__state = PlayerState.IDLE
         self.__ctx.voice_client.stop()
-        self._notify()
+        self.notify()
 
     def move(self, offset):
         """Move to the track at the given offset."""
         self.__next_offset = offset
         if self.__ctx.voice_client.is_playing():
             self.__ctx.voice_client.stop()
-        self._notify()
+        self.notify()
 
     def pause(self):
         """Pause the player."""
         self.__state = PlayerState.PAUSED
         self.__ctx.voice_client.pause()
-        self._notify()
+        self.notify()
 
     def remove(self, offset):
         """Remove a track from the player's queue."""
@@ -197,7 +197,7 @@ class MusicPlayer(MusicQueue):
         elif offset == 0:  # Current track was removed, the next one is at offset 0.
             self.__next_offset = 0
             self.__ctx.voice_client.stop()
-        self._notify()
+        self.notify()
         return removed
 
     async def resume(self):
@@ -210,7 +210,7 @@ class MusicPlayer(MusicQueue):
                 await self.start_player(self.current)
             case _:
                 raise commands.CommandError("This player is not paused!")
-        self._notify()
+        self.notify()
 
     async def start_player(self, current):
         """Start playing the given track."""
@@ -225,19 +225,19 @@ class MusicPlayer(MusicQueue):
 
         self.__state = PlayerState.PLAYING
         self.__ctx.voice_client.play(audio, after=self.__play_next)
-        self._notify()
+        self.notify()
 
     def stop(self):
         """Stop the player."""
         self.__state = PlayerState.STOPPED
         self.__ctx.voice_client.stop()
-        self._notify()
+        self.notify()
 
     async def disconnect(self):
         """Disconnect the player from its voice channel."""
         self.__state = PlayerState.STOPPED
         await self.__ctx.voice_client.disconnect()
-        self._notify()
+        self.notify()
 
     def __play_next(self, err):
         """Executed after the track is done playing, plays the next song or stops."""

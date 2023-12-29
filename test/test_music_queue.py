@@ -119,5 +119,5 @@ def test_pop_with_overflow_offset_returns(queue_with_tracks):
 def test_notify_calls_update_on_observer(observer):
     observable = Observable()
     observable.observer = observer
-    observable._notify()
+    observable.notify()
     assert observer.data is observable

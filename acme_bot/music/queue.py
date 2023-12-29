@@ -21,7 +21,7 @@ class Observable:
     def __init__(self):
         self.observer = None
 
-    def _notify(self):
+    def notify(self):
         """Notify the observer about a change to the observable."""
         if self.observer is not None:
             self.observer.update(self)
@@ -44,12 +44,12 @@ class MusicQueue(Observable):
     def append(self, new_elem):
         """Add a single new element to the queue."""
         self.__playlist.append(new_elem)
-        self._notify()
+        self.notify()
 
     def extend(self, elem_list):
         """Append an iterable of new elements to the queue."""
         self.__playlist.extend(elem_list)
-        self._notify()
+        self.notify()
 
     def is_empty(self):
         """Return True if the queue is empty."""
