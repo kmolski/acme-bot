@@ -41,6 +41,10 @@ class MusicQueue(Observable):
         """Return the current track."""
         return self.__playlist[self.__index]
 
+    def get(self, index):
+        """Return the track at the given index."""
+        return self.__playlist[index % len(self.__playlist)]
+
     def append(self, new_elem):
         """Add a single new element to the queue."""
         self.__playlist.append(new_elem)
