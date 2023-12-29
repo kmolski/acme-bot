@@ -22,9 +22,9 @@ class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
     """Data model for a MusicQueue entry."""
 
     id: str
-    url: str
+    url: Annotated[str, Field(exclude=True)]
     title: str
-    entries: list["QueueEntry"]
+    entries: list["QueueEntry"] | None
     uploader: str
     duration: int | float
     webpage_url: str
