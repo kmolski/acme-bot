@@ -1,5 +1,7 @@
 import pytest
 
+from acme_bot.music.queue import Observable
+
 
 def test_current_with_empty_queue_throws(queue):
     with pytest.raises(IndexError):
@@ -110,3 +112,10 @@ def test_pop_with_negative_offset_returns(queue_with_tracks):
 
 def test_pop_with_overflow_offset_returns(queue_with_tracks):
     assert queue_with_tracks._pop(201) == "two"
+
+
+def test_notify_calls_update_on_observer(observer):
+    observable = Observable()
+    observable.observer = observer
+    observable.notify()
+    assert observer.data is observable

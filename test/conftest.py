@@ -239,6 +239,19 @@ class StubInteraction:
     message: FakeMessage = field(default_factory=FakeMessage)
 
 
+@dataclass
+class StubObserver:
+    """Stub observer object for remote control."""
+
+    data: object = None
+
+    def update(self, data):
+        self.data = data
+
+    async def close(self):
+        pass
+
+
 @pytest.fixture
 def queue():
     return MusicQueue()
@@ -403,14 +416,22 @@ def fake_ctx_no_voice(fake_bot, fake_message):
 
 
 @pytest.fixture
-async def player(fake_ctx, extractor):
-    return MusicPlayer(fake_ctx, extractor, 123456)
+def observer():
+    return StubObserver()
 
 
 @pytest.fixture
-async def player_with_tracks(fake_ctx, extractor, youtube_playlist):
+async def player(fake_ctx, extractor, observer):
+    player = MusicPlayer(fake_ctx, extractor, 123456)
+    player.observer = observer
+    return player
+
+
+@pytest.fixture
+async def player_with_tracks(fake_ctx, extractor, youtube_playlist, observer):
     player = MusicPlayer(fake_ctx, extractor, 123456)
     player.extend(youtube_playlist)
+    player.observer = observer
     return player
 
 
