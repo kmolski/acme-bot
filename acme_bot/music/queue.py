@@ -44,10 +44,12 @@ class MusicQueue(Observable):
     def append(self, new_elem):
         """Add a single new element to the queue."""
         self.__playlist.append(new_elem)
+        self._notify()
 
     def extend(self, elem_list):
         """Append an iterable of new elements to the queue."""
         self.__playlist.extend(elem_list)
+        self._notify()
 
     def is_empty(self):
         """Return True if the queue is empty."""

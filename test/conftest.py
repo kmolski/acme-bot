@@ -253,14 +253,17 @@ class StubObserver:
 
 
 @pytest.fixture
-def queue():
-    return MusicQueue()
+def queue(observer):
+    queue = MusicQueue()
+    queue.observer = observer
+    return queue
 
 
 @pytest.fixture
-def queue_with_tracks():
+def queue_with_tracks(observer):
     queue = MusicQueue()
     queue.extend(["one", "two"])
+    queue.observer = observer
     return queue
 
 
