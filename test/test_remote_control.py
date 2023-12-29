@@ -151,6 +151,46 @@ async def test_run_command_sets_volume_on_volume_command(
     assert player.volume == 42
 
 
+async def test_remove_command_deletes_existing_entry_at_index(
+    remote_control_module, player, youtube_playlist
+):
+    player.extend(youtube_playlist)
+    message = FakeAmqpMessage(
+        b"""
+        {
+            "op": "remove",
+            "offset": 1,
+            "id": "FNKPYhXmzo0",
+            "code": 123456
+        }
+        """
+    )
+    await remote_control_module._run_command(message)
+    head, tail = player.get_tracks()
+    assert [entry["id"] for entry in head] == ["Ee_uujKuJM0"]
+    assert tail == []
+
+
+async def test_remove_command_does_not_delete_if_id_isnt_matching(
+    remote_control_module, player, youtube_playlist
+):
+    player.extend(youtube_playlist)
+    message = FakeAmqpMessage(
+        b"""
+        {
+            "op": "remove",
+            "offset": 0,
+            "id": "FNKPYhXmzo0",
+            "code": 123456
+        }
+        """
+    )
+    await remote_control_module._run_command(message)
+    head, tail = player.get_tracks()
+    assert [entry["id"] for entry in head] == ["Ee_uujKuJM0", "FNKPYhXmzo0"]
+    assert tail == []
+
+
 async def test_observer_close_closes_channel(player_observer, amqp_exchange):
     await player_observer.close()
     assert amqp_exchange.channel.closed is True

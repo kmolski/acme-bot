@@ -86,6 +86,19 @@ class VolumeCommand(RemoteCommand):
         player.volume = self.value
 
 
+class RemoveCommand(RemoteCommand):
+    """Remote command to remove an entry from the queue."""
+
+    op: Literal["remove"]
+    offset: int
+    id: str
+
+    async def run(self, player):
+        entry = player.get(self.offset)
+        if entry["id"] == self.id:
+            player.remove(self.offset)
+
+
 class RemoteCommandModel(RootModel):
     """Root model for remote control commands."""
 
@@ -96,4 +109,5 @@ class RemoteCommandModel(RootModel):
         ClearCommand,
         LoopCommand,
         VolumeCommand,
+        RemoveCommand,
     ] = Field(discriminator="op")
