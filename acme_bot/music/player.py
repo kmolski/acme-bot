@@ -207,11 +207,11 @@ class MusicPlayer(MusicQueue):
             case PlayerState.PAUSED:
                 self.__state = PlayerState.PLAYING
                 self.__ctx.voice_client.resume()
+                self.notify()
             case PlayerState.STOPPED:
                 await self.start_player(self.current)
             case _:
                 raise commands.CommandError("This player is not paused!")
-        self.notify()
 
     async def start_player(self, current):
         """Start playing the given track."""
