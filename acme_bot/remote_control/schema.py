@@ -99,6 +99,19 @@ class RemoveCommand(RemoteCommand):
             player.remove(self.offset)
 
 
+class MoveCommand(RemoteCommand):
+    """Move command to skip to an entry in the queue."""
+
+    op: Literal["move"]
+    offset: int
+    id: str
+
+    async def run(self, player):
+        entry = player.get(self.offset)
+        if entry["id"] == self.id:
+            player.move(self.offset)
+
+
 class RemoteCommandModel(RootModel):
     """Root model for remote control commands."""
 
@@ -110,4 +123,5 @@ class RemoteCommandModel(RootModel):
         LoopCommand,
         VolumeCommand,
         RemoveCommand,
+        MoveCommand,
     ] = Field(discriminator="op")
