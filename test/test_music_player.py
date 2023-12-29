@@ -118,6 +118,6 @@ async def test_disconnect_sets_voice_client_state(player, fake_voice_client, obs
     assert fake_voice_client.disconnected is False
 
     await player.disconnect()
-    assert player.state == PlayerState.STOPPED
+    assert player.state == PlayerState.DISCONNECTED
     assert fake_voice_client.disconnected is True
     assert observer.data is player

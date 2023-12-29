@@ -103,6 +103,7 @@ class PlayerState(Enum):
     PLAYING = auto()
     PAUSED = auto()
     STOPPED = auto()
+    DISCONNECTED = auto()
 
 
 class MusicPlayer(MusicQueue):
@@ -235,7 +236,7 @@ class MusicPlayer(MusicQueue):
 
     async def disconnect(self):
         """Disconnect the player from its voice channel."""
-        self.__state = PlayerState.STOPPED
+        self.__state = PlayerState.DISCONNECTED
         await self.__ctx.voice_client.disconnect()
         self.notify()
 
