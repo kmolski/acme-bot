@@ -488,9 +488,9 @@ class MusicModule(commands.Cog, CogFactory):
     async def __delete_player(self, player):
         del self.__players[player.channel_id]
         self.__access_codes.remove(player.access_code)
-        await player.disconnect()
-        self.bot.dispatch("acme_bot_player_deleted", player)
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
         )
+        await player.disconnect()
+        self.bot.dispatch("acme_bot_player_deleted", player)
