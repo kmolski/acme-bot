@@ -57,7 +57,7 @@ class BuildInfo:
 class VersionInfoModule(commands.Cog, CogFactory):
     """Version & license information commands."""
 
-    COPYRIGHT_INFO = "\n".join(["Copyright (C) 2019-2023  Krzysztof Molski"])
+    COPYRIGHT_INFO = "\n".join(["Copyright (C) 2019-2024  Krzysztof Molski"])
 
     MESSAGE_TEMPLATE = """
 acme-bot {} ({} {})

@@ -69,38 +69,47 @@ def import_submodules():
         import_module(module_name)
 
 
-def run():
-    """The entry point for acme-bot."""
-    parser = ArgumentParser(description="Launch the ACME Universal Bot.")
-    parser.add_argument(
-        "-c", "--config", metavar="FILE", help="path to bot configuration file"
-    )
+class AcmeBot(commands.Bot):
+    """The main bot class."""
 
-    args = vars(parser.parse_args())
-    load_config(args.get("config"))
-
-    client = commands.Bot(
-        command_prefix=COMMAND_PREFIX(),
-        help_command=HelpCommand(show_parameter_descriptions=False),
-        intents=Intents.all(),
-    )
-    formatter = RFC3339Formatter(fmt="%(asctime)s %(levelname)8s %(name)s: %(message)s")
-    handler = logging.StreamHandler()
-    logger = logging.getLogger()
-
-    handler.setFormatter(formatter)
-    logger.setLevel(LOG_LEVEL())
-    logger.addHandler(handler)
-
-    async def load_cogs():
+    async def setup_hook(self):
         import_submodules()
         for module_class in get_autoloaded_cogs():
-            await module_class.load(client)
+            await module_class.load(self)
 
-    client.setup_hook = load_cogs
+    async def eval_command(self, ctx):
+        """Evaluate a command in the given context."""
+        if ctx.invoked_with:
+            message = ctx.message.content
+            command = message.removeprefix(ctx.prefix)
+            try:
+                model = META_MODEL.model_from_str(command.strip())
+                await model.eval(ctx)
+            except (
+                commands.CommandError,  # Command validation errors
+                TextXSyntaxError,  # Shell syntax errors
+                TypeError,  # Type mismatch errors (incorrect command args)
+            ) as exc:
+                self.dispatch("command_error", ctx, exc)
+            # Log the unhandled exceptions for later analysis
+            except Exception as exc:  # pylint: disable=broad-except
+                log.exception(
+                    "Unhandled exception caused by message '%s':",
+                    ctx.message.content,
+                    exc_info=exc,
+                )
+            else:
+                self.dispatch("command_completion", ctx)
 
-    @client.event
-    async def on_command_error(ctx, error):
+    async def on_message(self, message, /):
+        if message.author.bot:
+            return
+        ctx = await self.get_context(message)
+        ctx.display = True
+        ctx.send_pages = partial(send_pages, ctx)
+        await self.eval_command(ctx)
+
+    async def on_command_error(self, ctx, error, /):
         """Handle exceptions raised during command execution."""
         match error:
             case commands.CommandError(original=_):
@@ -117,36 +126,28 @@ def run():
             case _:
                 await ctx.send_pages(f"Error: {error}")
 
-    async def eval_command(ctx):
-        if ctx.invoked_with:
-            message = ctx.message.content
-            command = message.removeprefix(ctx.prefix)
-            try:
-                model = META_MODEL.model_from_str(command.strip())
-                await model.eval(ctx)
-            except (
-                commands.CommandError,  # Command validation errors
-                TextXSyntaxError,  # Shell syntax errors
-                TypeError,  # Type mismatch errors (incorrect command args)
-            ) as exc:
-                client.dispatch("command_error", ctx, exc)
-            # Log the unhandled exceptions for later analysis
-            except Exception as exc:  # pylint: disable=broad-except
-                log.exception(
-                    "Unhandled exception caused by message '%s':",
-                    ctx.message.content,
-                    exc_info=exc,
-                )
-            else:
-                client.dispatch("command_completion", ctx)
 
-    @client.event
-    async def on_message(message):
-        if message.author.bot:
-            return
-        ctx = await client.get_context(message)
-        ctx.display = True
-        ctx.send_pages = partial(send_pages, ctx)
-        await eval_command(ctx)
+def run():
+    """The entry point for acme-bot."""
+    parser = ArgumentParser(description="Launch the ACME Universal Bot.")
+    parser.add_argument(
+        "-c", "--config", metavar="FILE", help="path to bot configuration file"
+    )
 
+    args = vars(parser.parse_args())
+    load_config(args.get("config"))
+
+    formatter = RFC3339Formatter(fmt="%(asctime)s %(levelname)8s %(name)s: %(message)s")
+    handler = logging.StreamHandler()
+    logger = logging.getLogger()
+
+    handler.setFormatter(formatter)
+    logger.setLevel(LOG_LEVEL())
+    logger.addHandler(handler)
+
+    client = AcmeBot(
+        command_prefix=COMMAND_PREFIX(),
+        help_command=HelpCommand(show_parameter_descriptions=False),
+        intents=Intents.all(),
+    )
     client.run(DISCORD_TOKEN(), log_handler=None)
