@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: poetry run docs/gen/remote_api_schema.py >remote_api.json
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: python-wheel
           path: |
