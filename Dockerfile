@@ -23,6 +23,11 @@ RUN if [ ! -f dist/*.whl ]; then \
 
 FROM base AS final
 
+LABEL org.opencontainers.image.title="acme-bot" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.authors="Krzysztof Molski" \
+      org.opencontainers.image.source="https://github.com/kmolski/acme-bot"
+
 ENV RUNTIME_DEPS="ffmpeg grep units"
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} \
