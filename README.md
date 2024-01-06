@@ -44,9 +44,6 @@ To use this method, the [Poetry](https://python-poetry.org) build tool is requir
     $ poetry run acme-bot [-c CONFIG_FILE]
     ```
 
-Dependencies
-------------
-
 License
 -------
 
