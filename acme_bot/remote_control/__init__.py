@@ -1,5 +1,5 @@
 """Remote music player control using an AMQP message broker."""
-#  Copyright (C) 2022-2023  Krzysztof Molski
+#  Copyright (C) 2022-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -35,9 +35,10 @@ log = logging.getLogger(__name__)
 class MusicPlayerObserver:
     """Observer class for communicating MusicPlayer changes to RabbitMQ."""
 
-    def __init__(self, exchange, player, loop):
+    def __init__(self, exchange, player, uuid, loop):
         self.__exchange = exchange
         self.__player = player
+        self.__uuid = uuid
         self.__loop = loop
 
     def update(self, player):
@@ -48,7 +49,10 @@ class MusicPlayerObserver:
             content_type="application/json",
             content_encoding="utf-8",
         )
-        run_coroutine_threadsafe(self.__exchange.publish(message, ""), self.__loop)
+        run_coroutine_threadsafe(
+            self.__exchange.publish(message, f"{self.__uuid}.{player.access_code}"),
+            self.__loop,
+        )
 
     async def consume(self, message):
         """Process messages from a remote control client."""
@@ -107,11 +111,9 @@ class RemoteControlModule(commands.Cog, CogFactory):
     async def _bind_player_observer(self, player):
         channel = await self.__connection.channel()
         exchange = await channel.declare_exchange(
-            f"acme_bot_remote_{self.__uuid.hex}_{player.access_code}",
-            type=aio_pika.ExchangeType.FANOUT,
-            auto_delete=True,
+            "acme_bot_remote_update", type=aio_pika.ExchangeType.TOPIC, durable=True
         )
-        observer = MusicPlayerObserver(exchange, player, self.__bot.loop)
+        observer = MusicPlayerObserver(exchange, player, self.__uuid, self.__bot.loop)
         queue = await channel.declare_queue(auto_delete=True)
         await queue.bind(exchange)
         await queue.consume(observer.consume)
