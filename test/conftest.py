@@ -1,6 +1,7 @@
 from asyncio import get_running_loop, sleep, AbstractEventLoop, Queue
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 import pytest
 
@@ -528,4 +529,4 @@ def amqp_exchange(amqp_channel):
 
 @pytest.fixture
 async def player_observer(amqp_exchange, player):
-    return MusicPlayerObserver(amqp_exchange, player, get_running_loop())
+    return MusicPlayerObserver(amqp_exchange, player, uuid4(), get_running_loop())
