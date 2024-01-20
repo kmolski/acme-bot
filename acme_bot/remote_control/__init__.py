@@ -50,7 +50,7 @@ class MusicPlayerObserver:
             content_encoding="utf-8",
         )
         run_coroutine_threadsafe(
-            self.__exchange.publish(message, f"{self.__uuid}.{player.access_code}"),
+            self.__exchange.publish(message, f"{self.__uuid.hex}.{player.access_code}"),
             self.__loop,
         )
 
