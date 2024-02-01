@@ -41,7 +41,7 @@ class PlayerModel(BaseModel):
         return model.model_dump_json()
 
 
-class QueueEntry(TypedDict, total=False):
+class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
     """Data model for a MusicQueue entry."""
 
     id: str
