@@ -1,4 +1,5 @@
 """Automatic cog loading and dependency injection using decorators."""
+
 #  Copyright (C) 2022-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify

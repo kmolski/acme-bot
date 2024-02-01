@@ -1,4 +1,5 @@
 """Data conversion functions used by shell commands."""
+
 #  Copyright (C) 2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify

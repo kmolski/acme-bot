@@ -1,4 +1,5 @@
 """Pydantic models for MusicPlayer's remote control messages."""
+
 #  Copyright (C) 2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify

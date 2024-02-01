@@ -1,4 +1,5 @@
 """Music command UI interactions based on discord.py View."""
+
 #  Copyright (C) 2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
