@@ -1,4 +1,5 @@
 """Configuration management based on .env files and environment overrides."""
+
 #  Copyright (C) 2022-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify

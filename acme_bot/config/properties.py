@@ -1,4 +1,5 @@
 """Properties for deployment-specific config (e.g. credentials, URLs, log levels)"""
+
 #  Copyright (C) 2022-2023  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
