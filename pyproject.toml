@@ -13,7 +13,7 @@ python = ">=3.10,<3.13"
 aio-pika = "^9.4.0"
 "discord.py" = {version = "^2.3.2", extras = ["voice"]}
 pydantic = "^2.5.3"
-python-dotenv = "^1.0.0"
+python-dotenv = "^1.0.1"
 textX = "^4.0.1"
 yt-dlp = "2023.12.30"
 
