@@ -48,7 +48,7 @@ class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
     id: str
     url: Annotated[str, Field(exclude=True)]
     title: str
-    entries: list["QueueEntry"] | None
+    entries: Annotated[list["QueueEntry"] | None, Field(exclude=True)]
     uploader: str
     duration: int | float
     webpage_url: str
