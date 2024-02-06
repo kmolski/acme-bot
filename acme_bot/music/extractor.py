@@ -23,6 +23,7 @@ from os import getpid
 from pathlib import PurePosixPath
 from time import time
 from urllib.parse import urlparse, parse_qs
+from uuid import uuid4
 
 import yt_dlp
 from discord.ext import commands
@@ -74,6 +75,11 @@ def filter_not_none(iterable):
     return [entry for entry in iterable if entry is not None]
 
 
+def add_entry_uuids(iterable):
+    """Assign UUIDs to dicts in `iterable`."""
+    return [entry | {"id": uuid4().hex} for entry in iterable]
+
+
 class MusicExtractor:
     """Track extractor based on YoutubeDL and Python multiprocessing."""
 
@@ -120,7 +126,7 @@ class MusicExtractor:
 
         if not results:
             raise commands.CommandError("No tracks found for the provided URL list!")
-        return results
+        return add_entry_uuids(results)
 
     async def get_entries_by_query(self, provider, query):
         """Extract the track entries for the given search provider and query."""
@@ -130,7 +136,7 @@ class MusicExtractor:
 
         if not results or not results["entries"]:
             raise commands.CommandError("No tracks found for the provided query!")
-        return filter_not_none(results["entries"])
+        return add_entry_uuids(filter_not_none(results["entries"]))
 
     async def update_entry(self, entry):
         """Update a track entry in-place with a new URL and expiration time."""
