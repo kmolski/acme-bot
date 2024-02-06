@@ -57,7 +57,8 @@ async def test_get_entries_by_urls_unknown(extractor):
 async def test_get_entries_by_query(extractor):
     results = await extractor.get_entries_by_query("ytsearch10:", "bar")
 
-    assert list(t["id"] for t in results) == ["Ee_uujKuJM0", "FNKPYhXmzo0"]
+    assert list(t["title"] for t in results) == ["foo", "boo"]
+    assert all(t["id"] is not None for t in results)
     assert all(t["uploader"] == "bar" for t in results)
     assert all(t["extractor"] == "youtube" for t in results)
     assert all(t["duration_string"] is not None for t in results)
