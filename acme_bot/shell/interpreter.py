@@ -1,6 +1,6 @@
 """Shell interpreter based on the TextX parser generator."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,7 @@ from os.path import join, dirname
 from discord.ext import commands
 from textx import metamodel_from_file
 
-from acme_bot.textutils import MD_BLOCK_FMT
+from acme_bot.textutils import escape_md_block, MD_BLOCK_FMT
 
 
 class ExprSeq:
@@ -121,7 +121,7 @@ class StrLiteral:
     async def eval(self, ctx, *_, **__):
         """Evaluate the literal, printing it in a code block if necessary."""
         if ctx.display:
-            await ctx.send_pages(self.value, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(self.value), fmt=MD_BLOCK_FMT)
         return self.value
 
 
@@ -172,9 +172,7 @@ class FileContent:
                 if elem.filename == self.name:
                     content = str(await elem.read(), errors="replace")
                     if ctx.display:
-                        await ctx.send_pages(
-                            content, fmt=MD_BLOCK_FMT, escape_md_blocks=True
-                        )
+                        await ctx.send_pages(escape_md_block(content), fmt=MD_BLOCK_FMT)
                     return content
         raise commands.CommandError(f"File `{self.name}` not found")
 

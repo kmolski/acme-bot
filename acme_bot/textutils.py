@@ -1,6 +1,6 @@
 """Text utility functions used by other modules."""
 
-#  Copyright (C) 2020-2023  Krzysztof Molski
+#  Copyright (C) 2020-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -54,13 +54,9 @@ async def send_pages(  # pylint: disable=too-many-arguments; extra args are opti
     fmt=None,
     view=None,
     reference=None,
-    delete_after=None,
-    escape_md_blocks=False,
-    max_length=MAX_MESSAGE_LENGTH
 ):
     """Split and send a message with the specified content and format."""
-    if escape_md_blocks:
-        content = escape_md_block(content)
+    max_length = MAX_MESSAGE_LENGTH
     if fmt is not None:
         max_length -= len(fmt)
 
@@ -69,9 +65,7 @@ async def send_pages(  # pylint: disable=too-many-arguments; extra args are opti
         if fmt is not None:
             chunk = fmt.format(chunk)
         chunk_view = view if i == len(msg_chunks) else None
-        await ctx.send(
-            chunk, delete_after=delete_after, reference=reference, view=chunk_view
-        )
+        await ctx.send(chunk, reference=reference, view=chunk_view)
 
 
 def escape_md_block(text):

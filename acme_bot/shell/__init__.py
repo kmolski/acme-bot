@@ -1,6 +1,6 @@
 """Shell utility commands."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -30,7 +30,7 @@ from discord.ext import commands
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.convutils import to_int
 from acme_bot.shell.interpreter import FileContent
-from acme_bot.textutils import MD_BLOCK_FMT
+from acme_bot.textutils import escape_md_block, MD_BLOCK_FMT
 
 
 log = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class ShellModule(commands.Cog, CogFactory):
         """
         content = "".join(str(arg) for arg in arguments)
         if ctx.display:
-            await ctx.send_pages(content, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(content), fmt=MD_BLOCK_FMT)
         return content
 
     @commands.command()
@@ -134,7 +134,7 @@ class ShellModule(commands.Cog, CogFactory):
         content, file_format = str(content), str(file_format)
         if ctx.display:
             await ctx.send_pages(
-                content, fmt=f"```{file_format}\n{{}}\n```", escape_md_blocks=True
+                escape_md_block(content), fmt=f"```{file_format}\n{{}}\n```"
             )
         return content
 
@@ -212,7 +212,7 @@ class ShellModule(commands.Cog, CogFactory):
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -258,7 +258,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -282,7 +282,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -311,7 +311,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -353,7 +353,7 @@ class ShellModule(commands.Cog, CogFactory):
         )
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -372,7 +372,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(sorted(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -391,7 +391,7 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(line for line, _ in groupby(lines))
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output
 
@@ -411,6 +411,6 @@ class ShellModule(commands.Cog, CogFactory):
         output = "\n".join(lines)
 
         if ctx.display:
-            await ctx.send_pages(output, fmt=MD_BLOCK_FMT, escape_md_blocks=True)
+            await ctx.send_pages(escape_md_block(output), fmt=MD_BLOCK_FMT)
 
         return output

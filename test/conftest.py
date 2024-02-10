@@ -196,7 +196,6 @@ class FakeContext:
     embeds: list[object]
     hist: AsyncList[object]
     references: list[object]
-    delete_after: list[float]
     files: list[str | None]
 
     bot: FakeBot
@@ -213,20 +212,11 @@ class FakeContext:
         return AsyncContextManager()
 
     async def send(
-        self,
-        content="",
-        *,
-        tts=False,
-        file=None,
-        delete_after=None,
-        reference=None,
-        embed=None,
-        view=None
+        self, content="", *, tts=False, file=None, reference=None, embed=None, view=None
     ):
         self.messages.append(content)
         self.tts.append(tts)
         self.files.append(file)
-        self.delete_after.append(delete_after)
         self.references.append(reference)
         self.embeds.append(embed)
         self.views.append(view)
@@ -404,7 +394,6 @@ def fake_ctx(fake_bot, fake_message, fake_voice_client):
         AsyncList(),
         [],
         [],
-        [],
         fake_bot,
         fake_voice_client,
     )
@@ -420,7 +409,6 @@ def fake_ctx_history(fake_bot, stub_file_message, fake_voice_client):
         AsyncList([stub_file_message]),
         [],
         [],
-        [],
         fake_bot,
         fake_voice_client,
     )
@@ -434,7 +422,6 @@ def fake_ctx_no_voice(fake_bot, fake_message):
         [],
         [],
         AsyncList(),
-        [],
         [],
         [],
         fake_bot,
