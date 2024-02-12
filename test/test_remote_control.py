@@ -155,11 +155,12 @@ async def test_remove_command_deletes_existing_entry_at_offset(
     remote_control_module, player, youtube_playlist
 ):
     player.extend(youtube_playlist)
+    player._next(1)
     message = FakeAmqpMessage(
         b"""
         {
             "op": "remove",
-            "offset": 1,
+            "offset": 0,
             "id": "FNKPYhXmzo0",
             "code": 123456
         }
@@ -167,8 +168,8 @@ async def test_remove_command_deletes_existing_entry_at_offset(
     )
     await remote_control_module._run_command(message)
     head, tail = player.get_tracks()
-    assert [entry["id"] for entry in head] == ["Ee_uujKuJM0"]
-    assert tail == []
+    assert [entry["id"] for entry in tail] == ["Ee_uujKuJM0"]
+    assert head == []
 
 
 async def test_remove_command_does_not_delete_if_id_isnt_matching(
@@ -196,11 +197,12 @@ async def test_move_command_moves_to_existing_entry_at_offset(
 ):
     player.extend(youtube_playlist)
     player.append(soundcloud_entry)
+    player._next(1)
     message = FakeAmqpMessage(
         b"""
         {
             "op": "move",
-            "offset": 2,
+            "offset": 1,
             "id": "682814213",
             "code": 123456
         }
