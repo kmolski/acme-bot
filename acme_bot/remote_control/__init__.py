@@ -57,7 +57,7 @@ class MusicPlayerObserver:
 
     async def consume(self, message):
         """Process messages from a remote control client."""
-        if message.body == "":
+        if not message.body:
             self.__player.notify()
 
     async def close(self):
@@ -116,7 +116,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         )
         observer = MusicPlayerObserver(exchange, player, self.__uuid, self.__bot.loop)
         queue = await channel.declare_queue(auto_delete=True)
-        await queue.bind(exchange)
+        await queue.bind(exchange, f"{self.__uuid.hex}.{player.access_code}")
         await queue.consume(observer.consume)
         player.observer = observer
 
