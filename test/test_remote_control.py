@@ -239,7 +239,7 @@ async def test_observer_close_closes_channel(player_observer, amqp_exchange):
 async def test_observer_consume_empty_message_triggers_notify(
     player_observer, player, observer
 ):
-    await player_observer.consume(FakeAmqpMessage(""))
+    await player_observer.consume(FakeAmqpMessage(b""))
     assert observer.data is player
 
 
