@@ -33,7 +33,7 @@ class MusicQueue(Observable):
 
     def __init__(self):
         super().__init__()
-        self.loop = True
+        self.__loop = True
         self.__index = 0
         self.__playlist = []
 
@@ -41,6 +41,17 @@ class MusicQueue(Observable):
     def current(self):
         """Return the current track."""
         return self.__playlist[self.__index]
+
+    @property
+    def loop(self):
+        """Return the queue loop status."""
+        return self.__loop
+
+    @loop.setter
+    def loop(self, loop):
+        """Set queue loop on/off."""
+        self.__loop = loop
+        self.notify()
 
     def get(self, offset):
         """Return the track at the given offset."""
