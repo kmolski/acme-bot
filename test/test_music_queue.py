@@ -116,6 +116,13 @@ def test_pop_with_overflow_offset_returns(queue_with_tracks):
     assert queue_with_tracks._pop(201) == "two"
 
 
+def test_loop_setter(queue, observer):
+    queue.loop = False
+
+    assert queue.loop is False
+    assert observer.data is queue
+
+
 def test_notify_calls_update_on_observer(observer):
     observable = Observable()
     observable.observer = observer
