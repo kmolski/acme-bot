@@ -119,7 +119,7 @@ class ShellModule(commands.Cog, CogFactory):
             await ctx.send(f"\U0001F4A8 Meep meep! **{milliseconds} ms**.")
         return milliseconds
 
-    @commands.command()
+    @commands.command(aliases=["prin"])
     async def print(self, ctx, content, file_format=""):
         """
         Pretty print the input string with the given syntax highlighting.
@@ -216,7 +216,7 @@ class ShellModule(commands.Cog, CogFactory):
 
         return output
 
-    @commands.command(enabled=which("units"))
+    @commands.command(aliases=["unit"], enabled=which("units"))
     async def units(self, ctx, from_unit, to_unit):
         """
         Convert between measurement units.
@@ -286,7 +286,7 @@ class ShellModule(commands.Cog, CogFactory):
 
         return output
 
-    @commands.command()
+    @commands.command(aliases=["line"])
     async def lines(self, ctx, data, start, end):
         """
         Show the given line range of the input string.
@@ -315,7 +315,7 @@ class ShellModule(commands.Cog, CogFactory):
 
         return output
 
-    @commands.command(aliases=["wc"])
+    @commands.command(aliases=["coun", "wc"])
     async def count(self, ctx, data):
         """
         Count lines in the input string.

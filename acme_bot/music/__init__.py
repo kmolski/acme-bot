@@ -130,7 +130,7 @@ class MusicModule(commands.Cog, CogFactory):
                 f"\u27A1\uFE0F Joining channel **{ctx.voice_client.channel.name}**."
             )
 
-    @commands.command()
+    @commands.command(aliases=["leav"])
     async def leave(self, ctx):
         """
         Leave the sender's current voice channel.
@@ -282,7 +282,7 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
         return do_loop
 
-    @commands.command()
+    @commands.command(aliases=["paus"])
     async def pause(self, ctx):
         """Pause the player."""
         async with self.__lock, self._get_player(ctx) as player:
@@ -290,7 +290,7 @@ class MusicModule(commands.Cog, CogFactory):
         if ctx.display:
             await ctx.send("\u23F8\uFE0F Paused.")
 
-    @commands.command()
+    @commands.command(aliases=["queu"])
     async def queue(self, ctx):
         """
         Show all tracks from the current queue.
@@ -320,7 +320,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock, self._get_player(ctx) as player:
             await player.resume()
 
-    @commands.command()
+    @commands.command(aliases=["clea"])
     async def clear(self, ctx):
         """
         Delete all tracks from the queue.
