@@ -25,7 +25,7 @@ RETURN VALUE
     The arguments joined into a single string.
 ```
 
-### count/wc &lt;data&gt;
+### count/coun/wc &lt;data&gt;
 ```
 Count lines in the input string.
 
@@ -85,7 +85,7 @@ RETURN VALUE
     The first [line_count] lines of input data as a string.
 ```
 
-### lines &lt;data&gt; &lt;start&gt; &lt;end&gt;
+### lines/line &lt;data&gt; &lt;start&gt; &lt;end&gt;
 ```
 Show the given line range of the input string.
 
@@ -117,7 +117,7 @@ RETURN VALUE
     The millisecond latency as an integer.
 ```
 
-### print &lt;content&gt; [file\_format]
+### print/prin &lt;content&gt; [file\_format]
 ```
 Pretty print the input string with the given syntax highlighting.
 
@@ -188,7 +188,7 @@ RETURN VALUE
     The unique lines of the input data as a string.
 ```
 
-### units &lt;from\_unit&gt; &lt;to\_unit&gt;
+### units/unit &lt;from\_unit&gt; &lt;to\_unit&gt;
 ```
 Convert between measurement units.
 
@@ -205,7 +205,7 @@ MusicModule
 
 Music player commands.
 
-### clear
+### clear/clea
 ```
 Delete all tracks from the queue.
 
@@ -226,7 +226,7 @@ RETURN VALUE
 Join the sender's current voice channel.
 ```
 
-### leave
+### leave/leav
 ```
 Leave the sender's current voice channel.
 
@@ -256,7 +256,7 @@ RETURN VALUE
     The loop parameter as a boolean.
 ```
 
-### pause
+### pause/paus
 ```
 Pause the player.
 ```
@@ -302,7 +302,7 @@ ARGUMENTS
     offset - number of tracks to rewind (default: 1)
 ```
 
-### queue
+### queue/queu
 ```
 Show all tracks from the current queue.
 
