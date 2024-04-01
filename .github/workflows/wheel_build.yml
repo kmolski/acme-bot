@@ -102,7 +102,7 @@ jobs:
         with:
           name: python-wheel
 
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: 'v${{ needs.build-and-test.outputs.version }}'
           fail_on_unmatched_files: true
