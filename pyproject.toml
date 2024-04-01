@@ -23,8 +23,8 @@ flake8 = "^7.0.0"
 pylint = "^3.1.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.0.2"
-pytest-asyncio = "^0.23.5"
+pytest = "^8.1.1"
+pytest-asyncio = "^0.23.6"
 
 [tool.poetry.build]
 script = "commit_info.py"
