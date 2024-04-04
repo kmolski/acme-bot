@@ -67,23 +67,6 @@ jobs:
       - name: Build Python wheel
         run: poetry build --no-interaction
 
-      - name: Convert to platform-independent wheel
-        shell: bash
-        run: |
-          set -eu -o pipefail
-          
-          SRC_WHEEL=dist/*.whl
-          DEST_WHEEL="$(basename $SRC_WHEEL | cut --delimiter '-' --fields -2)-py3-none-any.whl"
-          
-          TMP_DIR=$(mktemp --directory)
-          unzip $SRC_WHEEL -d $TMP_DIR
-          rm $SRC_WHEEL
-          
-          pushd $TMP_DIR
-          sed --in-place 's/^Root-Is-Purelib.*$/Root-Is-Purelib: true/' **/WHEEL
-          sed --in-place 's/^Tag.*$/Tag: py3-none-any/' **/WHEEL
-          zip --recurse-paths "$GITHUB_WORKSPACE/dist/$DEST_WHEEL" *
-
       - name: Generate remote API schema
         shell: bash
         run: poetry run docs/gen/remote_api_schema.py >remote_api.json
@@ -104,6 +87,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: python-wheel
