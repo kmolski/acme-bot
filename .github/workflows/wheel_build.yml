@@ -50,7 +50,7 @@ jobs:
           VERSION: ${{ steps.semrel.outputs.version }}
 
       - name: Install Python dependencies
-        run: poetry install --no-interaction
+        run: poetry self add "poetry-dynamic-versioning[plugin]" && poetry install --no-interaction
 
       - name: Check formatting with black
         run: poetry run black --check .
