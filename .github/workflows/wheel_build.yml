@@ -20,6 +20,8 @@ jobs:
       version: ${{ steps.semrel.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - uses: actions/setup-python@v5
         with:
