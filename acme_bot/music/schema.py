@@ -39,7 +39,7 @@ class PlayerModel(BaseModel):
             state=player.state,
             queue=head + tail,
         )
-        return model.model_dump_json()
+        return model.model_dump_json(exclude={"queue": {"__all__": "url"}})
 
 
 class QueueEntry(BaseModel):
