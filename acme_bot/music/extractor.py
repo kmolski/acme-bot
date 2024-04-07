@@ -154,7 +154,7 @@ class MusicExtractor:
     def _extract_in_subprocess(cls, url):
         try:
             result = cls.__DOWNLOADER.extract_info(url, download=False)
-            return ExtractResult.model_construct(result).dict()
+            return ExtractResult.model_validate(result).dict()
         except ValidationError as exc:
             log.exception("Invalid entry: %s", result, exc_info=exc)
             return None
