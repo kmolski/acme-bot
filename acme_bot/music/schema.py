@@ -1,6 +1,6 @@
 """Pydantic models for MusicPlayer/MusicQueue data."""
 
-#  Copyright (C) 2023  Krzysztof Molski
+#  Copyright (C) 2023-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -15,8 +15,8 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from pydantic import TypeAdapter, BaseModel, Field
-from typing_extensions import Annotated, TypedDict
+from pydantic import BaseModel, RootModel
+from pydantic.json_schema import SkipJsonSchema
 
 from acme_bot.music.player import PlayerState
 
@@ -39,23 +39,33 @@ class PlayerModel(BaseModel):
             state=player.state,
             queue=head + tail,
         )
-        return model.model_dump_json()
+        return model.model_dump_json(exclude={"queue": {"__all__": "url"}})
 
 
-class QueueEntry(TypedDict, total=False):  # pylint: disable=too-many-ancestors
+class QueueEntry(BaseModel):
     """Data model for a MusicQueue entry."""
 
     id: str
-    url: Annotated[str, Field(exclude=True)]
+    url: SkipJsonSchema[str]
     title: str
-    entries: Annotated[list["QueueEntry"] | None, Field(exclude=True)]
     uploader: str
     duration: int | float
     webpage_url: str
-    uploader_url: str | None
+    uploader_url: str | None = None
     duration_string: str
-    thumbnail: str | None
+    thumbnail: str | None = None
     extractor: str
 
 
-QueueEntryValidator = TypeAdapter(QueueEntry)
+class Playlist(BaseModel):
+    """Data model for a yt-dlp playlist."""
+
+    id: str
+    entries: list[QueueEntry]
+    extractor: str
+
+
+class ExtractResult(RootModel):
+    """Result of yt-dlp.extract_info."""
+
+    root: Playlist | QueueEntry

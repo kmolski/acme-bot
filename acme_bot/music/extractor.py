@@ -1,6 +1,6 @@
 """Track extractor based on YoutubeDL and Python multiprocessing."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +29,7 @@ import yt_dlp
 from discord.ext import commands
 from pydantic import ValidationError
 
-from acme_bot.music.schema import QueueEntryValidator
+from acme_bot.music.schema import ExtractResult
 
 yt_dlp.utils.bug_reports_message = lambda: ""
 
@@ -154,7 +154,7 @@ class MusicExtractor:
     def _extract_in_subprocess(cls, url):
         try:
             result = cls.__DOWNLOADER.extract_info(url, download=False)
-            return QueueEntryValidator.validate_python(result)
+            return ExtractResult.model_validate(result).dict()
         except ValidationError as exc:
             log.exception("Invalid entry: %s", result, exc_info=exc)
             return None
