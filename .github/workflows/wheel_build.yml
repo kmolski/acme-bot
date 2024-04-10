@@ -3,7 +3,7 @@ name: Python wheel build
 on:
   pull_request:
   push:
-    branches: ["master"]
+    branches: ['master']
   workflow_dispatch:
     inputs:
       create_release:
@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
       - uses: actions/cache@v4
         id: cached-poetry
@@ -44,16 +44,10 @@ jobs:
         id: semrel
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          changelog-generator-opt: "emojis=true"
-
-      - name: Set release version number
-        if: inputs.create_release == true
-        run: poetry version "$VERSION"
-        env:
-          VERSION: ${{ steps.semrel.outputs.version }}
+          changelog-generator-opt: 'emojis=true'
 
       - name: Install Python dependencies
-        run: poetry self add "poetry-dynamic-versioning[plugin]" && poetry install --no-interaction
+        run: poetry self add 'poetry-dynamic-versioning[plugin]' && poetry install --no-interaction
 
       - name: Check formatting with black
         run: poetry run black --check .
@@ -126,7 +120,9 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          tags: 'ghcr.io/kmolski/acme-bot:v${{ needs.build-and-test.outputs.version }}'
+          tags: |
+            'ghcr.io/kmolski/acme-bot:v${{ needs.build-and-test.outputs.version }}'
+            'ghcr.io/kmolski/acme-bot:latest'
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
