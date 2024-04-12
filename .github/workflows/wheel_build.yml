@@ -49,6 +49,12 @@ jobs:
       - name: Install Python dependencies
         run: poetry self add 'poetry-dynamic-versioning[plugin]==1.2.0' && poetry install --no-interaction
 
+      - name: Set release version number
+        if: inputs.create_release == true
+        run: poetry version "$VERSION"
+        env:
+          VERSION: ${{ steps.semrel.outputs.version }}
+
       - name: Check formatting with black
         run: poetry run black --check .
 
