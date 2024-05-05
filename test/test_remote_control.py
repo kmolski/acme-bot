@@ -254,9 +254,9 @@ async def test_observer_update_sends_player_state(
     player_observer, player, amqp_exchange
 ):
     player.observer = player_observer
-    player_observer.update(player)
+    player.volume = 58
     await asyncio.sleep(0.001)
     assert (
         amqp_exchange.messages[0].body
-        == b'{"loop":true,"volume":100,"state":"idle","queue":[]}'
+        == b'{"loop":true,"volume":58,"state":"idle","queue":[]}'
     )
