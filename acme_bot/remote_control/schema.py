@@ -1,6 +1,6 @@
 """Pydantic models for MusicPlayer's remote control messages."""
 
-#  Copyright (C) 2023  Krzysztof Molski
+#  Copyright (C) 2023-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -15,9 +15,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Literal, Union
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field, RootModel, conint
+from pydantic import BaseModel, Field, RootModel
 
 
 class RemoteCommand(BaseModel):
@@ -81,7 +81,7 @@ class VolumeCommand(RemoteCommand):
     """Remote command to set the player's volume."""
 
     op: Literal["volume"]
-    value: conint(ge=0, le=100)
+    value: Annotated[int, Field(strict=True, ge=0, le=100)]
 
     async def run(self, player):
         player.volume = self.value
