@@ -1,6 +1,6 @@
 """Music player based on MusicQueue and discord.py FFmpegPCMAudio."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -157,7 +157,7 @@ class MusicPlayer(MusicQueue):
     @property
     def volume(self):
         """Return the current player volume."""
-        return self.__volume * 100
+        return round(self.__volume * 100)
 
     @volume.setter
     def volume(self, volume):
