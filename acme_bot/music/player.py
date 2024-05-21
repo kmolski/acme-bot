@@ -165,7 +165,7 @@ class MusicPlayer(MusicQueue):
         if 0 <= volume <= 100:
             self.__volume = volume / 100
             if source := self.__ctx.voice_client.source:
-                source.volume = self.__volume
+                source.volume = self.__volume**2
             self.notify()
         else:
             raise commands.CommandError("Incorrect volume value!")
