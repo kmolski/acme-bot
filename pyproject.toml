@@ -19,8 +19,8 @@ yt-dlp = "2024.5.27"
 
 [tool.poetry.group.dev.dependencies]
 black = "24.4.2"
-flake8 = "^7.0.0"
-pylint = "^3.2.2"
+flake8 = "^7.1.0"
+pylint = "^3.2.5"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
