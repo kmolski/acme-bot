@@ -115,6 +115,7 @@ class MusicModule(commands.Cog, CogFactory):
             max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
             initializer=MusicExtractor.init_downloader,
             initargs=(YoutubeDL, cls.DOWNLOAD_OPTIONS),
+            mp_context="spawn",
         )
         extractor = MusicExtractor(executor, bot.loop)
         return cls(bot, extractor)
