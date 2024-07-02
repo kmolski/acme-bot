@@ -64,7 +64,7 @@ def parse_ffmpeg_log(stderr):
     while stderr:
         entry = stderr.readline()
         if entry:
-            level, message, module = parse_log_entry(entry.decode(errors="replace"))
+            level, message, module = parse_log_entry(entry)
             if all(e not in message for e in __EXPECTED):
                 log.log(level, "ffmpeg/%s: %s", module, message)
 
