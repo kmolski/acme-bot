@@ -20,6 +20,7 @@ import string
 from asyncio import Queue, Lock
 from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
+from multiprocessing import get_context
 from random import choices
 from shutil import which
 
@@ -115,7 +116,7 @@ class MusicModule(commands.Cog, CogFactory):
             max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
             initializer=MusicExtractor.init_downloader,
             initargs=(YoutubeDL, cls.DOWNLOAD_OPTIONS),
-            mp_context="spawn",
+            mp_context=get_context("spawn"),
         )
         extractor = MusicExtractor(executor, bot.loop)
         return cls(bot, extractor)
