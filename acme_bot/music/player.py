@@ -29,9 +29,10 @@ from discord.ext import commands
 from acme_bot.music.queue import MusicQueue
 
 __EXPECTED = [
-    "Connection reset by peer",
     "Error in the pull function",
+    "Stream ends prematurely",
     "Will reconnect at",
+    "reset by peer",
 ]
 
 __FFMPEG_LOG_LEVELS = {
