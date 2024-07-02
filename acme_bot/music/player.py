@@ -18,8 +18,8 @@
 import logging
 from asyncio import run_coroutine_threadsafe
 from enum import Enum
+from os import pipe
 from re import match
-from subprocess import PIPE
 from threading import Lock, Thread
 from time import time
 
@@ -59,19 +59,14 @@ def parse_log_entry(line):
         return logging.WARNING, line, "unknown"
 
 
-def parse_ffmpeg_log(process):
+def parse_ffmpeg_log(stderr):
     """Redirect log messages from FFMPEG stderr to the module logger."""
-    log.debug("Log processing for ffmpeg (PID %s) started", process.pid)
-
-    while process.stderr:
-        entry = process.stderr.readline()
+    while stderr:
+        entry = stderr.readline()
         if entry:
             level, message, module = parse_log_entry(entry.decode(errors="replace"))
             if all(e not in message for e in __EXPECTED):
                 log.log(level, "ffmpeg/%s: %s", module, message)
-        else:
-            log.debug("Log processing for ffmpeg (PID %s) finished", process.pid)
-            return
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
@@ -79,12 +74,18 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
     __SUCCESSFUL_RETURN_CODES = [-9, 0]
 
+    # pylint: disable=consider-using-with
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        log_parser = Thread(target=parse_ffmpeg_log, args=[self._process], daemon=True)
+        (read, write) = pipe()
+        self.__read = open(read, encoding="utf-8")
+        self.__write = open(write, encoding="utf-8")
+        super().__init__(*args, **kwargs, stderr=self.__write)
+        log_parser = Thread(target=parse_ffmpeg_log, args=[self.__read], daemon=True)
         log_parser.start()
 
     def cleanup(self):
+        self.__read.close()
+        self.__write.close()
         proc = self._process
         super().cleanup()
 
@@ -221,7 +222,7 @@ class MusicPlayer(MusicQueue):
             await self.__extractor.update_entry(current)
 
         audio = discord.PCMVolumeTransformer(
-            FFmpegAudioSource(current["url"], **self.__FFMPEG_OPTIONS, stderr=PIPE),
+            FFmpegAudioSource(current["url"], **self.__FFMPEG_OPTIONS),
             volume=self.__volume,
         )
 
