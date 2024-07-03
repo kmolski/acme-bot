@@ -15,6 +15,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import locale
 import logging
 from asyncio import run_coroutine_threadsafe
 from enum import Enum
@@ -78,17 +79,17 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
     # pylint: disable=consider-using-with
     def __init__(self, *args, **kwargs):
         (read, write) = pipe()
-        self.__read = open(read, encoding="utf-8")
-        self.__write = open(write, encoding="utf-8")
+        self.__read = open(read, encoding=locale.getencoding())
+        self.__write = open(write, encoding=locale.getencoding())
         super().__init__(*args, **kwargs, stderr=self.__write)
         log_parser = Thread(target=parse_ffmpeg_log, args=[self.__read], daemon=True)
         log_parser.start()
 
     def cleanup(self):
-        self.__read.close()
-        self.__write.close()
         proc = self._process
         super().cleanup()
+        self.__read.close()
+        self.__write.close()
 
         if proc and proc.returncode not in self.__SUCCESSFUL_RETURN_CODES:
             msg = (

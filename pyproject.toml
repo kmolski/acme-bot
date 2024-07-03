@@ -9,7 +9,7 @@ repository = "https://github.com/kmolski/acme-bot"
 include = ["acme_bot/version_info/commit.txt"]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.11,<3.13"
 aio-pika = "^9.4.1"
 "discord.py" = {version = "^2.4.0", extras = ["voice"]}
 pydantic = "^2.7.4"
