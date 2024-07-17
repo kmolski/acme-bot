@@ -63,12 +63,15 @@ def parse_log_entry(line):
 
 def parse_ffmpeg_log(stderr):
     """Redirect log messages from FFMPEG stderr to the module logger."""
-    while stderr:
-        entry = stderr.readline()
-        if entry:
-            level, message, module = parse_log_entry(entry)
-            if all(e not in message for e in __EXPECTED):
-                log.log(level, "ffmpeg/%s: %s", module, message)
+    try:
+        while stderr:
+            entry = stderr.readline()
+            if entry:
+                level, message, module = parse_log_entry(entry)
+                if all(e not in message for e in __EXPECTED):
+                    log.log(level, "ffmpeg/%s: %s", module, message)
+    except ValueError:
+        pass
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
@@ -88,8 +91,6 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
     def cleanup(self):
         proc = self._process
         super().cleanup()
-        self.__read.close()
-        self.__write.close()
 
         if proc and proc.returncode not in self.__SUCCESSFUL_RETURN_CODES:
             msg = (
@@ -98,6 +99,9 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
             )
             log.error(msg)
             raise ChildProcessError(msg)
+
+        self.__write.close()
+        self.__read.close()
 
 
 class PlayerState(Enum):
