@@ -17,7 +17,7 @@
 
 import logging
 from argparse import ArgumentParser
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import partial
 from importlib import import_module
 from pkgutil import iter_modules
@@ -47,7 +47,7 @@ class RFC3339Formatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         """Format the creation datetime using the RFC 3339 format."""
         return (
-            datetime.fromtimestamp(record.created, timezone.utc)
+            datetime.fromtimestamp(record.created, UTC)
             .astimezone()
             .isoformat(timespec="milliseconds")
         )
