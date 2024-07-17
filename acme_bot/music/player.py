@@ -71,7 +71,7 @@ def parse_ffmpeg_log(stderr):
                 if all(e not in message for e in __EXPECTED):
                     log.log(level, "ffmpeg/%s: %s", module, message)
     except ValueError:
-        return
+        pass
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
