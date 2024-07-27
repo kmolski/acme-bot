@@ -15,13 +15,10 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import locale
 import logging
 from asyncio import run_coroutine_threadsafe
 from enum import Enum
-from os import pipe
-from re import match
-from threading import Lock, Thread
+from threading import Lock
 from time import time
 
 import discord
@@ -29,49 +26,7 @@ from discord.ext import commands
 
 from acme_bot.music.queue import MusicQueue
 
-__EXPECTED = [
-    "Error in the pull function",
-    "Stream ends prematurely",
-    "Will reconnect at",
-    "reset by peer",
-]
-
-__FFMPEG_LOG_LEVELS = {
-    "panic": logging.CRITICAL,
-    "fatal": logging.CRITICAL,
-    "error": logging.ERROR,
-    "warning": logging.WARNING,
-    "info": logging.INFO,
-    "verbose": logging.INFO,
-    "debug": logging.DEBUG,
-}
-
 log = logging.getLogger(__name__)
-
-
-def parse_log_entry(line):
-    """Parse and convert a single line of FFMPEG log output."""
-    # Matches the source module name, log level and message.
-    # e.g. [http @ 0x000000000000] [error] HTTP error 404 Not Found
-    matches = match(r"\[([a-z]*) @ [^\]]*\] \[([a-z]*)\] (.*)", line)
-
-    try:
-        return __FFMPEG_LOG_LEVELS[matches[2]], matches[3], matches[1]
-    except (IndexError, TypeError):
-        return logging.WARNING, line, "unknown"
-
-
-def parse_ffmpeg_log(stderr):
-    """Redirect log messages from FFMPEG stderr to the module logger."""
-    try:
-        while stderr:
-            entry = stderr.readline()
-            if entry:
-                level, message, module = parse_log_entry(entry)
-                if all(e not in message for e in __EXPECTED):
-                    log.log(level, "ffmpeg/%s: %s", module, message)
-    except ValueError:
-        pass
 
 
 class FFmpegAudioSource(discord.FFmpegPCMAudio):
@@ -81,12 +36,7 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
 
     # pylint: disable=consider-using-with
     def __init__(self, *args, **kwargs):
-        (read, write) = pipe()
-        self.__read = open(read, encoding=locale.getencoding())
-        self.__write = open(write, encoding=locale.getencoding())
-        super().__init__(*args, **kwargs, stderr=self.__write)
-        log_parser = Thread(target=parse_ffmpeg_log, args=[self.__read], daemon=True)
-        log_parser.start()
+        super().__init__(*args, **kwargs)
 
     def cleanup(self):
         proc = self._process
@@ -99,9 +49,6 @@ class FFmpegAudioSource(discord.FFmpegPCMAudio):
             )
             log.error(msg)
             raise ChildProcessError(msg)
-
-        self.__write.close()
-        self.__read.close()
 
 
 class PlayerState(Enum):
