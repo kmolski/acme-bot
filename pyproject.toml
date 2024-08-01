@@ -12,7 +12,7 @@ include = ["acme_bot/version_info/commit.txt"]
 python = ">=3.11,<3.13"
 aio-pika = "^9.4.1"
 "discord.py" = {version = "^2.4.0", extras = ["voice"]}
-pydantic = "^2.7.4"
+pydantic = "^2.8.2"
 python-dotenv = "^1.0.1"
 textX = "^4.0.1"
 yt-dlp = "2024.7.7"
