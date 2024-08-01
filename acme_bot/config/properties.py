@@ -31,6 +31,9 @@ COMMAND_PREFIX = ConfigProperty("COMMAND_PREFIX", str)
 # Logging subsystem
 LOG_LEVEL = ConfigProperty("LOG_LEVEL", logging.getLevelName)
 
+# Liveprobe module
+LIVEPROBE_ENABLE = ConfigProperty("LIVEPROBE_ENABLE", bool)
+
 # Music module
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)
 MUSIC_EXTRACTOR_MAX_WORKERS = ConfigProperty("MUSIC_EXTRACTOR_MAX_WORKERS", int)
