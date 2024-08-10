@@ -53,7 +53,7 @@ jobs:
           fetch-tags: true
 
       - name: Install Python dependencies
-        run: poetry self add 'poetry-dynamic-versioning[plugin]==1.2.0' && poetry install --no-interaction
+        run: poetry self add 'poetry-dynamic-versioning[plugin]==1.4.0' && poetry install --no-interaction
 
       - name: Check formatting with black
         run: poetry run black --check .
