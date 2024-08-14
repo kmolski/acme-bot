@@ -71,3 +71,17 @@ async def send_pages(
 def escape_md_block(text):
     """Escape triple backtick delimiters in the given text."""
     return sub(r"```", "\U0000200B".join("```"), text, flags=MULTILINE)
+
+
+def format_duration(secs):
+    """Format duration seconds to a human-readable (HH:MM:SS) format."""
+    formatted = ""
+    mins = secs // 60
+    hrs = mins // 60
+    mins %= 60
+    secs %= 60
+    if hrs > 0:
+        formatted += f"{hrs}:{mins:02}:"
+    else:
+        formatted += f"{mins}:"
+    return formatted + f"{secs:02}"
