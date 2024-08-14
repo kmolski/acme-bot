@@ -19,10 +19,13 @@ from enum import Enum
 
 from pydantic import BaseModel, RootModel
 from pydantic.json_schema import SkipJsonSchema
+from wavelink import QueueMode
+
+from acme_bot.textutils import format_duration
 
 
 class PlayerState(Enum):
-    """State set for the MusicPlayer implementation."""
+    """State set for wavelink.Player."""
 
     IDLE = "idle"
     PLAYING = "playing"
@@ -30,9 +33,20 @@ class PlayerState(Enum):
     STOPPED = "stopped"
     DISCONNECTED = "disconnected"
 
+    @classmethod
+    def from_wavelink(cls, player):
+        if not player.connected:
+            return cls.DISCONNECTED
+        elif player.paused:
+            return cls.PAUSED if player.position > 0 else cls.STOPPED
+        elif player.playing:
+            return cls.PLAYING
+        else:
+            return cls.IDLE
+
 
 class PlayerModel(BaseModel):
-    """Data model for a MusicPlayer instance."""
+    """Data model for a wavelink.Player instance."""
 
     loop: bool
     volume: int
@@ -42,21 +56,19 @@ class PlayerModel(BaseModel):
     @classmethod
     def serialize(cls, player):
         """Serialize the MusicPlayer instance."""
-        head, tail = player.get_tracks()
         model = PlayerModel(
-            loop=player.loop,
+            loop=player.queue.mode == QueueMode.loop_all,
             volume=player.volume,
-            state=player.state,
-            queue=head + tail,
+            state=PlayerState.from_wavelink(player),
+            queue=[QueueEntry.from_wavelink(track) for track in player.queue],
         )
         return model.model_dump_json(exclude={"queue": {"__all__": "url"}})
 
 
 class QueueEntry(BaseModel):
-    """Data model for a MusicQueue entry."""
+    """Data model for a wavelink.Queue entry."""
 
     id: str
-    url: SkipJsonSchema[str]
     title: str
     uploader: str
     duration: int | float
@@ -66,16 +78,17 @@ class QueueEntry(BaseModel):
     thumbnail: str | None = None
     extractor: str
 
-
-class Playlist(BaseModel):
-    """Data model for a yt-dlp playlist."""
-
-    id: str
-    entries: list[QueueEntry]
-    extractor: str
-
-
-class ExtractResult(RootModel):
-    """Result of yt-dlp.extract_info."""
-
-    root: Playlist | QueueEntry
+    @classmethod
+    def from_wavelink(cls, track):
+        secs = track.length / 1000
+        return cls(
+            id=track.identifier,
+            title=track.title,
+            uploader=track.author,
+            duration=secs,
+            webpage_url=track.uri,
+            uploader_url=track.artist.url,
+            duration_string=format_duration(secs),
+            thumbnail=track.artwork,
+            extractor=track.source,
+        )
