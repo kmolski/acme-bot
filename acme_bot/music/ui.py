@@ -1,6 +1,6 @@
 """Music command UI interactions based on discord.py View."""
 
-#  Copyright (C) 2023  Krzysztof Molski
+#  Copyright (C) 2023-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -16,9 +16,6 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from discord import ui, ButtonStyle, Embed
-
-from acme_bot.music.extractor import add_expire_time
-from acme_bot.music.player import PlayerState
 
 EMBED_COLOR = 0xFF0000
 
@@ -47,13 +44,9 @@ class ConfirmAddTracks(VerifiedView):
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
         """Confirm adding tracks to the player."""
-        async with self.__player as player:
-            for track in self.__results:
-                add_expire_time(track)
-            player.extend(self.__results)
-
-            if player.state == PlayerState.IDLE:
-                await player.start_player(self.__results[0])
+        await self.__player.queue.put_wait(self.__results)
+        if not self.__player.playing:
+            await self.__player.play(self.__results[0])
 
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
@@ -85,17 +78,12 @@ class SelectTrack(VerifiedView):
         """Create a button that adds the given track to the player."""
 
         async def button_pressed(interaction):
-            add_expire_time(new)
-            async with self.__player as player:
-                player.append(new)
-
-                if player.state == PlayerState.IDLE:
-                    await player.start_player(new)
+            await self.__player.queue.put_wait(new)
+            if not self.__player.playing:
+                await self.__player.play(new)
 
             await interaction.message.edit(
-                content="\u2795 **{title}** by {uploader} added to the queue.".format(
-                    **new
-                ),
+                content=f"\u2795 **{new.title}** by {new.author} added to the queue.",
                 view=None,
             )
             await self.__return_queue.put(new)
@@ -122,13 +110,13 @@ class SelectTrack(VerifiedView):
 def current_track_embed(current):
     """Create an embed describing the current track."""
     embed = Embed(
-        title=f"\u25B6\uFE0F Now playing: {current['title']}",
-        description=f"by {current['uploader']}",
+        title=f"\u25B6\uFE0F Now playing: {current.title}",
+        description=f"by {current.author}",
         color=EMBED_COLOR,
-        url=current["webpage_url"],
+        url=current.uri,
     )
-    if "thumbnail" in current:
-        embed.set_thumbnail(url=current["thumbnail"])
+    if current.artwork is not None:
+        embed.set_thumbnail(url=current.artwork)
     return embed
 
 
