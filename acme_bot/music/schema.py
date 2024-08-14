@@ -15,10 +15,20 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import Enum
+
 from pydantic import BaseModel, RootModel
 from pydantic.json_schema import SkipJsonSchema
 
-from acme_bot.music.player import PlayerState
+
+class PlayerState(Enum):
+    """State set for the MusicPlayer implementation."""
+
+    IDLE = "idle"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+    DISCONNECTED = "disconnected"
 
 
 class PlayerModel(BaseModel):
