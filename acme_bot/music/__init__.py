@@ -1,6 +1,6 @@
 """Music player commands."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -18,24 +18,19 @@
 import logging
 import string
 from asyncio import Queue, Lock
-from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
-from multiprocessing import get_context
 from random import choices
-from shutil import which
 
 from discord import Embed
 from discord.ext import commands
-from yt_dlp import YoutubeDL
+from wavelink import Node, Playable, Player, Pool
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
+    LAVALINK_URI,
     MUSIC_REMOTE_BASE_URL,
-    MUSIC_EXTRACTOR_MAX_WORKERS,
 )
 from acme_bot.convutils import to_int
-from acme_bot.music.extractor import MusicExtractor
-from acme_bot.music.player import MusicPlayer
 from acme_bot.music.ui import (
     EMBED_COLOR,
     ConfirmAddTracks,
@@ -49,9 +44,8 @@ log = logging.getLogger(__name__)
 
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
-    return "{}. **{title}** - {uploader} - {duration_string}".format(
-        entry[0], **entry[1]
-    )
+    index, track = entry
+    return f"{index}. **{track.title}** - {track.uploader} - {track.duration_string}"
 
 
 def assemble_menu(header, entries):
@@ -62,7 +56,7 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    return "{webpage_url}    {title} - {duration_string}\n".format(**entry)
+    return f"{entry.webpage_url}    {entry.title} - {entry.duration_string}\n"
 
 
 def export_entry_list(*iterables):
@@ -81,48 +75,34 @@ class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
-    DOWNLOAD_OPTIONS = {
-        "format": "bestaudio/best",
-        "noplaylist": True,
-        "nocheckcertificate": True,
-        "ignoreerrors": True,
-        "logtostderr": False,
-        "quiet": True,
-        "no_warnings": True,
-        "default_search": "auto",
-        "source_address": "0.0.0.0",
-    }
 
-    def __init__(self, bot, extractor):
+    def __init__(self, bot):
         self.__lock = Lock()
         self.__players = {}
-        self.__access_codes = set()
+        self.__access_codes = {}
         self.__remote_id = None
-
         self.bot = bot
-        self.extractor = extractor
 
     @classmethod
     def is_available(cls):
-        if which("ffmpeg") is None:
-            log.error("Cannot load MusicModule: FFMPEG executable not found!")
+        if LAVALINK_URI.get() is None:
+            log.info("Cannot load MusicModule: LAVALINK_URI is not set")
             return False
 
         return True
 
     @classmethod
     async def create_cog(cls, bot):
-        executor = ProcessPoolExecutor(
-            max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
-            initializer=MusicExtractor.init_downloader,
-            initargs=(YoutubeDL, cls.DOWNLOAD_OPTIONS),
-            mp_context=get_context("spawn"),
-        )
-        extractor = MusicExtractor(executor, bot.loop)
-        return cls(bot, extractor)
+        nodes = [Node(uri=str(LAVALINK_URI()), password=LAVALINK_URI().password)]
+        await Pool.connect(nodes=nodes, client=bot)
+        return cls(bot)
 
     async def cog_unload(self):
-        self.extractor.shutdown_executor()
+        await Pool.close()
+
+    @commands.Cog.listener("on_wavelink_node_ready")
+    async def _wavelink_ready(self, payload):
+        log.info("Connected to Lavalink node at '%s'", payload.node.uri)
 
     @commands.command()
     async def join(self, ctx):
@@ -213,7 +193,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
+            results = list(
+                chain.from_iterable(
+                    [await Pool.fetch_tracks(url) for url in strip_urls(url_list)]
+                )
+            )
 
         await ctx.send(
             f"\u2705\uFE0F Extracted {len(results)} tracks.",
@@ -235,7 +219,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
+            results = list(
+                chain.from_iterable(
+                    [await Pool.fetch_tracks(url) for url in strip_urls(url_list)]
+                )
+            )
         if ctx.display:
             await ctx.send(f"\u2705\uFE0F Extracted {len(results)} tracks.")
 
@@ -410,8 +398,8 @@ class MusicModule(commands.Cog, CogFactory):
             async with self.__lock:
                 if prev.id in self.__players and all(user.bot for user in prev.members):
                     log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
-                    async with self.__players[prev.id] as player:
-                        await self.__delete_player(player)
+                    player = self.__players[prev.id]
+                    await self.__delete_player(player)
 
     @commands.Cog.listener("on_acme_bot_remote_id")
     async def _register_remote_id(self, remote_id):
@@ -431,14 +419,14 @@ class MusicModule(commands.Cog, CogFactory):
 
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
-                await author_voice.channel.connect()
+                await author_voice.channel.connect(cls=Player)
 
                 async with self.__lock:
                     access_code = self.__generate_access_code()
-                    player = MusicPlayer(ctx, self.extractor, access_code)
+                    player = ctx.voice_client
 
-                    self.__players[player.channel_id] = player
-                    self.__access_codes.add(access_code)
+                    self.__players[player.channel.id] = player
+                    self.__access_codes[player.channel.id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
@@ -450,7 +438,7 @@ class MusicModule(commands.Cog, CogFactory):
                 log.info(
                     "Created MusicPlayer with access code %s for Channel ID %s",
                     access_code,
-                    player.channel_id,
+                    player.channel.id,
                 )
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
@@ -484,13 +472,13 @@ class MusicModule(commands.Cog, CogFactory):
 
     def __generate_access_code(self):
         while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
-            if code not in self.__access_codes:
+            if code not in self.__access_codes.values():
                 return code
         assert False
 
     async def __delete_player(self, player):
-        del self.__players[player.channel_id]
-        self.__access_codes.remove(player.access_code)
+        del self.__access_codes[player.channel.id]
+        del self.__players[player.channel.id]
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
