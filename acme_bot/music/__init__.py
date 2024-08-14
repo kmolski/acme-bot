@@ -96,7 +96,12 @@ class MusicModule(commands.Cog, CogFactory):
 
     @classmethod
     async def create_cog(cls, bot):
-        nodes = [Node(uri=str(LAVALINK_URI()), password=LAVALINK_URI().password)]
+        nodes = [
+            Node(
+                uri=str(LAVALINK_URI().with_user(None)),
+                password=LAVALINK_URI().password,
+            )
+        ]
         await Pool.connect(nodes=nodes, client=bot)
         return cls(bot)
 
@@ -342,14 +347,14 @@ class MusicModule(commands.Cog, CogFactory):
         Change the current player volume.
 
         ARGUMENTS
-            volume - the volume value (from 0 to 100)
+            volume - the volume value (from 0 to 1000)
 
         RETURN VALUE
             The new volume value as an integer.
         """
         volume = to_int(volume)
-        async with self.__lock, self._get_player(ctx) as player:
-            player.volume = volume
+        async with self.__lock:
+            await self._get_player(ctx).set_volume(volume)
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return volume
