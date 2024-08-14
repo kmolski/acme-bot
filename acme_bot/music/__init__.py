@@ -46,7 +46,7 @@ log = logging.getLogger(__name__)
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
-    duration_string = format_duration(track.duration / 1000)
+    duration_string = format_duration(track.length / 1000)
     return f"{index}. **{track.title}** - {track.author} - {duration_string}"
 
 
@@ -58,7 +58,7 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    duration_string = format_duration(entry.duration / 1000)
+    duration_string = format_duration(entry.length / 1000)
     return f"{entry.uri}    {entry.title} - {duration_string}\n"
 
 
