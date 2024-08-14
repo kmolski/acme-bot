@@ -38,6 +38,7 @@ from acme_bot.music.ui import (
     current_track_embed,
     remote_embed,
 )
+from acme_bot.textutils import format_duration
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +46,8 @@ log = logging.getLogger(__name__)
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
-    return f"{index}. **{track.title}** - {track.uploader} - {track.duration_string}"
+    duration_string = format_duration(track.duration / 1000)
+    return f"{index}. **{track.title}** - {track.author} - {duration_string}"
 
 
 def assemble_menu(header, entries):
@@ -56,7 +58,8 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    return f"{entry.webpage_url}    {entry.title} - {entry.duration_string}\n"
+    duration_string = format_duration(entry.duration / 1000)
+    return f"{entry.uri}    {entry.title} - {duration_string}\n"
 
 
 def export_entry_list(*iterables):
