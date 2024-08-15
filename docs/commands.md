@@ -294,12 +294,9 @@ RETURN VALUE
     The added track URLs as a string.
 ```
 
-### previous/prev [offset=1]
+### previous/prev
 ```
-Go back the given number of tracks.
-
-ARGUMENTS
-    offset - number of tracks to rewind (default: 1)
+Play the previous track.
 ```
 
 ### queue/queu
@@ -310,12 +307,12 @@ RETURN VALUE
     The track URLs as a string.
 ```
 
-### remove/remo &lt;offset&gt;
+### remove/remo &lt;index&gt;
 ```
 Remove a track from the queue.
 
 ARGUMENTS
-    offset - offset of the track to remove
+    index - index of the track to remove
 
 RETURN VALUE
     The removed track URL as a string.
@@ -326,17 +323,9 @@ RETURN VALUE
 Resume playing the current track.
 ```
 
-### skip/next [offset=1]
+### skip/next
 ```
-Skip the given number of tracks.
-
-ARGUMENTS
-    offset - number of tracks to skip (default: 1)
-```
-
-### stop
-```
-Stop playing the current track.
+Play the next track.
 ```
 
 ### volume/volu &lt;volume&gt;
@@ -344,7 +333,7 @@ Stop playing the current track.
 Change the current player volume.
 
 ARGUMENTS
-    volume - the volume value (from 0 to 100)
+    volume - the volume value (from 0 to 1000)
 
 RETURN VALUE
     The new volume value as an integer.

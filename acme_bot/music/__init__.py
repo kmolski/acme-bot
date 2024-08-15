@@ -226,34 +226,22 @@ class MusicModule(commands.Cog, CogFactory):
         return export_entry_list(results)
 
     @commands.command(aliases=["prev"])
-    async def previous(self, ctx, offset: int = 1):
-        """
-        Go back the given number of tracks.
-
-        ARGUMENTS
-            offset - number of tracks to rewind (default: 1)
-        """
-        offset = to_int(offset)
+    async def previous(self, ctx):
+        """Play the previous track."""
         async with self.__lock:
-            queue = ctx.voice_client.queue
-            curr = ctx.voice_client.current
-            index = queue.index(curr) - offset if curr in queue else queue.count - 1
-            await ctx.voice_client.play(queue[index])
+            track = ctx.voice_client.queue.peek()
+            if history := ctx.voice_client.queue.history:
+                track = history[-1]
+                if ctx.voice_client.current in history:
+                    idx = history.index(ctx.voice_client.current)
+                    track = history[idx - 1]
+            await ctx.voice_client.play(track)
 
     @commands.command(aliases=["next"])
-    async def skip(self, ctx, offset: int = 1):
-        """
-        Skip the given number of tracks.
-
-        ARGUMENTS
-            offset - number of tracks to skip (default: 1)
-        """
-        offset = to_int(offset)
+    async def skip(self, ctx):
+        """Play the next track."""
         async with self.__lock:
-            queue = ctx.voice_client.queue
-            curr = ctx.voice_client.current
-            index = queue.index(curr) + offset if curr in queue else 0
-            await ctx.voice_client.play(queue[index])
+            await ctx.voice_client.skip(force=True)
 
     @commands.command()
     async def loop(self, ctx, do_loop: bool):
@@ -324,7 +312,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         async with self.__lock:
             queue = export_entry_list(ctx.voice_client.queue)
-            ctx.voice_client.queue.clear()
+            ctx.voice_client.queue.reset()
             if ctx.display:
                 await ctx.send("\u2716\uFE0F Queue cleared.")
             return queue
