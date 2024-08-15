@@ -34,6 +34,7 @@ class PlayerState(Enum):
 
     @classmethod
     def from_wavelink(cls, player):
+        """Convert from wavelink.Player."""
         if not player.connected:
             return cls.DISCONNECTED
         if player.paused:
@@ -78,6 +79,7 @@ class QueueEntry(BaseModel):
 
     @classmethod
     def from_wavelink(cls, track):
+        """Convert from wavelink.Playable."""
         secs = track.length // 1000
         return cls(
             id=track.identifier,
