@@ -16,7 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from asyncio import Lock, run_coroutine_threadsafe
+from asyncio import Lock
 from uuid import uuid4
 
 import aio_pika
@@ -36,29 +36,26 @@ log = logging.getLogger(__name__)
 class MusicPlayerObserver:
     """Observer class for communicating MusicPlayer changes to RabbitMQ."""
 
-    def __init__(self, exchange, player, uuid, loop):
+    def __init__(self, exchange, player, uuid, code):
         self.__exchange = exchange
         self.__player = player
         self.__uuid = uuid
-        self.__loop = loop
+        self.__code = code
 
-    def update(self, player):
+    async def send_update(self):
         """Send a state update to all clients subscribing to the MusicPlayer."""
-        player_state = PlayerModel.serialize(player)
+        player_state = PlayerModel.serialize(self.__player)
         message = aio_pika.Message(
             body=player_state.encode(),
             content_type="application/json",
             content_encoding="utf-8",
         )
-        run_coroutine_threadsafe(
-            self.__exchange.publish(message, f"{self.__uuid.hex}.{player.access_code}"),
-            self.__loop,
-        )
+        await self.__exchange.publish(message, f"{self.__uuid.hex}.{self.__code}")
 
     async def consume(self, message):
         """Process messages from a remote control client."""
         if not message.body:
-            self.__player.notify()
+            await self.send_update()
 
     async def close(self):
         """Close the RabbitMQ channel, exchanges and queues."""
@@ -92,8 +89,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
     @classmethod
     async def create_cog(cls, bot):
         connection = await aio_pika.connect_robust(RABBITMQ_URI())
-        ext_control = cls(bot, connection)
-        return ext_control
+        return cls(bot, connection)
 
     async def cog_load(self):
         await self.__declare_command_queue()
@@ -104,27 +100,32 @@ class RemoteControlModule(commands.Cog, CogFactory):
         await self.__connection.close()
 
     @commands.Cog.listener("on_acme_bot_player_created")
-    async def _register_player(self, player):
+    async def _register_player(self, player, access_code):
         async with self.__lock:
-            self.__players[player.access_code] = player
+            self.__players[access_code] = player
 
     @commands.Cog.listener("on_acme_bot_player_created")
-    async def _bind_player_observer(self, player):
+    async def _bind_player_observer(self, player, access_code):
         channel = await self.__connection.channel()
         exchange = await channel.declare_exchange(
             "acme_bot_remote_update", type=aio_pika.ExchangeType.TOPIC, durable=True
         )
-        observer = MusicPlayerObserver(exchange, player, self.__uuid, self.__bot.loop)
+        observer = MusicPlayerObserver(exchange, player, self.__uuid, access_code)
         queue = await channel.declare_queue(auto_delete=True)
-        await queue.bind(exchange, f"{self.__uuid.hex}.{player.access_code}")
+        await queue.bind(exchange, f"{self.__uuid.hex}.{access_code}")
         await queue.consume(observer.consume)
         player.observer = observer
 
     @commands.Cog.listener("on_acme_bot_player_deleted")
-    async def _delete_player(self, player):
+    async def _delete_player(self, player, access_code):
         async with self.__lock:
             await player.observer.close()
-            del self.__players[player.access_code]
+            del self.__players[access_code]
+
+    @commands.Cog.listener("on_wavelink_player_update")
+    async def _send_player_update(self, payload):
+        if payload.player is not None and hasattr(payload.player, "observer"):
+            await payload.player.observer.send_update()
 
     async def _run_command(self, message):
         async with message.process():
@@ -132,8 +133,8 @@ class RemoteControlModule(commands.Cog, CogFactory):
             log.debug("Received message: %s", content)
             try:
                 command = RemoteCommandModel.model_validate_json(content).root
-                async with self.__lock, self.__players[command.code] as player:
-                    await command.run(player)
+                async with self.__lock:
+                    await command.run(self.__players[command.code])
             except KeyError as exc:
                 log.debug("Invalid access code: '%s'", exc.args[0])
             except (ValidationError, ValueError) as exc:

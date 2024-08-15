@@ -1,6 +1,6 @@
 """Properties for deployment-specific config (e.g. credentials, URLs, log levels)"""
 
-#  Copyright (C) 2022-2023  Krzysztof Molski
+#  Copyright (C) 2022-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -23,6 +23,7 @@ from acme_bot.config import ConfigProperty
 
 # Credentials
 DISCORD_TOKEN = ConfigProperty("DISCORD_TOKEN", str)
+LAVALINK_URI = ConfigProperty("LAVALINK_URI", URL)
 RABBITMQ_URI = ConfigProperty("RABBITMQ_URI", URL)
 
 # Command subsystem
@@ -36,4 +37,3 @@ LIVEPROBE_ENABLE = ConfigProperty("LIVEPROBE_ENABLE", bool)
 
 # Music module
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)
-MUSIC_EXTRACTOR_MAX_WORKERS = ConfigProperty("MUSIC_EXTRACTOR_MAX_WORKERS", int)

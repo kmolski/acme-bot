@@ -1,31 +1,23 @@
-from asyncio import get_running_loop, sleep, AbstractEventLoop, Queue
-from concurrent.futures import ProcessPoolExecutor
+from asyncio import get_running_loop, sleep, AbstractEventLoop
 from dataclasses import dataclass, field
 from uuid import uuid4
 
 import pytest
+import wavelink
 
 from acme_bot.music import MusicModule
-from acme_bot.music.extractor import MusicExtractor
-from acme_bot.music.player import MusicPlayer, PlayerState
-from acme_bot.music.queue import MusicQueue
-from acme_bot.music.ui import ConfirmAddTracks, SelectTrack
 from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
 
 @dataclass
-class StubYoutubeDL:
-    """Stub YoutubeDL object for testing modules using the yt-dlp library."""
+class Track:
+    """Stub wavelink.Playable object."""
 
-    responses: dict[str, object]
-
-    def extract_info(self, url, **_):
-        try:
-            return self.responses[url]
-        except KeyError:
-            return None
+    identifier: str
+    title: str
+    author: str
 
 
 @dataclass
@@ -37,9 +29,9 @@ class StubChannel:
     ctx: object | None = None
     members: list[object] = field(default_factory=list)
 
-    async def connect(self):
+    async def connect(self, *, cls):
         if self.ctx is not None:
-            self.ctx.voice_client = FakeVoiceClient([], None)
+            self.ctx.voice_client = FakeVoiceClient(FakeQueue(), None)
 
 
 @dataclass
@@ -69,34 +61,55 @@ class FakeBot:
         self.events.append((event, *args))
 
 
+class FakeQueue(list):
+    """Fake wavelink.Queue object."""
+
+    def __init__(self):
+        super().__init__()
+        self.mode = wavelink.QueueMode.loop_all
+
+    def get(self):
+        return None
+
+    @property
+    def is_empty(self):
+        return len(self) == 0
+
+
 @dataclass
 class FakeVoiceClient:
-    """Fake discord.py voice client object."""
+    """Fake wavelink.Player object."""
 
+    queue: FakeQueue
     played_tracks: list[object]
-    source: object | None
-    stopped: bool = False
+    current: object = None
+    position: int = 0
+    volume: int = 100
+    playing: bool = False
     paused: bool = False
-    disconnected: bool = False
+    connected: bool = True
     channel: StubChannel = field(default_factory=StubChannel)
 
     def is_playing(self):
         return not (self.stopped or self.paused)
 
-    def pause(self):
-        self.paused = True
-
-    def stop(self):
-        self.stopped = True
-
-    def resume(self):
-        self.paused = False
-
     async def disconnect(self):
-        self.disconnected = True
+        self.connected = False
 
-    def play(self, source, **_):
-        self.played_tracks.append(source)
+    async def play(self, track, **_):
+        self.played_tracks.append(track)
+        self.playing = True
+        self.paused = False
+        self.current = track
+
+    async def pause(self, toggle):
+        self.paused = toggle
+
+    async def stop(self):
+        self.current = None
+
+    async def set_volume(self, volume):
+        self.volume = volume
 
 
 @dataclass
@@ -225,25 +238,6 @@ class FakeContext:
         await send_pages(self, *args, **kwargs)
 
 
-class FakePlayer(MusicQueue):
-    """Fake acme_bot MusicPlayer object."""
-
-    def __init__(self):
-        super().__init__()
-        self.state = PlayerState.IDLE
-        self.playing = None
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_):
-        return False
-
-    async def start_player(self, playing):
-        self.state = PlayerState.PLAYING
-        self.playing = playing
-
-
 @dataclass
 class StubInteraction:
     """Stub discord.py interaction object."""
@@ -255,120 +249,18 @@ class StubInteraction:
 class StubObserver:
     """Stub observer object for remote control."""
 
-    data: object = None
+    update_called: bool = False
 
-    def update(self, data):
-        self.data = data
+    async def send_update(self):
+        self.update_called = True
 
     async def close(self):
         pass
 
 
 @pytest.fixture
-def queue(observer):
-    queue = MusicQueue()
-    queue.observer = observer
-    return queue
-
-
-@pytest.fixture
-def queue_with_tracks(observer):
-    queue = MusicQueue()
-    queue.extend(["one", "two"])
-    queue.observer = observer
-    return queue
-
-
-@pytest.fixture
-def youtube_entry_query():
-    return {
-        "id": "3SdSKZFoUa0",
-        "title": "baz",
-        "uploader": "moo",
-        "duration": 5178,
-        "webpage_url": "https://www.youtube.com/watch?v=3SdSKZFoUa0",
-        "extractor": "youtube",
-        "duration_string": "1:26:18",
-        "url": (
-            "https://rr3---sn-oxup5-f5fz.googlevideo.com/videoplayback"
-            + "?expire=1523355910"
-        ),
-    }
-
-
-@pytest.fixture
 def youtube_playlist():
-    return [
-        {
-            "id": "Ee_uujKuJM0",
-            "title": "foo",
-            "uploader": "bar",
-            "duration": 182,
-            "webpage_url": "https://www.youtube.com/watch?v=Ee_uujKuJM0",
-            "extractor": "youtube",
-            "duration_string": "3:02",
-            "url": (
-                "https://rr3---sn-oxup5-3ufs.googlevideo.com/videoplayback"
-                + "?expire=1582257033"
-            ),
-            "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
-            "uploader_url": "https://example.com",
-        },
-        {
-            "id": "FNKPYhXmzo0",
-            "title": "boo",
-            "uploader": "bar",
-            "duration": 546,
-            "webpage_url": "https://www.youtube.com/watch?v=FNKPYhXmzo0",
-            "extractor": "youtube",
-            "duration_string": "9:06",
-            "url": (
-                "https://rr4---sn-oxup5-3ufs.googlevideo.com/videoplayback"
-                + "?expire=1582257034"
-            ),
-            "uploader_url": "https://example.com",
-        },
-    ]
-
-
-@pytest.fixture
-def soundcloud_entry():
-    return {
-        "id": "682814213",
-        "title": "foo",
-        "uploader": "baz",
-        "duration": 226.346,
-        "webpage_url": "https://soundcloud.com/baz/foo",
-        "extractor": "soundcloud",
-        "duration_string": "3:46",
-        "url": (
-            "https://cf-media.sndcdn.com/gCPqnjg6U9c1.128.mp3?Policy=eyJTdGF0ZW1lbn"
-            + "QiOiBbeyJSZXNvdXJjZSI6ICIqOi8vY2YtbWVkaWEuc25kY2RuLmNvbS9nQ1BxbmpnNlU5"
-            + "YzEuMTI4Lm1wMyoiLCAiQ29uZGl0aW9uIjogeyJEYXRlTGVzc1RoYW4iOiB7IkFXUzpFcG"
-            + "9jaFRpbWUiOiAxNTgyMjM3MDI2fX19XX0_"
-        ),
-    }
-
-
-@pytest.fixture
-async def extractor(youtube_entry_query, youtube_playlist, soundcloud_entry):
-    playlist = {
-        "id": "000",
-        "extractor": "youtube:playlist",
-        "entries": youtube_playlist,
-    }
-    stub_config = {
-        "https://www.youtube.com/watch?v=3SdSKZFoUa0": youtube_entry_query,
-        "https://www.youtube.com/playlist?list=000": playlist,
-        "https://www.youtube.com/watch?v=Ee_uujKuJM0": youtube_playlist[0],
-        "https://soundcloud.com/baz/foo": soundcloud_entry,
-        "ytsearch10:bar": playlist,
-    }
-    executor = ProcessPoolExecutor(
-        initializer=MusicExtractor.init_downloader,
-        initargs=(StubYoutubeDL, stub_config),
-    )
-    return MusicExtractor(executor, get_running_loop())
+    return [Track("Ee_uujKuJM0", "foo", "bar"), Track("FNKPYhXmzo0", "boo", "bar")]
 
 
 @pytest.fixture
@@ -383,7 +275,7 @@ async def fake_bot():
 
 @pytest.fixture
 def fake_voice_client():
-    return FakeVoiceClient([], None)
+    return FakeVoiceClient(FakeQueue(), [])
 
 
 @pytest.fixture
@@ -437,21 +329,6 @@ def observer():
 
 
 @pytest.fixture
-async def player(fake_ctx, extractor, observer):
-    player = MusicPlayer(fake_ctx, extractor, 123456)
-    player.observer = observer
-    return player
-
-
-@pytest.fixture
-async def player_with_tracks(fake_ctx, extractor, youtube_playlist, observer):
-    player = MusicPlayer(fake_ctx, extractor, 123456)
-    player.extend(youtube_playlist)
-    player.observer = observer
-    return player
-
-
-@pytest.fixture
 def fake_message():
     return FakeMessage()
 
@@ -467,29 +344,14 @@ def stub_file_message(stub_file):
 
 
 @pytest.fixture
-def fake_player():
-    return FakePlayer()
-
-
-@pytest.fixture
 def stub_interaction(fake_message):
     return StubInteraction(fake_message)
 
 
 @pytest.fixture
-async def confirm_add_tracks_view(stub_user, fake_player, youtube_playlist):
-    return ConfirmAddTracks(stub_user, fake_player, youtube_playlist)
-
-
-@pytest.fixture
-async def select_track_view(stub_user, fake_player, youtube_playlist):
-    return SelectTrack(stub_user, fake_player, Queue(), youtube_playlist)
-
-
-@pytest.fixture
-async def remote_control_module(fake_bot, player):
+async def remote_control_module(fake_bot, fake_voice_client):
     cog = RemoteControlModule(fake_bot, None)
-    await cog._register_player(player)
+    await cog._register_player(fake_voice_client, 123456)
     return cog
 
 
@@ -499,10 +361,10 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(fake_bot, extractor, player_with_tracks):
-    cog = MusicModule(fake_bot, extractor)
-    cog._MusicModule__players[StubChannel.id] = player_with_tracks
-    cog._MusicModule__access_codes.add(player_with_tracks.access_code)
+def music_module(fake_bot, fake_voice_client):
+    cog = MusicModule(fake_bot)
+    cog._MusicModule__players[StubChannel.id] = fake_voice_client
+    cog._MusicModule__access_codes[123456] = fake_voice_client
     return cog
 
 
@@ -517,5 +379,7 @@ def amqp_exchange(amqp_channel):
 
 
 @pytest.fixture
-async def player_observer(amqp_exchange, player):
-    return MusicPlayerObserver(amqp_exchange, player, uuid4(), get_running_loop())
+async def player_observer(amqp_exchange, fake_voice_client):
+    return MusicPlayerObserver(
+        amqp_exchange, fake_voice_client, uuid4(), get_running_loop()
+    )

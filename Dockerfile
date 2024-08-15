@@ -28,7 +28,7 @@ LABEL org.opencontainers.image.title="acme-bot" \
       org.opencontainers.image.authors="Krzysztof Molski" \
       org.opencontainers.image.source="https://github.com/kmolski/acme-bot"
 
-ENV RUNTIME_DEPS="ffmpeg grep units"
+ENV RUNTIME_DEPS="grep units"
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} \
     && apt-get clean \

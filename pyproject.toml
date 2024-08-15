@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "acme-bot"
-version = "1.0.0-dev"
+version = "2.0.0-dev"
 description = "Discord music bot with a custom shell language"
 license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
@@ -15,7 +15,7 @@ aio-pika = "^9.4.2"
 pydantic = "^2.8.2"
 python-dotenv = "^1.0.1"
 textX = "^4.0.1"
-yt-dlp = "2024.8.1"
+wavelink = "^3.4.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "24.4.2"

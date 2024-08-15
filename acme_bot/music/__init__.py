@@ -1,6 +1,6 @@
 """Music player commands."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -18,24 +18,19 @@
 import logging
 import string
 from asyncio import Queue, Lock
-from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
-from multiprocessing import get_context
 from random import choices
-from shutil import which
 
 from discord import Embed
 from discord.ext import commands
-from yt_dlp import YoutubeDL
+from wavelink import Node, Playable, Player, Pool, QueueMode
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
+    LAVALINK_URI,
     MUSIC_REMOTE_BASE_URL,
-    MUSIC_EXTRACTOR_MAX_WORKERS,
 )
 from acme_bot.convutils import to_int
-from acme_bot.music.extractor import MusicExtractor
-from acme_bot.music.player import MusicPlayer
 from acme_bot.music.ui import (
     EMBED_COLOR,
     ConfirmAddTracks,
@@ -43,15 +38,16 @@ from acme_bot.music.ui import (
     current_track_embed,
     remote_embed,
 )
+from acme_bot.textutils import format_duration
 
 log = logging.getLogger(__name__)
 
 
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
-    return "{}. **{title}** - {uploader} - {duration_string}".format(
-        entry[0], **entry[1]
-    )
+    index, track = entry
+    duration_string = format_duration(track.length // 1000)
+    return f"{index}. **{track.title}** - {track.author} - {duration_string}"
 
 
 def assemble_menu(header, entries):
@@ -62,13 +58,13 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    return "{webpage_url}    {title} - {duration_string}\n".format(**entry)
+    duration_string = format_duration(entry.length // 1000)
+    return f"{entry.uri}    {entry.title} - {duration_string}\n"
 
 
-def export_entry_list(*iterables):
+def export_entry_list(queue):
     """Export entry iterables using export_entry."""
-    lines = [export_entry(entry) for entry in chain.from_iterable(iterables)]
-    return "".join(lines)
+    return "".join(export_entry(entry) for entry in queue)
 
 
 def strip_urls(urls):
@@ -81,48 +77,35 @@ class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
-    DOWNLOAD_OPTIONS = {
-        "format": "bestaudio/best",
-        "noplaylist": True,
-        "nocheckcertificate": True,
-        "ignoreerrors": True,
-        "logtostderr": False,
-        "quiet": True,
-        "no_warnings": True,
-        "default_search": "auto",
-        "source_address": "0.0.0.0",
-    }
 
-    def __init__(self, bot, extractor):
+    def __init__(self, bot):
         self.__lock = Lock()
         self.__players = {}
-        self.__access_codes = set()
+        self.__access_codes = {}
         self.__remote_id = None
-
         self.bot = bot
-        self.extractor = extractor
 
     @classmethod
     def is_available(cls):
-        if which("ffmpeg") is None:
-            log.error("Cannot load MusicModule: FFMPEG executable not found!")
+        if LAVALINK_URI.get() is None:
+            log.info("Cannot load MusicModule: LAVALINK_URI is not set")
             return False
 
         return True
 
     @classmethod
     async def create_cog(cls, bot):
-        executor = ProcessPoolExecutor(
-            max_workers=MUSIC_EXTRACTOR_MAX_WORKERS.get(),
-            initializer=MusicExtractor.init_downloader,
-            initargs=(YoutubeDL, cls.DOWNLOAD_OPTIONS),
-            mp_context=get_context("spawn"),
-        )
-        extractor = MusicExtractor(executor, bot.loop)
-        return cls(bot, extractor)
+        nodes = [
+            Node(
+                uri=str(LAVALINK_URI().with_user(None)),
+                password=LAVALINK_URI().password,
+            )
+        ]
+        await Pool.connect(nodes=nodes, client=bot)
+        return cls(bot)
 
     async def cog_unload(self):
-        self.extractor.shutdown_executor()
+        await Pool.close()
 
     @commands.command()
     async def join(self, ctx):
@@ -144,11 +127,10 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.send(
                 f"\u23CF\uFE0F Quitting channel **{ctx.voice_client.channel.name}**."
             )
-        async with self.__lock, self._get_player(ctx) as player:
-            player.stop()
-            head, tail = player.get_tracks()
-            await self.__delete_player(player)
-        return export_entry_list(head, tail)
+        async with self.__lock:
+            queue = ctx.voice_client.queue.copy()
+            await self.__delete_player(ctx.voice_client)
+        return export_entry_list(queue)
 
     @commands.command()
     async def play(self, ctx, *query):
@@ -163,12 +145,12 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_query("ytsearch8:", query)
+            results = await Playable.search(query, source="ytsearch:")
 
         new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(ctx.author, self._get_player(ctx), new, results),
+            view=SelectTrack(ctx.author, ctx.voice_client, new, results),
             reference=ctx.message,
         )
 
@@ -188,12 +170,12 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_query("scsearch8:", query)
+            results = await Playable.search(query, source="scsearch:")
 
         new = Queue()
         await ctx.send_pages(
             assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
-            view=SelectTrack(ctx.author, self._get_player(ctx), new, results),
+            view=SelectTrack(ctx.author, ctx.voice_client, new, results),
             reference=ctx.message,
         )
 
@@ -213,11 +195,12 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
-
+            results = list(
+                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
+            )
         await ctx.send(
             f"\u2705\uFE0F Extracted {len(results)} tracks.",
-            view=ConfirmAddTracks(ctx.author, self._get_player(ctx), results),
+            view=ConfirmAddTracks(ctx.author, ctx.voice_client, results),
             reference=ctx.message,
         )
         return export_entry_list(results)
@@ -235,10 +218,11 @@ class MusicModule(commands.Cog, CogFactory):
         """
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
-            results = await self.extractor.get_entries_by_urls(strip_urls(url_list))
+            results = list(
+                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
+            )
         if ctx.display:
             await ctx.send(f"\u2705\uFE0F Extracted {len(results)} tracks.")
-
         return export_entry_list(results)
 
     @commands.command(aliases=["prev"])
@@ -250,8 +234,11 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to rewind (default: 1)
         """
         offset = to_int(offset)
-        async with self.__lock, self._get_player(ctx) as player:
-            player.move(-offset)
+        async with self.__lock:
+            queue = ctx.voice_client.queue
+            curr = ctx.voice_client.current
+            index = queue.index(curr) - offset if curr in queue else queue.count - 1
+            await ctx.voice_client.play(queue[index])
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx, offset: int = 1):
@@ -262,8 +249,11 @@ class MusicModule(commands.Cog, CogFactory):
             offset - number of tracks to skip (default: 1)
         """
         offset = to_int(offset)
-        async with self.__lock, self._get_player(ctx) as player:
-            player.move(offset)
+        async with self.__lock:
+            queue = ctx.voice_client.queue
+            curr = ctx.voice_client.current
+            index = queue.index(curr) + offset if curr in queue else 0
+            await ctx.voice_client.play(queue[index])
 
     @commands.command()
     async def loop(self, ctx, do_loop: bool):
@@ -277,8 +267,9 @@ class MusicModule(commands.Cog, CogFactory):
             The loop parameter as a boolean.
         """
         do_loop = bool(do_loop)
-        async with self.__lock, self._get_player(ctx) as player:
-            player.loop = do_loop
+        async with self.__lock:
+            queue = ctx.voice_client.queue
+            queue.mode = QueueMode.loop_all if do_loop else QueueMode.normal
         if ctx.display:
             msg = "on" if do_loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
@@ -287,8 +278,8 @@ class MusicModule(commands.Cog, CogFactory):
     @commands.command(aliases=["paus"])
     async def pause(self, ctx):
         """Pause the player."""
-        async with self.__lock, self._get_player(ctx) as player:
-            player.pause()
+        async with self.__lock:
+            await ctx.voice_client.pause(True)
         if ctx.display:
             await ctx.send("\u23F8\uFE0F Paused.")
 
@@ -300,27 +291,28 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The track URLs as a string.
         """
-        async with self.__lock, self._get_player(ctx) as player:
-            head, tail = player.get_tracks()
+        async with self.__lock:
+            queue = ctx.voice_client.queue
             if ctx.display:
                 channel_name = ctx.voice_client.channel.name
                 embed = Embed(
                     title=f"\U0001F3BC Track queue for channel '{channel_name}'",
-                    description=f"Total tracks: {len(head) + len(tail)}",
+                    description=f"Total tracks: {len(queue)}",
                     color=EMBED_COLOR,
                 )
-
-                entries = (head + (tail if player.loop else []))[:10]
+                entries = queue[:10]
                 for entry in enumerate(entries, start=1):
                     embed.add_field(name="", value=display_entry(entry), inline=False)
                 await ctx.send(embed=embed)
-            return export_entry_list(head, tail)
+            return export_entry_list(queue)
 
     @commands.command(aliases=["resu"])
     async def resume(self, ctx):
         """Resume playing the current track."""
-        async with self.__lock, self._get_player(ctx) as player:
-            await player.resume()
+        async with self.__lock:
+            if not ctx.voice_client.playing:
+                await ctx.voice_client.play(ctx.voice_client.queue.get())
+            await ctx.voice_client.pause(False)
 
     @commands.command(aliases=["clea"])
     async def clear(self, ctx):
@@ -330,20 +322,12 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The removed track URLs as a string.
         """
-        async with self.__lock, self._get_player(ctx) as player:
-            head, tail = player.get_tracks()
-            player.clear()
+        async with self.__lock:
+            queue = export_entry_list(ctx.voice_client.queue)
+            ctx.voice_client.queue.clear()
             if ctx.display:
                 await ctx.send("\u2716\uFE0F Queue cleared.")
-            return export_entry_list(head, tail)
-
-    @commands.command()
-    async def stop(self, ctx):
-        """Stop playing the current track."""
-        async with self.__lock, self._get_player(ctx) as player:
-            player.stop()
-        if ctx.display:
-            await ctx.send("\u23F9\uFE0F Stopped.")
+            return queue
 
     @commands.command(aliases=["volu"])
     async def volume(self, ctx, volume: int):
@@ -351,14 +335,14 @@ class MusicModule(commands.Cog, CogFactory):
         Change the current player volume.
 
         ARGUMENTS
-            volume - the volume value (from 0 to 100)
+            volume - the volume value (from 0 to 1000)
 
         RETURN VALUE
             The new volume value as an integer.
         """
         volume = to_int(volume)
-        async with self.__lock, self._get_player(ctx) as player:
-            player.volume = volume
+        async with self.__lock:
+            await ctx.voice_client.set_volume(volume)
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return volume
@@ -371,36 +355,34 @@ class MusicModule(commands.Cog, CogFactory):
         RETURN VALUE
             The current track URL as a string.
         """
-        async with self.__lock, self._get_player(ctx) as player:
-            current = player.current
-            if ctx.display:
+        async with self.__lock:
+            current = ctx.voice_client.current
+            if current and ctx.display:
                 await ctx.send(embed=current_track_embed(current))
-            return export_entry(current)
+            return export_entry(current) if current else None
 
     @commands.command(aliases=["remo"])
-    async def remove(self, ctx, offset: int):
+    async def remove(self, ctx, index: int):
         """
         Remove a track from the queue.
 
         ARGUMENTS
-            offset - offset of the track to remove
+            index - index of the track to remove
 
         RETURN VALUE
             The removed track URL as a string.
         """
-        offset = to_int(offset)
-        async with self.__lock, self._get_player(ctx) as player:
-            removed = player.remove(offset - 1 if offset >= 1 else offset)
+        index = to_int(index)
+        index = index - 1 if index >= 1 else index
+        async with self.__lock:
+            removed = ctx.voice_client.queue[index]
+            ctx.voice_client.queue.delete(index)
             if ctx.display:
                 await ctx.send_pages(
-                    "\u2796 **{title}** by {uploader} "
-                    "removed from the queue.".format(**removed)
+                    f"\u2796 **{removed.title}** by {removed.author} "
+                    "removed from the queue."
                 )
             return export_entry(removed)
-
-    def _get_player(self, ctx):
-        """Return a MusicPlayer instance for the channel in the current context."""
-        return self.__players[ctx.voice_client.channel.id]
 
     @commands.Cog.listener("on_voice_state_update")
     async def _quit_channel_if_empty(self, _, before, after):
@@ -410,8 +392,8 @@ class MusicModule(commands.Cog, CogFactory):
             async with self.__lock:
                 if prev.id in self.__players and all(user.bot for user in prev.members):
                     log.info("Voice channel ID %s is now empty, disconnecting", prev.id)
-                    async with self.__players[prev.id] as player:
-                        await self.__delete_player(player)
+                    player = self.__players[prev.id]
+                    await self.__delete_player(player)
 
     @commands.Cog.listener("on_acme_bot_remote_id")
     async def _register_remote_id(self, remote_id):
@@ -419,6 +401,10 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock:
             self.__remote_id = remote_id
             log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
+
+    @commands.Cog.listener("on_wavelink_node_ready")
+    async def _wavelink_ready(self, payload):
+        log.info("Connected to Lavalink node at '%s'", payload.node.uri)
 
     @join.before_invoke
     @play.before_invoke
@@ -431,15 +417,16 @@ class MusicModule(commands.Cog, CogFactory):
 
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
-                await author_voice.channel.connect()
+                await author_voice.channel.connect(cls=Player)
 
                 async with self.__lock:
                     access_code = self.__generate_access_code()
-                    player = MusicPlayer(ctx, self.extractor, access_code)
+                    player = ctx.voice_client
+                    player.queue.mode = QueueMode.loop_all
 
-                    self.__players[player.channel_id] = player
-                    self.__access_codes.add(access_code)
-                    self.bot.dispatch("acme_bot_player_created", player)
+                    self.__players[player.channel.id] = player
+                    self.__access_codes[player.channel.id] = access_code
+                    self.bot.dispatch("acme_bot_player_created", player, access_code)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
                     await ctx.send(
@@ -450,7 +437,7 @@ class MusicModule(commands.Cog, CogFactory):
                 log.info(
                     "Created MusicPlayer with access code %s for Channel ID %s",
                     access_code,
-                    player.channel_id,
+                    player.channel.id,
                 )
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
@@ -460,7 +447,6 @@ class MusicModule(commands.Cog, CogFactory):
     @loop.before_invoke
     @pause.before_invoke
     @resume.before_invoke
-    @stop.before_invoke
     async def _ensure_voice_or_fail(self, ctx):
         """Ensure that the sender is in a voice channel, or throw
         an exception that will prevent the command from executing."""
@@ -478,22 +464,22 @@ class MusicModule(commands.Cog, CogFactory):
         for that channel exists and the queue is not empty."""
 
         await self._ensure_voice_or_fail(ctx)
-        async with self.__lock, self._get_player(ctx) as player:
-            if player.is_empty():
+        async with self.__lock:
+            if ctx.voice_client.queue.is_empty:
                 raise commands.CommandError("The queue is empty!")
 
     def __generate_access_code(self):
         while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
-            if code not in self.__access_codes:
+            if code not in self.__access_codes.values():
                 return code
         assert False
 
     async def __delete_player(self, player):
-        del self.__players[player.channel_id]
-        self.__access_codes.remove(player.access_code)
+        access_code = self.__access_codes.pop(player.channel.id)
+        del self.__players[player.channel.id]
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
-            player.channel_id,
+            player.channel.id,
         )
         await player.disconnect()
-        self.bot.dispatch("acme_bot_player_deleted", player)
+        self.bot.dispatch("acme_bot_player_deleted", player, access_code)

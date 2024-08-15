@@ -1,8 +1,5 @@
-import asyncio
-
 from conftest import FakeAmqpMessage
-
-from acme_bot.music.player import PlayerState
+from wavelink import QueueMode
 
 
 async def test_run_command_handles_invalid_json(remote_control_module):
@@ -47,9 +44,8 @@ async def test_run_command_handles_command_error(remote_control_module):
 
 
 async def test_run_command_pauses_on_pause_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
-    assert player.state == PlayerState.IDLE
     assert fake_voice_client.paused is False
 
     message = FakeAmqpMessage(
@@ -61,15 +57,14 @@ async def test_run_command_pauses_on_pause_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.state == PlayerState.PAUSED
     assert fake_voice_client.paused is True
 
 
 async def test_run_command_stops_on_stop_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
-    assert player.state == PlayerState.IDLE
-    assert fake_voice_client.stopped is False
+    fake_voice_client.current = {}
+    assert fake_voice_client.paused is False
 
     message = FakeAmqpMessage(
         b"""
@@ -80,14 +75,14 @@ async def test_run_command_stops_on_stop_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.state == PlayerState.STOPPED
-    assert fake_voice_client.stopped is True
+    assert fake_voice_client.current is None
+    assert fake_voice_client.paused is True
 
 
 async def test_run_command_resumes_on_resume_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
-    player.pause()
+    await fake_voice_client.pause(True)
 
     message = FakeAmqpMessage(
         b"""
@@ -98,14 +93,13 @@ async def test_run_command_resumes_on_resume_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.state == PlayerState.PLAYING
     assert fake_voice_client.paused is False
 
 
 async def test_run_command_clears_queue_on_clear_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
-    player.append({"id": 123})
+    fake_voice_client.queue.append({"id": 123})
     message = FakeAmqpMessage(
         b"""
         {
@@ -115,12 +109,11 @@ async def test_run_command_clears_queue_on_clear_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.is_empty() is True
-    assert player.state == PlayerState.IDLE
+    assert fake_voice_client.queue.is_empty is True
 
 
 async def test_run_command_sets_loop_on_loop_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
     message = FakeAmqpMessage(
         b"""
@@ -132,11 +125,11 @@ async def test_run_command_sets_loop_on_loop_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.loop is False
+    assert fake_voice_client.queue.mode == QueueMode.normal
 
 
 async def test_run_command_sets_volume_on_volume_command(
-    remote_control_module, player, fake_voice_client
+    remote_control_module, fake_voice_client
 ):
     message = FakeAmqpMessage(
         b"""
@@ -148,34 +141,31 @@ async def test_run_command_sets_volume_on_volume_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert player.volume == 42
+    assert fake_voice_client.volume == 42
 
 
 async def test_remove_command_deletes_existing_entry_at_offset(
-    remote_control_module, player, youtube_playlist
+    remote_control_module, fake_voice_client, youtube_playlist
 ):
-    player.extend(youtube_playlist)
-    player._next(1)
+    fake_voice_client.queue.extend(youtube_playlist)
     message = FakeAmqpMessage(
         b"""
         {
             "op": "remove",
             "offset": 0,
-            "id": "FNKPYhXmzo0",
+            "id": "Ee_uujKuJM0",
             "code": 123456
         }
         """
     )
     await remote_control_module._run_command(message)
-    head, tail = player.get_tracks()
-    assert [entry["id"] for entry in tail] == ["Ee_uujKuJM0"]
-    assert head == []
+    assert [entry.identifier for entry in fake_voice_client.queue] == ["FNKPYhXmzo0"]
 
 
 async def test_remove_command_does_not_delete_if_id_isnt_matching(
-    remote_control_module, player, youtube_playlist
+    remote_control_module, fake_voice_client, youtube_playlist
 ):
-    player.extend(youtube_playlist)
+    fake_voice_client.queue.extend(youtube_playlist)
     message = FakeAmqpMessage(
         b"""
         {
@@ -187,48 +177,46 @@ async def test_remove_command_does_not_delete_if_id_isnt_matching(
         """
     )
     await remote_control_module._run_command(message)
-    head, tail = player.get_tracks()
-    assert [entry["id"] for entry in head] == ["Ee_uujKuJM0", "FNKPYhXmzo0"]
-    assert tail == []
+    assert [e.identifier for e in fake_voice_client.queue] == [
+        "Ee_uujKuJM0",
+        "FNKPYhXmzo0",
+    ]
 
 
 async def test_move_command_moves_to_existing_entry_at_offset(
-    remote_control_module, player, youtube_playlist, soundcloud_entry
+    remote_control_module, fake_voice_client, youtube_playlist
 ):
-    player.extend(youtube_playlist)
-    player.append(soundcloud_entry)
-    player._next(1)
+    fake_voice_client.queue.extend(youtube_playlist)
     message = FakeAmqpMessage(
         b"""
         {
             "op": "move",
             "offset": 1,
-            "id": "682814213",
+            "id": "FNKPYhXmzo0",
             "code": 123456
         }
         """
     )
     await remote_control_module._run_command(message)
-    assert player._next(player._MusicPlayer__next_offset)["id"] == "682814213"
+    assert fake_voice_client.current.identifier == "FNKPYhXmzo0"
 
 
 async def test_move_command_does_not_move_if_id_isnt_matching(
-    remote_control_module, player, youtube_playlist, soundcloud_entry
+    remote_control_module, fake_voice_client, youtube_playlist
 ):
-    player.extend(youtube_playlist)
-    player.append(soundcloud_entry)
+    fake_voice_client.queue.extend(youtube_playlist)
     message = FakeAmqpMessage(
         b"""
         {
             "op": "move",
-            "offset": 0,
-            "id": "682814213",
+            "offset": 1,
+            "id": "Ee_uujKuJM0",
             "code": 123456
         }
         """
     )
     await remote_control_module._run_command(message)
-    assert player._next(player._MusicPlayer__next_offset)["id"] == "FNKPYhXmzo0"
+    assert fake_voice_client.current is None
 
 
 async def test_observer_close_closes_channel(player_observer, amqp_exchange):
@@ -236,27 +224,13 @@ async def test_observer_close_closes_channel(player_observer, amqp_exchange):
     assert amqp_exchange.channel.closed is True
 
 
-async def test_observer_consume_empty_message_triggers_notify(
-    player_observer, player, observer
-):
-    await player_observer.consume(FakeAmqpMessage(b""))
-    assert observer.data is player
-
-
-async def test_observer_consume_other_message_does_not_notify(
-    player_observer, player, observer
-):
-    await player_observer.consume(FakeAmqpMessage("foo"))
-    assert observer.data is None
-
-
 async def test_observer_update_sends_player_state(
-    player_observer, player, amqp_exchange
+    player_observer, fake_voice_client, amqp_exchange
 ):
-    player.observer = player_observer
-    player.volume = 58
-    await asyncio.sleep(0.001)
+    fake_voice_client.observer = player_observer
+    await fake_voice_client.set_volume(58)
+    await player_observer.send_update()
     assert (
         amqp_exchange.messages[0].body
-        == b'{"loop":true,"volume":58,"state":"idle","queue":[]}'
+        == b'{"loop":true,"volume":58,"state":"idle","queue":[],"current":null}'
     )

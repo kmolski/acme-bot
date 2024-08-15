@@ -1,6 +1,11 @@
 from discord.ui import View
 
-from acme_bot.textutils import escape_md_block, send_pages, MAX_MESSAGE_LENGTH
+from acme_bot.textutils import (
+    escape_md_block,
+    format_duration,
+    send_pages,
+    MAX_MESSAGE_LENGTH,
+)
 
 
 async def test_send_pages_short_msgs_are_unchanged(fake_ctx):
@@ -74,3 +79,11 @@ def test_escape_md_block_removes_triple_backtick_blocks():
         sample text
     """
     assert "```" not in escape_md_block(with_backticks)
+
+
+def test_format_duration_displays_hours_when_duration_ge_one_hour():
+    assert format_duration(12 * 60 * 60 + 4 * 60 + 6) == "12:04:06"
+
+
+def test_format_duration_hides_hours_when_duration_lt_one_hour():
+    assert format_duration(2 * 60 + 4) == "2:04"
