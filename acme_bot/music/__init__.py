@@ -383,8 +383,8 @@ class MusicModule(commands.Cog, CogFactory):
             ctx.voice_client.queue.delete(index)
             if ctx.display:
                 await ctx.send_pages(
-                    "\u2796 **{title}** by {author} "
-                    "removed from the queue.".format(**removed)
+                    f"\u2796 **{removed.title}** by {removed.author} "
+                    "removed from the queue."
                 )
             return export_entry(removed)
 
