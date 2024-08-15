@@ -124,7 +124,8 @@ class RemoteControlModule(commands.Cog, CogFactory):
 
     @commands.Cog.listener("on_wavelink_player_update")
     async def _send_player_update(self, payload):
-        await payload.player.observer.send_update()
+        if payload.player is not None and hasattr(payload.player, "observer"):
+            await payload.player.observer.send_update()
 
     async def _run_command(self, message):
         async with message.process():
