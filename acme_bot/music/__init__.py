@@ -43,7 +43,7 @@ from acme_bot.textutils import format_duration
 log = logging.getLogger(__name__)
 
 
-def display_entry(entry):
+def display_entry(entry, current=False):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
     duration_string = format_duration(track.length // 1000)
@@ -129,7 +129,7 @@ class MusicModule(commands.Cog, CogFactory):
             )
         async with self.__lock:
             queue = ctx.voice_client.queue.copy()
-            await self.__delete_player(player)
+            await self.__delete_player(ctx.voice_client)
         return export_entry_list(queue)
 
     @commands.command()
@@ -196,7 +196,7 @@ class MusicModule(commands.Cog, CogFactory):
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             results = list(
-                chain(*(await Pool.fetch_tracks(url) for url in strip_urls(url_list)))
+                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
             )
         await ctx.send(
             f"\u2705\uFE0F Extracted {len(results)} tracks.",
@@ -219,7 +219,7 @@ class MusicModule(commands.Cog, CogFactory):
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             results = list(
-                chain(*(await Pool.fetch_tracks(url) for url in strip_urls(url_list)))
+                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
             )
         if ctx.display:
             await ctx.send(f"\u2705\uFE0F Extracted {len(results)} tracks.")
