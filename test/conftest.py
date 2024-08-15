@@ -12,6 +12,15 @@ from acme_bot.textutils import send_pages
 
 
 @dataclass
+class Track:
+    """Stub wavelink.Playable object."""
+
+    identifier: str
+    title: str
+    author: str
+
+
+@dataclass
 class StubChannel:
     """Stub discord.py voice channel object."""
 
@@ -78,14 +87,14 @@ class FakeVoiceClient:
     volume: int = 100
     playing: bool = False
     paused: bool = False
-    disconnected: bool = False
+    connected: bool = True
     channel: StubChannel = field(default_factory=StubChannel)
 
     def is_playing(self):
         return not (self.stopped or self.paused)
 
     async def disconnect(self):
-        self.disconnected = True
+        self.connected = False
 
     async def play(self, track, **_):
         self.played_tracks.append(track)
@@ -95,6 +104,9 @@ class FakeVoiceClient:
 
     async def pause(self, toggle):
         self.paused = toggle
+
+    async def stop(self):
+        self.current = None
 
     async def set_volume(self, volume):
         self.volume = volume
@@ -237,84 +249,18 @@ class StubInteraction:
 class StubObserver:
     """Stub observer object for remote control."""
 
-    data: object = None
+    update_called: bool = False
 
-    def update(self, data):
-        self.data = data
+    async def send_update(self):
+        self.update_called = True
 
     async def close(self):
         pass
 
 
 @pytest.fixture
-def youtube_entry_query():
-    return {
-        "id": "3SdSKZFoUa0",
-        "title": "baz",
-        "uploader": "moo",
-        "duration": 5178,
-        "webpage_url": "https://www.youtube.com/watch?v=3SdSKZFoUa0",
-        "extractor": "youtube",
-        "duration_string": "1:26:18",
-        "url": (
-            "https://rr3---sn-oxup5-f5fz.googlevideo.com/videoplayback"
-            + "?expire=1523355910"
-        ),
-    }
-
-
-@pytest.fixture
 def youtube_playlist():
-    return [
-        {
-            "id": "Ee_uujKuJM0",
-            "title": "foo",
-            "uploader": "bar",
-            "duration": 182,
-            "webpage_url": "https://www.youtube.com/watch?v=Ee_uujKuJM0",
-            "extractor": "youtube",
-            "duration_string": "3:02",
-            "url": (
-                "https://rr3---sn-oxup5-3ufs.googlevideo.com/videoplayback"
-                + "?expire=1582257033"
-            ),
-            "thumbnail": "https://i.ytimg.com/vi/Ee_uujKuJM0/hqdefault.jpg",
-            "uploader_url": "https://example.com",
-        },
-        {
-            "id": "FNKPYhXmzo0",
-            "title": "boo",
-            "uploader": "bar",
-            "duration": 546,
-            "webpage_url": "https://www.youtube.com/watch?v=FNKPYhXmzo0",
-            "extractor": "youtube",
-            "duration_string": "9:06",
-            "url": (
-                "https://rr4---sn-oxup5-3ufs.googlevideo.com/videoplayback"
-                + "?expire=1582257034"
-            ),
-            "uploader_url": "https://example.com",
-        },
-    ]
-
-
-@pytest.fixture
-def soundcloud_entry():
-    return {
-        "id": "682814213",
-        "title": "foo",
-        "uploader": "baz",
-        "duration": 226.346,
-        "webpage_url": "https://soundcloud.com/baz/foo",
-        "extractor": "soundcloud",
-        "duration_string": "3:46",
-        "url": (
-            "https://cf-media.sndcdn.com/gCPqnjg6U9c1.128.mp3?Policy=eyJTdGF0ZW1lbn"
-            + "QiOiBbeyJSZXNvdXJjZSI6ICIqOi8vY2YtbWVkaWEuc25kY2RuLmNvbS9nQ1BxbmpnNlU5"
-            + "YzEuMTI4Lm1wMyoiLCAiQ29uZGl0aW9uIjogeyJEYXRlTGVzc1RoYW4iOiB7IkFXUzpFcG"
-            + "9jaFRpbWUiOiAxNTgyMjM3MDI2fX19XX0_"
-        ),
-    }
+    return [Track("Ee_uujKuJM0", "foo", "bar"), Track("FNKPYhXmzo0", "boo", "bar")]
 
 
 @pytest.fixture
@@ -405,7 +351,7 @@ def stub_interaction(fake_message):
 @pytest.fixture
 async def remote_control_module(fake_bot, fake_voice_client):
     cog = RemoteControlModule(fake_bot, None)
-    await cog._register_player(fake_voice_client)
+    await cog._register_player(fake_voice_client, 123456)
     return cog
 
 

@@ -44,26 +44,6 @@ class PlayerState(Enum):
         return cls.IDLE
 
 
-class PlayerModel(BaseModel):
-    """Data model for a wavelink.Player instance."""
-
-    loop: bool
-    volume: int
-    state: PlayerState
-    queue: list["QueueEntry"]
-
-    @classmethod
-    def serialize(cls, player):
-        """Serialize the MusicPlayer instance."""
-        model = PlayerModel(
-            loop=player.queue.mode == QueueMode.loop_all,
-            volume=player.volume,
-            state=PlayerState.from_wavelink(player),
-            queue=[QueueEntry.from_wavelink(track) for track in player.queue],
-        )
-        return model.model_dump_json(exclude={"queue": {"__all__": "url"}})
-
-
 class QueueEntry(BaseModel):
     """Data model for a wavelink.Queue entry."""
 
@@ -92,3 +72,27 @@ class QueueEntry(BaseModel):
             thumbnail=track.artwork,
             extractor=track.source,
         )
+
+
+class PlayerModel(BaseModel):
+    """Data model for a wavelink.Player instance."""
+
+    loop: bool
+    volume: int
+    state: PlayerState
+    queue: list[QueueEntry]
+    current: QueueEntry | None
+
+    @classmethod
+    def serialize(cls, player):
+        """Serialize the MusicPlayer instance."""
+        model = PlayerModel(
+            loop=player.queue.mode == QueueMode.loop_all,
+            volume=player.volume,
+            state=PlayerState.from_wavelink(player),
+            queue=[QueueEntry.from_wavelink(track) for track in player.queue],
+            current=(
+                QueueEntry.from_wavelink(player.current) if player.current else None
+            ),
+        )
+        return model.model_dump_json(exclude={"queue": {"__all__": "url"}})

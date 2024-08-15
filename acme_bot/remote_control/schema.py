@@ -18,6 +18,7 @@
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, RootModel
+from wavelink import QueueMode
 
 
 class RemoteCommand(BaseModel):
@@ -37,7 +38,7 @@ class PauseCommand(RemoteCommand):
     op: Literal["pause"]
 
     async def run(self, player):
-        player.pause()
+        await player.pause(True)
 
 
 class StopCommand(RemoteCommand):
@@ -46,7 +47,8 @@ class StopCommand(RemoteCommand):
     op: Literal["stop"]
 
     async def run(self, player):
-        player.stop()
+        await player.pause(True)
+        await player.stop()
 
 
 class ResumeCommand(RemoteCommand):
@@ -55,7 +57,9 @@ class ResumeCommand(RemoteCommand):
     op: Literal["resume"]
 
     async def run(self, player):
-        await player.resume()
+        if not player.playing:
+            await player.play(player.queue.get())
+        await player.pause(False)
 
 
 class ClearCommand(RemoteCommand):
@@ -64,7 +68,7 @@ class ClearCommand(RemoteCommand):
     op: Literal["clear"]
 
     async def run(self, player):
-        player.clear()
+        player.queue.clear()
 
 
 class LoopCommand(RemoteCommand):
@@ -74,7 +78,7 @@ class LoopCommand(RemoteCommand):
     enabled: bool
 
     async def run(self, player):
-        player.loop = self.enabled
+        player.queue.mode = QueueMode.loop_all if self.enabled else QueueMode.normal
 
 
 class VolumeCommand(RemoteCommand):
@@ -84,7 +88,7 @@ class VolumeCommand(RemoteCommand):
     value: Annotated[int, Field(strict=True, ge=0, le=100)]
 
     async def run(self, player):
-        player.volume = self.value
+        await player.set_volume(self.value)
 
 
 class RemoveCommand(RemoteCommand):
@@ -95,9 +99,9 @@ class RemoveCommand(RemoteCommand):
     id: str
 
     async def run(self, player):
-        entry = player.get(self.offset)
-        if entry["id"] == self.id:
-            player.remove(self.offset)
+        track = player.queue[self.offset]
+        if track.identifier == self.id:
+            player.queue.remove(track)
 
 
 class MoveCommand(RemoteCommand):
@@ -108,9 +112,9 @@ class MoveCommand(RemoteCommand):
     id: str
 
     async def run(self, player):
-        entry = player.get(self.offset)
-        if entry["id"] == self.id:
-            player.move(self.offset)
+        track = player.queue[self.offset]
+        if track.identifier == self.id:
+            await player.play(track)
 
 
 class RemoteCommandModel(RootModel):
