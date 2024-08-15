@@ -43,7 +43,7 @@ from acme_bot.textutils import format_duration
 log = logging.getLogger(__name__)
 
 
-def display_entry(entry, current=False):
+def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
     duration_string = format_duration(track.length // 1000)
@@ -236,8 +236,8 @@ class MusicModule(commands.Cog, CogFactory):
         offset = to_int(offset)
         async with self.__lock:
             queue = ctx.voice_client.queue
-            current = ctx.voice_client.current
-            index = queue.index(current) - offset if current else queue.count - 1
+            curr = ctx.voice_client.current
+            index = queue.index(curr) - offset if curr in queue else queue.count - 1
             await ctx.voice_client.play(queue[index])
 
     @commands.command(aliases=["next"])
@@ -251,8 +251,8 @@ class MusicModule(commands.Cog, CogFactory):
         offset = to_int(offset)
         async with self.__lock:
             queue = ctx.voice_client.queue
-            current = ctx.voice_client.current
-            index = queue.index(current) + offset if current else 0
+            curr = ctx.voice_client.current
+            index = queue.index(curr) + offset if curr in queue else 0
             await ctx.voice_client.play(queue[index])
 
     @commands.command()
@@ -302,11 +302,7 @@ class MusicModule(commands.Cog, CogFactory):
                 )
                 entries = queue[:10]
                 for entry in enumerate(entries, start=1):
-                    embed.add_field(
-                        name="",
-                        value=display_entry(entry, entry == ctx.voice_client.current),
-                        inline=False,
-                    )
+                    embed.add_field(name="", value=display_entry(entry), inline=False)
                 await ctx.send(embed=embed)
             return export_entry_list(queue)
 
