@@ -39,6 +39,7 @@ class PauseCommand(RemoteCommand):
 
     async def run(self, player):
         await player.pause(True)
+        player.notify()
 
 
 class ResumeCommand(RemoteCommand):
@@ -50,6 +51,7 @@ class ResumeCommand(RemoteCommand):
         if not player.playing:
             await player.play(player.queue.get())
         await player.pause(False)
+        player.notify()
 
 
 class ClearCommand(RemoteCommand):
@@ -59,6 +61,7 @@ class ClearCommand(RemoteCommand):
 
     async def run(self, player):
         player.queue.clear()
+        player.notify()
 
 
 class LoopCommand(RemoteCommand):
@@ -69,6 +72,7 @@ class LoopCommand(RemoteCommand):
 
     async def run(self, player):
         player.queue.mode = QueueMode.loop_all if self.enabled else QueueMode.normal
+        player.notify()
 
 
 class VolumeCommand(RemoteCommand):
@@ -79,6 +83,7 @@ class VolumeCommand(RemoteCommand):
 
     async def run(self, player):
         await player.set_volume(self.value)
+        player.notify()
 
 
 class RemoveCommand(RemoteCommand):
@@ -92,6 +97,7 @@ class RemoveCommand(RemoteCommand):
         track = player.queue[self.offset]
         if track.identifier == self.id:
             player.queue.delete(self.offset)
+        player.notify()
 
 
 class MoveCommand(RemoteCommand):
@@ -105,6 +111,7 @@ class MoveCommand(RemoteCommand):
         track = player.queue[self.offset]
         if track.identifier == self.id:
             await player.play(track)
+        player.notify()
 
 
 class SkipCommand(RemoteCommand):
@@ -114,6 +121,7 @@ class SkipCommand(RemoteCommand):
 
     async def run(self, player):
         await player.skip(force=True)
+        player.notify()
 
 
 class PrevCommand(RemoteCommand):
@@ -129,6 +137,7 @@ class PrevCommand(RemoteCommand):
                 idx = history.index(player.current)
                 track = history[idx - 1]
         await player.play(track)
+        player.notify()
 
 
 class RemoteCommandModel(RootModel):

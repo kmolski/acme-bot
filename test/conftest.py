@@ -99,6 +99,9 @@ class FakeVoiceClient:
     def is_playing(self):
         return not (self.stopped or self.paused)
 
+    def notify(self):
+        pass
+
     async def disconnect(self):
         self.connected = False
 

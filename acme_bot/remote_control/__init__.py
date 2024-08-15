@@ -16,7 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from asyncio import Lock
+from asyncio import Lock, run_coroutine_threadsafe
 from uuid import uuid4
 
 import aio_pika
@@ -36,13 +36,13 @@ log = logging.getLogger(__name__)
 class MusicPlayerObserver:
     """Observer class for communicating MusicPlayer changes to RabbitMQ."""
 
-    def __init__(self, exchange, player, uuid, code):
+    def __init__(self, exchange, player, route, loop):
         self.__exchange = exchange
         self.__player = player
-        self.__uuid = uuid
-        self.__code = code
+        self.__route = route
+        self.__loop = loop
 
-    async def send_update(self):
+    def send_update(self):
         """Send a state update to all clients subscribing to the MusicPlayer."""
         player_state = PlayerModel.serialize(self.__player)
         message = aio_pika.Message(
@@ -50,12 +50,14 @@ class MusicPlayerObserver:
             content_type="application/json",
             content_encoding="utf-8",
         )
-        await self.__exchange.publish(message, f"{self.__uuid.hex}.{self.__code}")
+        run_coroutine_threadsafe(
+            self.__exchange.publish(message, self.__route), self.__loop
+        )
 
     async def consume(self, message):
         """Process messages from a remote control client."""
         if not message.body:
-            await self.send_update()
+            self.send_update()
 
     async def close(self):
         """Close the RabbitMQ channel, exchanges and queues."""
@@ -110,11 +112,13 @@ class RemoteControlModule(commands.Cog, CogFactory):
         exchange = await channel.declare_exchange(
             "acme_bot_remote_update", type=aio_pika.ExchangeType.TOPIC, durable=True
         )
-        observer = MusicPlayerObserver(exchange, player, self.__uuid, access_code)
+        route = f"{self.__uuid.hex}.{access_code}"
+        observer = MusicPlayerObserver(exchange, player, route, self.__bot.loop)
         queue = await channel.declare_queue(auto_delete=True)
-        await queue.bind(exchange, f"{self.__uuid.hex}.{access_code}")
+        await queue.bind(exchange, route)
         await queue.consume(observer.consume)
         player.observer = observer
+        player.notify = observer.send_update
 
     @commands.Cog.listener("on_acme_bot_player_deleted")
     async def _delete_player(self, player, access_code):
@@ -124,8 +128,8 @@ class RemoteControlModule(commands.Cog, CogFactory):
 
     @commands.Cog.listener("on_wavelink_player_update")
     async def _send_player_update(self, payload):
-        if payload.player is not None and hasattr(payload.player, "observer"):
-            await payload.player.observer.send_update()
+        if payload.player is not None:
+            payload.player.notify()
 
     async def _run_command(self, message):
         async with message.process():

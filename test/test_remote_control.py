@@ -1,3 +1,5 @@
+import asyncio
+
 from conftest import FakeAmqpMessage
 from wavelink import QueueMode
 
@@ -208,9 +210,9 @@ async def test_observer_close_closes_channel(player_observer, amqp_exchange):
 async def test_observer_update_sends_player_state(
     player_observer, fake_voice_client, amqp_exchange
 ):
-    fake_voice_client.observer = player_observer
     await fake_voice_client.set_volume(58)
-    await player_observer.send_update()
+    player_observer.send_update()
+    await asyncio.sleep(0.001)
     assert amqp_exchange.messages[0].body == (
         b'{"loop":true,"volume":58,"position":0,'
         b'"state":"idle","queue":[],"current":null}'
