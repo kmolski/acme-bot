@@ -23,7 +23,7 @@ from random import choices
 
 from discord import Embed
 from discord.ext import commands
-from wavelink import Node, Playable, Player, Pool, QueueMode
+from wavelink import AutoPlayMode, Node, Playable, Player, Pool, QueueMode
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
@@ -422,6 +422,7 @@ class MusicModule(commands.Cog, CogFactory):
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
+                    player.autoplay = AutoPlayMode.partial
                     player.queue.mode = QueueMode.loop_all
 
                     self.__players[player.channel.id] = player
