@@ -5,16 +5,6 @@ from conftest import StubChannel, StubVoice, FakeVoiceClient
 from wavelink import QueueMode
 
 
-async def test_previous_throws_on_string_argument(fake_ctx, music_module):
-    with pytest.raises(commands.CommandError):
-        await music_module.previous(music_module, fake_ctx, "foo")
-
-
-async def test_skip_throws_on_string_argument(fake_ctx, music_module):
-    with pytest.raises(commands.CommandError):
-        await music_module.skip(music_module, fake_ctx, "foo")
-
-
 async def test_loop_sets_player_loop(fake_ctx, fake_voice_client, music_module):
     result = await music_module.loop(music_module, fake_ctx, False)
     assert fake_voice_client.queue.mode == QueueMode.normal

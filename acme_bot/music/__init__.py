@@ -23,7 +23,7 @@ from random import choices
 
 from discord import Embed
 from discord.ext import commands
-from wavelink import Node, Playable, Player, Pool, QueueMode
+from wavelink import AutoPlayMode, Node, Playable, Player, Pool, QueueMode
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
@@ -155,6 +155,7 @@ class MusicModule(commands.Cog, CogFactory):
         )
 
         new_entry = await new.get()
+        ctx.voice_client.notify()
         return export_entry(new_entry)
 
     @commands.command(name="play-snd", aliases=["psnd"])
@@ -180,6 +181,7 @@ class MusicModule(commands.Cog, CogFactory):
         )
 
         new_entry = await new.get()
+        ctx.voice_client.notify()
         return export_entry(new_entry)
 
     @commands.command(name="play-url", aliases=["purl"])
@@ -203,6 +205,7 @@ class MusicModule(commands.Cog, CogFactory):
             view=ConfirmAddTracks(ctx.author, ctx.voice_client, results),
             reference=ctx.message,
         )
+        ctx.voice_client.notify()
         return export_entry_list(results)
 
     @commands.command(name="list-urls", aliases=["lurl"])
@@ -226,34 +229,24 @@ class MusicModule(commands.Cog, CogFactory):
         return export_entry_list(results)
 
     @commands.command(aliases=["prev"])
-    async def previous(self, ctx, offset: int = 1):
-        """
-        Go back the given number of tracks.
-
-        ARGUMENTS
-            offset - number of tracks to rewind (default: 1)
-        """
-        offset = to_int(offset)
+    async def previous(self, ctx):
+        """Play the previous track."""
         async with self.__lock:
-            queue = ctx.voice_client.queue
-            curr = ctx.voice_client.current
-            index = queue.index(curr) - offset if curr in queue else queue.count - 1
-            await ctx.voice_client.play(queue[index])
+            track = ctx.voice_client.queue.peek()
+            if history := ctx.voice_client.queue.history:
+                track = history[-1]
+                if ctx.voice_client.current in history:
+                    idx = history.index(ctx.voice_client.current)
+                    track = history[idx - 1]
+            await ctx.voice_client.play(track)
+            ctx.voice_client.notify()
 
     @commands.command(aliases=["next"])
-    async def skip(self, ctx, offset: int = 1):
-        """
-        Skip the given number of tracks.
-
-        ARGUMENTS
-            offset - number of tracks to skip (default: 1)
-        """
-        offset = to_int(offset)
+    async def skip(self, ctx):
+        """Play the next track."""
         async with self.__lock:
-            queue = ctx.voice_client.queue
-            curr = ctx.voice_client.current
-            index = queue.index(curr) + offset if curr in queue else 0
-            await ctx.voice_client.play(queue[index])
+            await ctx.voice_client.skip(force=True)
+            ctx.voice_client.notify()
 
     @commands.command()
     async def loop(self, ctx, do_loop: bool):
@@ -270,6 +263,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock:
             queue = ctx.voice_client.queue
             queue.mode = QueueMode.loop_all if do_loop else QueueMode.normal
+            ctx.voice_client.notify()
         if ctx.display:
             msg = "on" if do_loop else "off"
             await ctx.send(f"\U0001F501 Playlist loop {msg}.")
@@ -280,6 +274,7 @@ class MusicModule(commands.Cog, CogFactory):
         """Pause the player."""
         async with self.__lock:
             await ctx.voice_client.pause(True)
+            ctx.voice_client.notify()
         if ctx.display:
             await ctx.send("\u23F8\uFE0F Paused.")
 
@@ -313,6 +308,7 @@ class MusicModule(commands.Cog, CogFactory):
             if not ctx.voice_client.playing:
                 await ctx.voice_client.play(ctx.voice_client.queue.get())
             await ctx.voice_client.pause(False)
+            ctx.voice_client.notify()
 
     @commands.command(aliases=["clea"])
     async def clear(self, ctx):
@@ -325,6 +321,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock:
             queue = export_entry_list(ctx.voice_client.queue)
             ctx.voice_client.queue.clear()
+            ctx.voice_client.notify()
             if ctx.display:
                 await ctx.send("\u2716\uFE0F Queue cleared.")
             return queue
@@ -343,6 +340,7 @@ class MusicModule(commands.Cog, CogFactory):
         volume = to_int(volume)
         async with self.__lock:
             await ctx.voice_client.set_volume(volume)
+            ctx.voice_client.notify()
         if ctx.display:
             await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
         return volume
@@ -377,6 +375,7 @@ class MusicModule(commands.Cog, CogFactory):
         async with self.__lock:
             removed = ctx.voice_client.queue[index]
             ctx.voice_client.queue.delete(index)
+            ctx.voice_client.notify()
             if ctx.display:
                 await ctx.send_pages(
                     f"\u2796 **{removed.title}** by {removed.author} "
@@ -422,6 +421,8 @@ class MusicModule(commands.Cog, CogFactory):
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
+                    player.notify = lambda: None
+                    player.autoplay = AutoPlayMode.partial
                     player.queue.mode = QueueMode.loop_all
 
                     self.__players[player.channel.id] = player
@@ -482,4 +483,5 @@ class MusicModule(commands.Cog, CogFactory):
             player.channel.id,
         )
         await player.disconnect()
+        player.notify()
         self.bot.dispatch("acme_bot_player_deleted", player, access_code)

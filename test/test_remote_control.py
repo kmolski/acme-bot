@@ -1,3 +1,5 @@
+import asyncio
+
 from conftest import FakeAmqpMessage
 from wavelink import QueueMode
 
@@ -57,25 +59,6 @@ async def test_run_command_pauses_on_pause_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert fake_voice_client.paused is True
-
-
-async def test_run_command_stops_on_stop_command(
-    remote_control_module, fake_voice_client
-):
-    fake_voice_client.current = {}
-    assert fake_voice_client.paused is False
-
-    message = FakeAmqpMessage(
-        b"""
-        {
-            "op": "stop",
-            "code": 123456
-        }
-        """
-    )
-    await remote_control_module._run_command(message)
-    assert fake_voice_client.current is None
     assert fake_voice_client.paused is True
 
 
@@ -227,10 +210,10 @@ async def test_observer_close_closes_channel(player_observer, amqp_exchange):
 async def test_observer_update_sends_player_state(
     player_observer, fake_voice_client, amqp_exchange
 ):
-    fake_voice_client.observer = player_observer
     await fake_voice_client.set_volume(58)
-    await player_observer.send_update()
-    assert (
-        amqp_exchange.messages[0].body
-        == b'{"loop":true,"volume":58,"state":"idle","queue":[],"current":null}'
+    player_observer.send_update()
+    await asyncio.sleep(0.001)
+    assert amqp_exchange.messages[0].body == (
+        b'{"loop":true,"volume":58,"position":0,'
+        b'"state":"idle","queue":[],"current":null}'
     )

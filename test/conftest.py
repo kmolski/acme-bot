@@ -71,6 +71,12 @@ class FakeQueue(list):
     def get(self):
         return None
 
+    def delete(self, idx):
+        del self[idx]
+
+    def reset(self):
+        self.clear()
+
     @property
     def is_empty(self):
         return len(self) == 0
@@ -93,6 +99,9 @@ class FakeVoiceClient:
     def is_playing(self):
         return not (self.stopped or self.paused)
 
+    def notify(self):
+        pass
+
     async def disconnect(self):
         self.connected = False
 
@@ -104,9 +113,6 @@ class FakeVoiceClient:
 
     async def pause(self, toggle):
         self.paused = toggle
-
-    async def stop(self):
-        self.current = None
 
     async def set_volume(self, volume):
         self.volume = volume
