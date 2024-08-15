@@ -17,8 +17,7 @@
 
 from enum import Enum
 
-from pydantic import BaseModel, RootModel
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import BaseModel
 from wavelink import QueueMode
 
 from acme_bot.textutils import format_duration
@@ -37,12 +36,11 @@ class PlayerState(Enum):
     def from_wavelink(cls, player):
         if not player.connected:
             return cls.DISCONNECTED
-        elif player.paused:
+        if player.paused:
             return cls.PAUSED if player.position > 0 else cls.STOPPED
-        elif player.playing:
+        if player.playing:
             return cls.PLAYING
-        else:
-            return cls.IDLE
+        return cls.IDLE
 
 
 class PlayerModel(BaseModel):
@@ -80,7 +78,7 @@ class QueueEntry(BaseModel):
 
     @classmethod
     def from_wavelink(cls, track):
-        secs = track.length / 1000
+        secs = track.length // 1000
         return cls(
             id=track.identifier,
             title=track.title,
