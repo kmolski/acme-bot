@@ -41,16 +41,6 @@ class PauseCommand(RemoteCommand):
         await player.pause(True)
 
 
-class StopCommand(RemoteCommand):
-    """Remote command to stop the player."""
-
-    op: Literal["stop"]
-
-    async def run(self, player):
-        await player.pause(True)
-        await player.stop()
-
-
 class ResumeCommand(RemoteCommand):
     """Remote command to resume the player."""
 
@@ -101,11 +91,11 @@ class RemoveCommand(RemoteCommand):
     async def run(self, player):
         track = player.queue[self.offset]
         if track.identifier == self.id:
-            player.queue.remove(track)
+            player.queue.delete(self.offset)
 
 
 class MoveCommand(RemoteCommand):
-    """Move command to skip to an entry in the queue."""
+    """Remote command to play a specific entry in the queue."""
 
     op: Literal["move"]
     offset: int
@@ -117,16 +107,41 @@ class MoveCommand(RemoteCommand):
             await player.play(track)
 
 
+class SkipCommand(RemoteCommand):
+    """Remote command to play the next track."""
+
+    op: Literal["skip"]
+
+    async def run(self, player):
+        await player.skip(force=True)
+
+
+class PrevCommand(RemoteCommand):
+    """Remote command to play the previous track."""
+
+    op: Literal["prev"]
+
+    async def run(self, player):
+        track = player.queue.peek()
+        if history := player.queue.history:
+            track = history[-1]
+            if player.current in history:
+                idx = history.index(player.current)
+                track = history[idx - 1]
+        await player.play(track)
+
+
 class RemoteCommandModel(RootModel):
     """Root model for remote control commands."""
 
     root: Union[
         PauseCommand,
-        StopCommand,
         ResumeCommand,
         ClearCommand,
         LoopCommand,
         VolumeCommand,
         RemoveCommand,
         MoveCommand,
+        SkipCommand,
+        PrevCommand,
     ] = Field(discriminator="op")

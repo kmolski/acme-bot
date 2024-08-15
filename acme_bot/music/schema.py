@@ -79,6 +79,7 @@ class PlayerModel(BaseModel):
 
     loop: bool
     volume: int
+    position: int
     state: PlayerState
     queue: list[QueueEntry]
     current: QueueEntry | None
@@ -89,6 +90,7 @@ class PlayerModel(BaseModel):
         model = PlayerModel(
             loop=player.queue.mode == QueueMode.loop_all,
             volume=player.volume,
+            position=player.position,
             state=PlayerState.from_wavelink(player),
             queue=[QueueEntry.from_wavelink(track) for track in player.queue],
             current=(

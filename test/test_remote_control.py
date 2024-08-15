@@ -60,25 +60,6 @@ async def test_run_command_pauses_on_pause_command(
     assert fake_voice_client.paused is True
 
 
-async def test_run_command_stops_on_stop_command(
-    remote_control_module, fake_voice_client
-):
-    fake_voice_client.current = {}
-    assert fake_voice_client.paused is False
-
-    message = FakeAmqpMessage(
-        b"""
-        {
-            "op": "stop",
-            "code": 123456
-        }
-        """
-    )
-    await remote_control_module._run_command(message)
-    assert fake_voice_client.current is None
-    assert fake_voice_client.paused is True
-
-
 async def test_run_command_resumes_on_resume_command(
     remote_control_module, fake_voice_client
 ):
@@ -230,7 +211,7 @@ async def test_observer_update_sends_player_state(
     fake_voice_client.observer = player_observer
     await fake_voice_client.set_volume(58)
     await player_observer.send_update()
-    assert (
-        amqp_exchange.messages[0].body
-        == b'{"loop":true,"volume":58,"state":"idle","queue":[],"current":null}'
+    assert amqp_exchange.messages[0].body == (
+        b'{"loop":true,"volume":58,"position":0,'
+        b'"state":"idle","queue":[],"current":null}'
     )
