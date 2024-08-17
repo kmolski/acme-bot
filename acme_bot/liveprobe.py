@@ -30,8 +30,8 @@ log = logging.getLogger(__name__)
 class LivenessProbeModule(commands.Cog, CogFactory):
     """Liveness probe cog for use with Kubernetes pods."""
 
-    def __init__(self, socket):
-        self.__socket = socket
+    def __init__(self, server):
+        self.__server = server
 
     @classmethod
     def is_available(cls):
@@ -39,8 +39,8 @@ class LivenessProbeModule(commands.Cog, CogFactory):
 
     @classmethod
     async def create_cog(cls, bot):
-        socket = await start_server(cls._handle_conn, "::1", 3000, start_serving=False)
-        return cls(socket)
+        server = await start_server(cls._handle_conn, "", 3000, start_serving=False)
+        return cls(server)
 
     @classmethod
     async def _handle_conn(cls, _, writer):
@@ -48,8 +48,8 @@ class LivenessProbeModule(commands.Cog, CogFactory):
         await writer.wait_closed()
 
     @commands.Cog.listener("on_ready")
-    async def _open_socket(self):
-        await self.__socket.start_serving()
+    async def _start_server(self):
+        await self.__server.start_serving()
 
     async def cog_unload(self):
-        self.__socket.close()
+        self.__server.close()
