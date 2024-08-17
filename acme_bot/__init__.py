@@ -1,6 +1,6 @@
 """Discord music bot with a custom shell language."""
 
-#  Copyright (C) 2019-2023  Krzysztof Molski
+#  Copyright (C) 2019-2024  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -146,9 +146,11 @@ def run():
     logger.setLevel(LOG_LEVEL())
     logger.addHandler(handler)
 
+    intents = Intents.default()
+    intents.message_content = True
     client = AcmeBot(
         command_prefix=COMMAND_PREFIX(),
         help_command=HelpCommand(show_parameter_descriptions=False),
-        intents=Intents.all(),
+        intents=intents,
     )
     client.run(DISCORD_TOKEN(), log_handler=None)
