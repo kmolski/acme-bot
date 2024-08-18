@@ -44,9 +44,11 @@ class ConfirmAddTracks(VerifiedView):
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
         """Confirm adding tracks to the player."""
-        await self.__player.queue.put_wait(self.__results)
-        if not self.__player.playing:
+        if self.__player.playing:
+            await self.__player.queue.put_wait(self.__results[0])
+        else:
             await self.__player.play(self.__results[0])
+        await self.__player.queue.put_wait(self.__results[1:])
 
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
@@ -78,8 +80,9 @@ class SelectTrack(VerifiedView):
         """Create a button that adds the given track to the player."""
 
         async def button_pressed(interaction):
-            await self.__player.queue.put_wait(new)
-            if not self.__player.playing:
+            if self.__player.playing:
+                await self.__player.queue.put_wait(new)
+            else:
                 await self.__player.play(new)
 
             await interaction.message.edit(

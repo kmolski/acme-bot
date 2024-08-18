@@ -444,6 +444,7 @@ class MusicModule(commands.Cog, CogFactory):
                 raise commands.CommandError("You are not connected to a voice channel.")
 
     @clear.before_invoke
+    @current.before_invoke
     @leave.before_invoke
     @loop.before_invoke
     @pause.before_invoke
@@ -455,7 +456,6 @@ class MusicModule(commands.Cog, CogFactory):
         if ctx.voice_client is None:
             raise commands.CommandError("You are not connected to a voice channel.")
 
-    @current.before_invoke
     @previous.before_invoke
     @queue.before_invoke
     @remove.before_invoke
