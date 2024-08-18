@@ -60,6 +60,7 @@ class ClearCommand(RemoteCommand):
     op: Literal["clear"]
 
     async def run(self, player):
+        player.queue.history.clear()
         player.queue.clear()
         player.notify()
 

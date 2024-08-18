@@ -64,9 +64,10 @@ class FakeBot:
 class FakeQueue(list):
     """Fake wavelink.Queue object."""
 
-    def __init__(self):
+    def __init__(self, history=True):
         super().__init__()
         self.mode = wavelink.QueueMode.loop_all
+        self.history = FakeQueue(False) if history else None
 
     def get(self):
         return None
