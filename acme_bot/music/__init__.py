@@ -320,6 +320,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         async with self.__lock:
             queue = export_entry_list(ctx.voice_client.queue)
+            ctx.voice_client.queue.history.clear()
             ctx.voice_client.queue.clear()
             ctx.voice_client.notify()
             if ctx.display:
