@@ -14,7 +14,7 @@ aio-pika = "^9.4.3"
 "discord.py" = {version = "^2.4.0", extras = ["voice"]}
 pydantic = "^2.9.2"
 python-dotenv = "^1.0.1"
-textX = "^4.0.1"
+textX = "^4.1.0"
 wavelink = "^3.4.1"
 
 [tool.poetry.group.dev.dependencies]
