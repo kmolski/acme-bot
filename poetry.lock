@@ -1097,13 +1097,13 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "textx"
-version = "4.0.1"
+version = "4.1.0"
 description = "Meta-language for DSL implementation inspired by Xtext"
 optional = false
-python-versions = ">=3.8, <3.13"
+python-versions = ">=3.8"
 files = [
-    {file = "textx-4.0.1-py3-none-any.whl", hash = "sha256:023bdb338ec4d6f8ad4c8b58e8bc16975920a5bd379428d8b027c1a7d02a42b4"},
-    {file = "textx-4.0.1.tar.gz", hash = "sha256:84aff5c95fd2c947402fcbe83eeeddc23aabcfed3464ab84184ef193c52d831a"},
+    {file = "textx-4.1.0-py3-none-any.whl", hash = "sha256:297784421e81a27b3701c968cf820353b79969e0d443f4ca6ac9352a827bf871"},
+    {file = "textx-4.1.0.tar.gz", hash = "sha256:37b4f0c455452e27cc0f13d40777b5d20549eaa871311b26e2ed83c019456692"},
 ]
 
 [package.dependencies]
@@ -1111,8 +1111,8 @@ Arpeggio = ">=2.0.0"
 
 [package.extras]
 cli = ["click (>=7.0,<9.0)"]
-dev = ["click (>=7.0,<9.0)", "flit", "mike", "mkdocs", "ruff", "textX-dev"]
-test = ["attrs", "click (>=7.0,<9.0)", "coverage", "coveralls", "html5lib", "jinja2", "pytest", "ruff"]
+dev = ["click (>=7.0,<9.0)", "flit", "mike", "ruff", "textX-dev"]
+test = ["click (>=7.0,<9.0)", "coverage", "coveralls", "html5lib", "jinja2", "pytest", "ruff"]
 
 [[package]]
 name = "tomlkit"
@@ -1253,4 +1253,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "440d344044accd826f2dc754da92840de3f9f13b0b705bf2deab0e6331f662cf"
+content-hash = "ccd4cc6692a1e09e146894fd8a38514b9be20206024cc76f31ee06cec2d07802"
