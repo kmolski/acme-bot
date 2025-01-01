@@ -10,9 +10,9 @@ include = ["acme_bot/version_info/commit.txt"]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-aio-pika = "^9.5.0"
+aio-pika = "^9.5.4"
 "discord.py" = {version = "^2.4.0", extras = ["voice"]}
-pydantic = "^2.10.1"
+pydantic = "^2.10.4"
 python-dotenv = "^1.0.1"
 textX = "^4.1.0"
 wavelink = "^3.4.1"
@@ -20,10 +20,10 @@ wavelink = "^3.4.1"
 [tool.poetry.group.dev.dependencies]
 black = "24.10.0"
 flake8 = "^7.1.1"
-pylint = "^3.3.1"
+pylint = "^3.3.3"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.3.3"
+pytest = "^8.3.4"
 pytest-asyncio = "^0.24.0"
 
 [tool.poetry.scripts]
