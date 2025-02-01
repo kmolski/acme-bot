@@ -70,7 +70,7 @@ async def send_pages(
 
 def escape_md_block(text):
     """Escape triple backtick delimiters in the given text."""
-    return sub(r"```", "\U0000200B".join("```"), text, flags=MULTILINE)
+    return sub(r"```", "\U0000200b".join("```"), text, flags=MULTILINE)
 
 
 def format_duration(secs):

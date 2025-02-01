@@ -112,7 +112,7 @@ class MusicModule(commands.Cog, CogFactory):
         """Join the sender's current voice channel."""
         if ctx.display:
             await ctx.send(
-                f"\u27A1\uFE0F Joining channel **{ctx.voice_client.channel.name}**."
+                f"\u27a1\ufe0f Joining channel **{ctx.voice_client.channel.name}**."
             )
 
     @commands.command(aliases=["leav"])
@@ -125,7 +125,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         if ctx.display:
             await ctx.send(
-                f"\u23CF\uFE0F Quitting channel **{ctx.voice_client.channel.name}**."
+                f"\u23cf\ufe0f Quitting channel **{ctx.voice_client.channel.name}**."
             )
         async with self.__lock:
             queue = ctx.voice_client.queue.copy()
@@ -149,7 +149,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         new = Queue()
         await ctx.send_pages(
-            assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
+            assemble_menu("\u2049\ufe0f Choose one of the following results:", results),
             view=SelectTrack(ctx.author, ctx.voice_client, new, results),
             reference=ctx.message,
         )
@@ -175,7 +175,7 @@ class MusicModule(commands.Cog, CogFactory):
 
         new = Queue()
         await ctx.send_pages(
-            assemble_menu("\u2049\uFE0F Choose one of the following results:", results),
+            assemble_menu("\u2049\ufe0f Choose one of the following results:", results),
             view=SelectTrack(ctx.author, ctx.voice_client, new, results),
             reference=ctx.message,
         )
@@ -201,7 +201,7 @@ class MusicModule(commands.Cog, CogFactory):
                 chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
             )
         await ctx.send(
-            f"\u2705\uFE0F Extracted {len(results)} tracks.",
+            f"\u2705\ufe0f Extracted {len(results)} tracks.",
             view=ConfirmAddTracks(ctx.author, ctx.voice_client, results),
             reference=ctx.message,
         )
@@ -225,7 +225,7 @@ class MusicModule(commands.Cog, CogFactory):
                 chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
             )
         if ctx.display:
-            await ctx.send(f"\u2705\uFE0F Extracted {len(results)} tracks.")
+            await ctx.send(f"\u2705\ufe0f Extracted {len(results)} tracks.")
         return export_entry_list(results)
 
     @commands.command(aliases=["prev"])
@@ -266,7 +266,7 @@ class MusicModule(commands.Cog, CogFactory):
             ctx.voice_client.notify()
         if ctx.display:
             msg = "on" if do_loop else "off"
-            await ctx.send(f"\U0001F501 Playlist loop {msg}.")
+            await ctx.send(f"\U0001f501 Playlist loop {msg}.")
         return do_loop
 
     @commands.command(aliases=["paus"])
@@ -276,7 +276,7 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.voice_client.pause(True)
             ctx.voice_client.notify()
         if ctx.display:
-            await ctx.send("\u23F8\uFE0F Paused.")
+            await ctx.send("\u23f8\ufe0f Paused.")
 
     @commands.command(aliases=["queu"])
     async def queue(self, ctx):
@@ -291,7 +291,7 @@ class MusicModule(commands.Cog, CogFactory):
             if ctx.display:
                 channel_name = ctx.voice_client.channel.name
                 embed = Embed(
-                    title=f"\U0001F3BC Track queue for channel '{channel_name}'",
+                    title=f"\U0001f3bc Track queue for channel '{channel_name}'",
                     description=f"Total tracks: {len(queue)}",
                     color=EMBED_COLOR,
                 )
@@ -324,7 +324,7 @@ class MusicModule(commands.Cog, CogFactory):
             ctx.voice_client.queue.clear()
             ctx.voice_client.notify()
             if ctx.display:
-                await ctx.send("\u2716\uFE0F Queue cleared.")
+                await ctx.send("\u2716\ufe0f Queue cleared.")
             return queue
 
     @commands.command(aliases=["volu"])
@@ -343,7 +343,7 @@ class MusicModule(commands.Cog, CogFactory):
             await ctx.voice_client.set_volume(volume)
             ctx.voice_client.notify()
         if ctx.display:
-            await ctx.send(f"\U0001F4E2 Volume is now at **{volume}%**.")
+            await ctx.send(f"\U0001f4e2 Volume is now at **{volume}%**.")
         return volume
 
     @commands.command(aliases=["curr"])

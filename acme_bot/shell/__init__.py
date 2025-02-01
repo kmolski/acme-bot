@@ -113,10 +113,10 @@ class ShellModule(commands.Cog, CogFactory):
         start = datetime.now()
         # Adding a reaction is not done until the bot receives a response
         # from the Discord servers, so it can be used to measure the time.
-        await ctx.message.add_reaction("\U0001F3D3")
+        await ctx.message.add_reaction("\U0001f3d3")
         milliseconds = str((datetime.now() - start).microseconds // 1000)
         if ctx.display:
-            await ctx.send(f"\U0001F4A8 Meep meep! **{milliseconds} ms**.")
+            await ctx.send(f"\U0001f4a8 Meep meep! **{milliseconds} ms**.")
         return milliseconds
 
     @commands.command(aliases=["prin"])
@@ -155,7 +155,7 @@ class ShellModule(commands.Cog, CogFactory):
         content, file_name = str(content), f"{ctx.author.name}_{file_name}"
         with StringIO(content) as stream:
             new_file = File(stream, filename=file_name)
-            await ctx.send(f"\U0001F4BE Created file **{file_name}**.", file=new_file)
+            await ctx.send(f"\U0001f4be Created file **{file_name}**.", file=new_file)
         return content
 
     @commands.command()
@@ -235,7 +235,7 @@ class ShellModule(commands.Cog, CogFactory):
         ).strip()
 
         if ctx.display:
-            await ctx.send_pages(f"\U0001F9EE {from_unit} = {output} {to_unit}.")
+            await ctx.send_pages(f"\U0001f9ee {from_unit} = {output} {to_unit}.")
         return output
 
     @commands.command()

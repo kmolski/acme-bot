@@ -38,7 +38,7 @@ async def test_concat_joins_arguments(fake_ctx, shell_module):
 
 async def test_ping_adds_reaction(fake_ctx, shell_module):
     assert await shell_module.ping(None, fake_ctx) >= "10"
-    assert "\U0001F3D3" in fake_ctx.message.reactions
+    assert "\U0001f3d3" in fake_ctx.message.reactions
 
 
 async def test_print_displays_the_content(fake_ctx, shell_module):

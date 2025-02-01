@@ -55,11 +55,11 @@ class ConfirmAddTracks(VerifiedView):
             view=None,
         )
 
-    @ui.button(label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary)
+    @ui.button(label="Cancel", emoji="\U0001f6ab", style=ButtonStyle.secondary)
     async def cancel(self, interaction, _):
         """Cancel adding tracks to the player."""
         await interaction.message.edit(
-            content="\U0001F6AB *Action canceled.*", view=None
+            content="\U0001f6ab *Action canceled.*", view=None
         )
 
 
@@ -100,11 +100,11 @@ class SelectTrack(VerifiedView):
 
         async def button_pressed(interaction):
             await interaction.message.edit(
-                content="\U0001F6AB *Action canceled.*", view=None
+                content="\U0001f6ab *Action canceled.*", view=None
             )
 
         button = ui.Button(
-            label="Cancel", emoji="\U0001F6AB", style=ButtonStyle.secondary
+            label="Cancel", emoji="\U0001f6ab", style=ButtonStyle.secondary
         )
         button.callback = button_pressed
         self.add_item(button)
@@ -113,7 +113,7 @@ class SelectTrack(VerifiedView):
 def current_track_embed(current):
     """Create an embed describing the current track."""
     embed = Embed(
-        title=f"\u25B6\uFE0F Now playing: {current.title}",
+        title=f"\u25b6\ufe0f Now playing: {current.title}",
         description=f"by {current.author}",
         color=EMBED_COLOR,
         url=current.uri,
@@ -127,7 +127,7 @@ def remote_embed(base_url, remote_id, access_code):
     """Create an embed with a link to the remote control application."""
     url = base_url % {"rid": remote_id, "ac": access_code}
     embed = Embed(
-        title="\u27A1\uFE0F Click here to access the web player.",
+        title="\u27a1\ufe0f Click here to access the web player.",
         color=EMBED_COLOR,
         url=url,
     )
