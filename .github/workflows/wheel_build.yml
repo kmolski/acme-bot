@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - uses: actions/cache@v4
         id: cached-poetry
@@ -53,7 +53,7 @@ jobs:
           fetch-tags: true
 
       - name: Install Python dependencies
-        run: poetry self add 'poetry-dynamic-versioning[plugin]==1.7.1' && poetry install --no-interaction
+        run: poetry self add 'poetry-dynamic-versioning[plugin]==1.8.2' && poetry install --no-interaction
 
       - name: Check formatting with black
         run: poetry run black --check .
