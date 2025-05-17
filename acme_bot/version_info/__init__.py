@@ -1,6 +1,6 @@
 """Version & license information commands."""
 
-#  Copyright (C) 2022-2023  Krzysztof Molski
+#  Copyright (C) 2022-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -58,7 +58,7 @@ class BuildInfo:
 class VersionInfoModule(commands.Cog, CogFactory):
     """Version & license information commands."""
 
-    COPYRIGHT_INFO = "\n".join(["Copyright (C) 2019-2024  Krzysztof Molski"])
+    COPYRIGHT_INFO = "\n".join(["Copyright (C) 2019-2025  Krzysztof Molski"])
 
     MESSAGE_TEMPLATE = """
 acme-bot {} ({} {})
