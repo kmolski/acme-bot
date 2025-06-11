@@ -1,7 +1,7 @@
 [project]
 name = "acme-bot"
 description = "Discord music bot with a custom shell language"
-authors = ["kmolski <krzysztof.molski29@gmail.com>"]
+authors = [{name="kmolski", email = "krzysztof.molski29@gmail.com"}]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
 dynamic = ["version"]
