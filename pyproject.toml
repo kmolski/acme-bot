@@ -1,21 +1,29 @@
-[tool.poetry]
+[project]
 name = "acme-bot"
-version = "2.0.0-dev"
 description = "Discord music bot with a custom shell language"
-license = "AGPL-3.0-or-later"
 authors = ["kmolski <krzysztof.molski29@gmail.com>"]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+dynamic = ["version"]
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "aio-pika (>=9.5.5,<10.0.0)",
+  "discord.py[voice] (>=2.5.2,<3.0.0)",
+  "pydantic (>=2.11.5,<3.0.0)",
+  "python-dotenv (>=1.1.0,<2.0.0)",
+  "textX (>=4.2.2,<5.0.0)",
+  "wavelink (>=3.4.1,<4.0.0)"
+]
+
+[project.urls]
 repository = "https://github.com/kmolski/acme-bot"
 
-include = ["acme_bot/version_info/commit.txt"]
+[project.scripts]
+acme-bot = "acme_bot:run"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.14"
-aio-pika = "^9.5.5"
-"discord.py" = {version = "^2.5.2", extras = ["voice"]}
-pydantic = "^2.11.5"
-python-dotenv = "^1.1.0"
-textX = "^4.2.2"
-wavelink = "^3.4.1"
+[tool.poetry]
+version = "2.0.0-dev"
+include = [{path = "acme_bot/version_info/commit.txt", format = ["sdist", "wheel"]}]
 
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"
@@ -26,8 +34,8 @@ pylint = "^3.3.7"
 pytest = "^8.3.5"
 pytest-asyncio = "^0.26.0"
 
-[tool.poetry.scripts]
-acme-bot = "acme_bot:run"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = {version = ">=1.0.0,<2.0.0", extras = ["plugin"]}
 
 [tool.poetry-dynamic-versioning]
 enable = true
