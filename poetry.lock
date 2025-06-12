@@ -213,18 +213,6 @@ files = [
 ]
 
 [[package]]
-name = "async-timeout"
-version = "4.0.3"
-description = "Timeout context manager for asyncio programs"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "async-timeout-4.0.3.tar.gz", hash = "sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f"},
-    {file = "async_timeout-4.0.3-py3-none-any.whl", hash = "sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028"},
-]
-
-[[package]]
 name = "attrs"
 version = "23.2.0"
 description = "Classes Without Boilerplate"
@@ -623,6 +611,24 @@ files = [
 
 [package.extras]
 colors = ["colorama (>=0.4.6)"]
+
+[[package]]
+name = "lavalink"
+version = "5.9.0"
+description = "A Lavalink WebSocket & API wrapper built around coverage, reliability and performance."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "lavalink-5.9.0.tar.gz", hash = "sha256:a01aff4bdf25a51387d2d7729e110a8ced442c21da558dccdceffbc1e0f3861d"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.9.0,<4"
+
+[package.extras]
+development = ["flake8", "pylint"]
+docs = ["enum_tools", "guzzle_sphinx_theme", "pygments", "sphinx", "sphinx_toolbox"]
 
 [[package]]
 name = "mccabe"
@@ -1266,25 +1272,6 @@ files = [
 typing-extensions = ">=4.12.0"
 
 [[package]]
-name = "wavelink"
-version = "3.4.1"
-description = "A robust and powerful, fully asynchronous Lavalink wrapper built for discord.py in Python."
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "wavelink-3.4.1-py3-none-any.whl", hash = "sha256:90f7e29b262b726417ce8f02d2725935a018e4938825289683a9548609206a2b"},
-    {file = "wavelink-3.4.1.tar.gz", hash = "sha256:0aa2db5e4e7d6b0702a69e4cdb7161b447b7a5735955bce5bbadb28235c5478e"},
-]
-
-[package.dependencies]
-aiohttp = ">=3.7.4,<4"
-async-timeout = "*"
-"discord.py" = ">=2.0.1"
-typing-extensions = "*"
-yarl = ">=1.9.2"
-
-[[package]]
 name = "yarl"
 version = "1.17.2"
 description = "Yet another URL library"
@@ -1384,4 +1371,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "170f046017f403fbf1885937e18f2b9c0ef4c38360b491a1e7e4d041642de42c"
+content-hash = "5e2c11d5bcb1346930ee0e310cd7ac07cc4c289f68d2c2d2bf69150e1f5e443e"
