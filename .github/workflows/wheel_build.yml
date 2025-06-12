@@ -142,7 +142,7 @@ jobs:
     needs: build-and-test
     if: inputs.build_feature_image == true && github.ref != 'refs/heads/master'
     concurrency:
-      group: docker-buildx
+      group: docker-buildx-feature-${{ github.ref_name }}
     permissions:
       packages: write
     steps:
