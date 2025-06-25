@@ -2,8 +2,8 @@ from asyncio import get_running_loop, sleep, AbstractEventLoop
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+import lavalink
 import pytest
-import wavelink
 
 from acme_bot.music import MusicModule
 from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
@@ -13,7 +13,7 @@ from acme_bot.textutils import send_pages
 
 @dataclass
 class Track:
-    """Stub wavelink.Playable object."""
+    """Stub lavalink.AudioTrack object."""
 
     identifier: str
     title: str
@@ -31,7 +31,7 @@ class StubChannel:
 
     async def connect(self, *, cls):
         if self.ctx is not None:
-            self.ctx.voice_client = FakeVoiceClient(FakeQueue(), None)
+            self.ctx.voice_client = FakeVoiceClient([], None)
 
 
 @dataclass
@@ -61,44 +61,19 @@ class FakeBot:
         self.events.append((event, *args))
 
 
-class FakeQueue(list):
-    """Fake wavelink.Queue object."""
-
-    def __init__(self, history=True):
-        super().__init__()
-        self.mode = wavelink.QueueMode.loop_all
-        self.history = FakeQueue(False) if history else None
-
-    def get(self):
-        return None
-
-    def delete(self, idx):
-        del self[idx]
-
-    def reset(self):
-        self.clear()
-
-    @property
-    def is_empty(self):
-        return len(self) == 0
-
-
 @dataclass
 class FakeVoiceClient:
-    """Fake wavelink.Player object."""
+    """Fake lavalink.DefaultPlayer object."""
 
-    queue: FakeQueue
+    queue: list[Track]
     played_tracks: list[object]
-    current: object = None
-    position: int = 0
+    current: Track = None
+    loop: int = lavalink.DefaultPlayer.LOOP_QUEUE
+    position_timestamp: int = 0
     volume: int = 100
-    playing: bool = False
     paused: bool = False
-    connected: bool = True
+    channel_id: int = 1
     channel: StubChannel = field(default_factory=StubChannel)
-
-    def is_playing(self):
-        return not (self.stopped or self.paused)
 
     def notify(self):
         pass
@@ -106,13 +81,18 @@ class FakeVoiceClient:
     async def disconnect(self):
         self.connected = False
 
-    async def play(self, track, **_):
-        self.played_tracks.append(track)
+    async def play(self, track=None, **_):
+        if track is not None:
+            self.queue.append(track)
         self.playing = True
         self.paused = False
-        self.current = track
+        if self.queue:
+            self.current = self.queue.pop(0)
 
-    async def pause(self, toggle):
+    def set_loop(self, loop):
+        self.loop = loop
+
+    async def set_pause(self, toggle):
         self.paused = toggle
 
     async def set_volume(self, volume):
@@ -282,7 +262,7 @@ async def fake_bot():
 
 @pytest.fixture
 def fake_voice_client():
-    return FakeVoiceClient(FakeQueue(), [])
+    return FakeVoiceClient([], [])
 
 
 @pytest.fixture

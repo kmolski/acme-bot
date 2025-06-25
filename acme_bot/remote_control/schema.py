@@ -1,6 +1,6 @@
 """Pydantic models for MusicPlayer's remote control messages."""
 
-#  Copyright (C) 2023-2024  Krzysztof Molski
+#  Copyright (C) 2023-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -18,7 +18,7 @@
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, RootModel
-from wavelink import QueueMode
+from lavalink import DefaultPlayer
 
 
 class RemoteCommand(BaseModel):
@@ -38,7 +38,7 @@ class PauseCommand(RemoteCommand):
     op: Literal["pause"]
 
     async def run(self, player):
-        await player.pause(True)
+        await player.set_pause(True)
         player.notify()
 
 
@@ -48,9 +48,9 @@ class ResumeCommand(RemoteCommand):
     op: Literal["resume"]
 
     async def run(self, player):
-        if not player.playing:
-            await player.play(player.queue.get())
-        await player.pause(False)
+        if player.current is None:
+            await player.play()
+        await player.set_pause(False)
         player.notify()
 
 
@@ -60,7 +60,6 @@ class ClearCommand(RemoteCommand):
     op: Literal["clear"]
 
     async def run(self, player):
-        player.queue.history.clear()
         player.queue.clear()
         player.notify()
 
@@ -72,7 +71,9 @@ class LoopCommand(RemoteCommand):
     enabled: bool
 
     async def run(self, player):
-        player.queue.mode = QueueMode.loop_all if self.enabled else QueueMode.normal
+        player.set_loop(
+            DefaultPlayer.LOOP_QUEUE if self.enabled else DefaultPlayer.LOOP_NONE
+        )
         player.notify()
 
 
@@ -97,7 +98,7 @@ class RemoveCommand(RemoteCommand):
     async def run(self, player):
         track = player.queue[self.offset]
         if track.identifier == self.id:
-            player.queue.delete(self.offset)
+            player.queue.pop(self.offset)
         player.notify()
 
 
@@ -111,7 +112,7 @@ class MoveCommand(RemoteCommand):
     async def run(self, player):
         track = player.queue[self.offset]
         if track.identifier == self.id:
-            await player.play(track)
+            await player.play(player.queue.pop(self.offset))
         player.notify()
 
 
@@ -121,7 +122,7 @@ class SkipCommand(RemoteCommand):
     op: Literal["skip"]
 
     async def run(self, player):
-        await player.skip(force=True)
+        await player.skip()
         player.notify()
 
 
@@ -131,13 +132,10 @@ class PrevCommand(RemoteCommand):
     op: Literal["prev"]
 
     async def run(self, player):
-        track = player.queue.peek()
-        if history := player.queue.history:
-            track = history[-1]
-            if player.current in history:
-                idx = history.index(player.current)
-                track = history[idx - 1]
-        await player.play(track)
+        if player.current:
+            player.queue.insert(0, player.current)
+            player.current = None
+            await player.play(player.queue.pop(-1))
         player.notify()
 
 
