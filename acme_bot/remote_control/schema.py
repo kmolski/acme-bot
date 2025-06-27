@@ -132,10 +132,7 @@ class PrevCommand(RemoteCommand):
     op: Literal["prev"]
 
     async def run(self, player):
-        if player.current:
-            player.queue.insert(0, player.current)
-            player.current = None
-            await player.play(player.queue.pop(-1))
+        await player.prev()
         player.notify()
 
 

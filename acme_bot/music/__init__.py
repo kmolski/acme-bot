@@ -558,6 +558,7 @@ class MusicModule(commands.Cog, CogFactory):
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
+                    player.set_loop(True)
                     self.__players[player.channel_id] = player
                     self.__access_codes[player.channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
