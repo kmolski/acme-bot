@@ -1,6 +1,6 @@
 """Remote music player control using an AMQP message broker."""
 
-#  Copyright (C) 2022-2024  Krzysztof Molski
+#  Copyright (C) 2022-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -125,11 +125,6 @@ class RemoteControlModule(commands.Cog, CogFactory):
         async with self.__lock:
             await player.observer.close()
             del self.__players[access_code]
-
-    @commands.Cog.listener("on_wavelink_player_update")
-    async def _send_player_update(self, payload):
-        if payload.player is not None:
-            payload.player.notify()
 
     async def _run_command(self, message):
         async with message.process():
