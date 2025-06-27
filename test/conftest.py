@@ -61,6 +61,22 @@ class FakeBot:
         self.events.append((event, *args))
 
 
+class FakePlayerManager:
+
+    def create(self, guild_id):
+        pass
+
+
+@dataclass
+class FakeLavalink:
+    """Fake lavalink.Client object."""
+
+    player_manager: FakePlayerManager = field(default_factory=FakePlayerManager)
+
+    def add_event_hooks(self, obj):
+        pass
+
+
 @dataclass
 class FakeVoiceClient:
     """Fake lavalink.DefaultPlayer object."""
@@ -72,22 +88,27 @@ class FakeVoiceClient:
     position_timestamp: int = 0
     volume: int = 100
     paused: bool = False
-    channel_id: int = 1
     channel: StubChannel = field(default_factory=StubChannel)
+
+    @property
+    def channel_id(self):
+        return self.channel.id
 
     def notify(self):
         pass
 
-    async def disconnect(self):
+    async def disconnect(self, force=False):
         self.connected = False
 
     async def play(self, track=None, **_):
-        if track is not None:
-            self.queue.append(track)
+        if self.loop == lavalink.DefaultPlayer.LOOP_QUEUE and self.current:
+            self.queue.append(self.current)
         self.playing = True
         self.paused = False
-        if self.queue:
+        if not track and self.queue:
             self.current = self.queue.pop(0)
+        else:
+            self.current = track
 
     def set_loop(self, loop):
         self.loop = loop
@@ -204,6 +225,7 @@ class FakeContext:
     display: bool = True
     author: StubUser = field(default_factory=StubUser)
     message: FakeMessage = field(default_factory=FakeMessage)
+    guild: StubChannel = field(default_factory=StubChannel)
 
     def history(self, **_):
         return self.hist
@@ -258,6 +280,11 @@ def stub_user():
 @pytest.fixture
 async def fake_bot():
     return FakeBot(get_running_loop())
+
+
+@pytest.fixture
+async def fake_lavalink():
+    return FakeLavalink()
 
 
 @pytest.fixture
@@ -348,8 +375,8 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(fake_bot, fake_voice_client):
-    cog = MusicModule(fake_bot)
+def music_module(fake_bot, fake_lavalink, fake_voice_client):
+    cog = MusicModule(fake_bot, fake_lavalink)
     cog._MusicModule__players[StubChannel.id] = fake_voice_client
     cog._MusicModule__access_codes[123456] = fake_voice_client
     return cog

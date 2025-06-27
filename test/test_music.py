@@ -2,12 +2,12 @@ import pytest
 from discord.ext import commands
 
 from conftest import StubChannel, StubVoice, FakeVoiceClient
-from wavelink import QueueMode
+from lavalink import DefaultPlayer
 
 
 async def test_loop_sets_player_loop(fake_ctx, fake_voice_client, music_module):
     result = await music_module.loop(music_module, fake_ctx, False)
-    assert fake_voice_client.queue.mode == QueueMode.normal
+    assert fake_voice_client.loop == DefaultPlayer.LOOP_NONE
     assert result is False
 
 
@@ -17,7 +17,7 @@ async def test_pause_sets_player_pause(fake_ctx, fake_voice_client, music_module
 
 
 async def test_resume_unsets_player_pause(fake_ctx, fake_voice_client, music_module):
-    await fake_voice_client.pause(True)
+    await fake_voice_client.set_pause(True)
     await music_module.resume(music_module, fake_ctx)
     assert fake_voice_client.paused is False
 
