@@ -17,7 +17,6 @@
 
 from enum import Enum
 
-from lavalink import DefaultPlayer
 from pydantic import BaseModel
 
 from acme_bot.textutils import format_duration
@@ -88,7 +87,7 @@ class PlayerModel(BaseModel):
     def serialize(cls, player):
         """Serialize the MusicPlayer instance."""
         model = PlayerModel(
-            loop=player.loop == DefaultPlayer.LOOP_QUEUE,
+            loop=player.loop,
             volume=player.volume,
             position=player.position_timestamp,
             state=PlayerState.from_lavalink(player),

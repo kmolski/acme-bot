@@ -133,7 +133,7 @@ class LavalinkPlayer(VoiceProtocol):
     @property
     def loop(self):
         """Return the current loop parameter."""
-        return self.player.loop
+        return self.player.loop == DefaultPlayer.LOOP_QUEUE
 
     @property
     def paused(self):
@@ -172,7 +172,9 @@ class LavalinkPlayer(VoiceProtocol):
 
     def set_loop(self, loop):
         """Set the loop parameter of the player."""
-        self.player.set_loop(loop)
+        self.player.set_loop(
+            DefaultPlayer.LOOP_QUEUE if loop else DefaultPlayer.LOOP_NONE
+        )
 
     async def set_pause(self, pause):
         """Pause the player."""
@@ -395,9 +397,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         do_loop = bool(do_loop)
         async with self.__lock:
-            ctx.voice_client.set_loop(
-                DefaultPlayer.LOOP_QUEUE if do_loop else DefaultPlayer.LOOP_NONE
-            )
+            ctx.voice_client.set_loop(do_loop)
             ctx.voice_client.notify()
         if ctx.display:
             msg = "on" if do_loop else "off"

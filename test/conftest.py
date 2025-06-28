@@ -84,7 +84,7 @@ class FakeVoiceClient:
     queue: list[Track]
     played_tracks: list[object]
     current: Track = None
-    loop: int = lavalink.DefaultPlayer.LOOP_QUEUE
+    loop: bool = True
     position_timestamp: int = 0
     volume: int = 100
     paused: bool = False

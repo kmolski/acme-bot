@@ -2,12 +2,11 @@ import pytest
 from discord.ext import commands
 
 from conftest import StubChannel, StubVoice, FakeVoiceClient
-from lavalink import DefaultPlayer
 
 
 async def test_loop_sets_player_loop(fake_ctx, fake_voice_client, music_module):
     result = await music_module.loop(music_module, fake_ctx, False)
-    assert fake_voice_client.loop == DefaultPlayer.LOOP_NONE
+    assert fake_ctx.voice_client.loop is False
     assert result is False
 
 

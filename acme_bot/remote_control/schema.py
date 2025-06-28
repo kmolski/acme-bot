@@ -18,7 +18,6 @@
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, RootModel
-from lavalink import DefaultPlayer
 
 
 class RemoteCommand(BaseModel):
@@ -71,9 +70,7 @@ class LoopCommand(RemoteCommand):
     enabled: bool
 
     async def run(self, player):
-        player.set_loop(
-            DefaultPlayer.LOOP_QUEUE if self.enabled else DefaultPlayer.LOOP_NONE
-        )
+        player.set_loop(self.enabled)
         player.notify()
 
 
