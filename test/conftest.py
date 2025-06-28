@@ -110,6 +110,9 @@ class FakeVoiceClient:
         else:
             self.current = track
 
+    async def stop(self):
+        self.current = None
+
     def set_loop(self, loop):
         self.loop = loop
 

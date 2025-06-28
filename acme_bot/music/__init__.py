@@ -556,12 +556,13 @@ class MusicModule(commands.Cog, CogFactory):
                 self.lavalink.player_manager.create(ctx.guild.id)
                 await author_voice.channel.connect(cls=LavalinkPlayer)
 
+                channel_id = author_voice.channel.id
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
                     player.set_loop(True)
-                    self.__players[player.channel_id] = player
-                    self.__access_codes[player.channel_id] = access_code
+                    self.__players[channel_id] = player
+                    self.__access_codes[channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
@@ -573,7 +574,7 @@ class MusicModule(commands.Cog, CogFactory):
                 log.info(
                     "Created MusicPlayer with access code %s for Channel ID %s",
                     access_code,
-                    player.channel_id,
+                    channel_id,
                 )
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
@@ -617,6 +618,8 @@ class MusicModule(commands.Cog, CogFactory):
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
         )
+        player.queue.clear()
+        await player.stop()
         await player.disconnect(force=True)
         player.notify()
         self.bot.dispatch("acme_bot_player_deleted", player, access_code)
