@@ -553,15 +553,16 @@ class MusicModule(commands.Cog, CogFactory):
 
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
-                player = self.lavalink.player_manager.create(ctx.guild.id)
+                self.lavalink.player_manager.create(ctx.guild.id)
                 await author_voice.channel.connect(cls=LavalinkPlayer)
 
                 async with self.__lock:
                     access_code = self.__generate_access_code()
+                    player = ctx.voice_client
+                    player.set_loop(True)
                     self.__players[player.channel_id] = player
                     self.__access_codes[player.channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
-                    player.set_loop(True)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
                     await ctx.send(
