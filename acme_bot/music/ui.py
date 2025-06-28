@@ -1,6 +1,6 @@
 """Music command UI interactions based on discord.py View."""
 
-#  Copyright (C) 2023-2024  Krzysztof Molski
+#  Copyright (C) 2023-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -44,11 +44,11 @@ class ConfirmAddTracks(VerifiedView):
     @ui.button(label="Add to queue", emoji="\u2795", style=ButtonStyle.primary)
     async def add_to_queue(self, interaction, _):
         """Confirm adding tracks to the player."""
-        if self.__player.playing:
-            await self.__player.queue.put_wait(self.__results[0])
+        if self.__player.current is not None:
+            self.__player.queue.append(self.__results[0])
         else:
             await self.__player.play(self.__results[0])
-        await self.__player.queue.put_wait(self.__results[1:])
+        self.__player.queue.extend(self.__results[1:])
 
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
@@ -80,8 +80,8 @@ class SelectTrack(VerifiedView):
         """Create a button that adds the given track to the player."""
 
         async def button_pressed(interaction):
-            if self.__player.playing:
-                await self.__player.queue.put_wait(new)
+            if self.__player.current is not None:
+                self.__player.queue.append(new)
             else:
                 await self.__player.play(new)
 
@@ -118,8 +118,8 @@ def current_track_embed(current):
         color=EMBED_COLOR,
         url=current.uri,
     )
-    if current.artwork is not None:
-        embed.set_thumbnail(url=current.artwork)
+    if current.artwork_url is not None:
+        embed.set_thumbnail(url=current.artwork_url)
     return embed
 
 

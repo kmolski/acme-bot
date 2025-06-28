@@ -1,6 +1,6 @@
 """Music player commands."""
 
-#  Copyright (C) 2019-2024  Krzysztof Molski
+#  Copyright (C) 2019-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -16,14 +16,15 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import string
 from asyncio import Queue, Lock
 from itertools import chain
 from random import choices
 
-from discord import Embed
+from discord import Embed, VoiceProtocol
 from discord.ext import commands
-from wavelink import AutoPlayMode, Node, Playable, Player, Pool, QueueMode
+from lavalink import Client, DefaultPlayer, listener
+from lavalink.events import Event
+from lavalink.errors import ClientError
 
 from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
@@ -46,7 +47,7 @@ log = logging.getLogger(__name__)
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
-    duration_string = format_duration(track.length // 1000)
+    duration_string = format_duration(track.duration // 1000)
     return f"{index}. **{track.title}** - {track.author} - {duration_string}"
 
 
@@ -58,7 +59,7 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    duration_string = format_duration(entry.length // 1000)
+    duration_string = format_duration(entry.duration // 1000)
     return f"{entry.uri}    {entry.title} - {duration_string}\n"
 
 
@@ -72,18 +73,149 @@ def strip_urls(urls):
     return (line.split()[0] for line in urls.split("\n") if line)
 
 
+class LavalinkPlayer(VoiceProtocol):
+    """Wrapper for lavalink.DefaultClient."""
+
+    def __init__(self, bot, channel):
+        super().__init__(bot, channel)
+        self.__lavalink = bot.get_cog("MusicModule").lavalink
+        self.__destroyed = False
+        self.observer = None
+        self.notify = lambda: None
+
+    async def connect(self, *, timeout, reconnect, self_deaf=False, self_mute=False):
+        self.__lavalink.player_manager.create(guild_id=self.channel.guild.id)
+        await self.channel.guild.change_voice_state(
+            channel=self.channel, self_mute=self_mute, self_deaf=self_deaf
+        )
+
+    async def disconnect(self, *, force=False) -> None:
+        player = self.__lavalink.player_manager.get(self.channel.guild.id)
+        if not force and not player.is_connected:
+            return
+        await self.channel.guild.change_voice_state(channel=None)
+        player.channel_id = None
+        await self.__destroy()
+
+    async def on_voice_server_update(self, data, /):
+        handler_data = {"t": "VOICE_SERVER_UPDATE", "d": data}
+        await self.__lavalink.voice_update_handler(handler_data)
+
+    async def on_voice_state_update(self, data, /):
+        channel_id = data["channel_id"]
+        if not channel_id:
+            await self.__destroy()
+            return
+        self.channel = self.client.get_channel(int(channel_id))
+        handler_data = {"t": "VOICE_STATE_UPDATE", "d": data}
+        await self.__lavalink.voice_update_handler(handler_data)
+
+    @property
+    def player(self):
+        """Return the lavalink.DefaultPlayer instance."""
+        return self.__lavalink.player_manager.get(self.channel.guild.id)
+
+    @property
+    def channel_id(self):
+        """Return the channel ID of the player."""
+        return self.player.channel_id
+
+    @property
+    def current(self):
+        """Return the currently playing track. (or None if stopped)"""
+        return self.player.current
+
+    @current.setter
+    def current(self, value):
+        """Set the currently playing track."""
+        self.player.current = value
+
+    @property
+    def loop(self):
+        """Return the current loop parameter."""
+        return self.player.loop == DefaultPlayer.LOOP_QUEUE
+
+    @property
+    def paused(self):
+        """Return the current paused state."""
+        return self.player.paused
+
+    @property
+    def position_timestamp(self):
+        """Return the current player position."""
+        return self.player.position_timestamp
+
+    @property
+    def queue(self):
+        """Return the player queue."""
+        return self.player.queue
+
+    @property
+    def volume(self):
+        """Return the current player volume."""
+        return self.player.volume
+
+    async def play(self, track=None):
+        """Play the given track. (or the next one if not specified)"""
+        await self.player.play(track)
+
+    async def prev(self):
+        """Play the previous track."""
+        if self.current:
+            self.queue.insert(0, self.current)
+            self.current = None
+            await self.play(self.queue.pop(-1))
+
+    async def search(self, query):
+        """Search for tracks using the given query."""
+        return (await self.__lavalink.get_tracks(query)).tracks
+
+    def set_loop(self, loop):
+        """Set the loop parameter of the player."""
+        self.player.set_loop(
+            DefaultPlayer.LOOP_QUEUE if loop else DefaultPlayer.LOOP_NONE
+        )
+
+    async def set_pause(self, pause):
+        """Pause the player."""
+        await self.player.set_pause(pause)
+
+    async def set_volume(self, volume):
+        """Change the current player volume."""
+        await self.player.set_volume(volume)
+
+    async def skip(self):
+        """Play the next track."""
+        await self.player.skip()
+
+    async def stop(self):
+        """Stop the player."""
+        await self.player.stop()
+
+    async def __destroy(self):
+        self.cleanup()
+        if not self.__destroyed:
+            self.__destroyed = True
+            try:
+                await self.__lavalink.player_manager.destroy(self.channel.guild.id)
+            except ClientError:
+                pass
+
+
 @autoloaded
 class MusicModule(commands.Cog, CogFactory):
     """Music player commands."""
 
     ACCESS_CODE_LENGTH = 6
 
-    def __init__(self, bot):
+    def __init__(self, bot, lavalink):
         self.__lock = Lock()
         self.__players = {}
         self.__access_codes = {}
         self.__remote_id = None
         self.bot = bot
+        self.lavalink = lavalink
+        self.lavalink.add_event_hooks(self)
 
     @classmethod
     def is_available(cls):
@@ -95,17 +227,17 @@ class MusicModule(commands.Cog, CogFactory):
 
     @classmethod
     async def create_cog(cls, bot):
-        nodes = [
-            Node(
-                uri=str(LAVALINK_URI().with_user(None)),
-                password=LAVALINK_URI().password,
-            )
-        ]
-        await Pool.connect(nodes=nodes, client=bot)
-        return cls(bot)
+        lavalink = Client(bot.user.id)
+        lavalink.add_node(
+            host=LAVALINK_URI().host,
+            password=LAVALINK_URI().password,
+            port=LAVALINK_URI().port,
+            region=None,
+        )
+        return cls(bot, lavalink)
 
     async def cog_unload(self):
-        await Pool.close()
+        await self.lavalink.close()
 
     @commands.command()
     async def join(self, ctx):
@@ -145,7 +277,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await Playable.search(query, source="ytsearch:")
+            results = await ctx.voice_client.search("ytsearch:" + query)
 
         new = Queue()
         await ctx.send_pages(
@@ -171,7 +303,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
-            results = await Playable.search(query, source="scsearch:")
+            results = await ctx.voice_client.search("scsearch:" + query)
 
         new = Queue()
         await ctx.send_pages(
@@ -198,7 +330,12 @@ class MusicModule(commands.Cog, CogFactory):
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             results = list(
-                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
+                chain(
+                    *[
+                        await ctx.voice_client.search(url)
+                        for url in strip_urls(url_list)
+                    ]
+                )
             )
         await ctx.send(
             f"\u2705\ufe0f Extracted {len(results)} tracks.",
@@ -222,7 +359,12 @@ class MusicModule(commands.Cog, CogFactory):
         url_list = "\n".join(str(url) for url in urls)
         async with ctx.typing():
             results = list(
-                chain(*[await Pool.fetch_tracks(url) for url in strip_urls(url_list)])
+                chain(
+                    *[
+                        (await self.lavalink.get_tracks(url)).tracks
+                        for url in strip_urls(url_list)
+                    ]
+                )
             )
         if ctx.display:
             await ctx.send(f"\u2705\ufe0f Extracted {len(results)} tracks.")
@@ -232,20 +374,14 @@ class MusicModule(commands.Cog, CogFactory):
     async def previous(self, ctx):
         """Play the previous track."""
         async with self.__lock:
-            track = ctx.voice_client.queue.peek()
-            if history := ctx.voice_client.queue.history:
-                track = history[-1]
-                if ctx.voice_client.current in history:
-                    idx = history.index(ctx.voice_client.current)
-                    track = history[idx - 1]
-            await ctx.voice_client.play(track)
+            await ctx.voice_client.prev()
             ctx.voice_client.notify()
 
     @commands.command(aliases=["next"])
     async def skip(self, ctx):
         """Play the next track."""
         async with self.__lock:
-            await ctx.voice_client.skip(force=True)
+            await ctx.voice_client.skip()
             ctx.voice_client.notify()
 
     @commands.command()
@@ -261,8 +397,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         do_loop = bool(do_loop)
         async with self.__lock:
-            queue = ctx.voice_client.queue
-            queue.mode = QueueMode.loop_all if do_loop else QueueMode.normal
+            ctx.voice_client.set_loop(do_loop)
             ctx.voice_client.notify()
         if ctx.display:
             msg = "on" if do_loop else "off"
@@ -273,7 +408,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def pause(self, ctx):
         """Pause the player."""
         async with self.__lock:
-            await ctx.voice_client.pause(True)
+            await ctx.voice_client.set_pause(True)
             ctx.voice_client.notify()
         if ctx.display:
             await ctx.send("\u23f8\ufe0f Paused.")
@@ -305,9 +440,9 @@ class MusicModule(commands.Cog, CogFactory):
     async def resume(self, ctx):
         """Resume playing the current track."""
         async with self.__lock:
-            if not ctx.voice_client.playing:
-                await ctx.voice_client.play(ctx.voice_client.queue.get())
-            await ctx.voice_client.pause(False)
+            if ctx.voice_client.current is None:
+                await ctx.voice_client.play()
+            await ctx.voice_client.set_pause(False)
             ctx.voice_client.notify()
 
     @commands.command(aliases=["clea"])
@@ -320,7 +455,6 @@ class MusicModule(commands.Cog, CogFactory):
         """
         async with self.__lock:
             queue = export_entry_list(ctx.voice_client.queue)
-            ctx.voice_client.queue.history.clear()
             ctx.voice_client.queue.clear()
             ctx.voice_client.notify()
             if ctx.display:
@@ -375,7 +509,7 @@ class MusicModule(commands.Cog, CogFactory):
         index = index - 1 if index >= 1 else index
         async with self.__lock:
             removed = ctx.voice_client.queue[index]
-            ctx.voice_client.queue.delete(index)
+            ctx.voice_client.queue.pop(index)
             ctx.voice_client.notify()
             if ctx.display:
                 await ctx.send_pages(
@@ -402,9 +536,11 @@ class MusicModule(commands.Cog, CogFactory):
             self.__remote_id = remote_id
             log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
 
-    @commands.Cog.listener("on_wavelink_node_ready")
-    async def _wavelink_ready(self, payload):
-        log.info("Connected to Lavalink node at '%s'", payload.node.uri)
+    @listener(Event)
+    async def _send_player_update(self, payload):
+        if hasattr(payload, "player"):
+            player = self.__players[payload.player.channel_id]
+            player.notify()
 
     @join.before_invoke
     @play.before_invoke
@@ -417,17 +553,16 @@ class MusicModule(commands.Cog, CogFactory):
 
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
-                await author_voice.channel.connect(cls=Player)
+                self.lavalink.player_manager.create(ctx.guild.id)
+                await author_voice.channel.connect(cls=LavalinkPlayer)
 
+                channel_id = author_voice.channel.id
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
-                    player.notify = lambda: None
-                    player.autoplay = AutoPlayMode.partial
-                    player.queue.mode = QueueMode.loop_all
-
-                    self.__players[player.channel.id] = player
-                    self.__access_codes[player.channel.id] = access_code
+                    player.set_loop(True)
+                    self.__players[channel_id] = player
+                    self.__access_codes[channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
@@ -439,7 +574,7 @@ class MusicModule(commands.Cog, CogFactory):
                 log.info(
                     "Created MusicPlayer with access code %s for Channel ID %s",
                     access_code,
-                    player.channel.id,
+                    channel_id,
                 )
             else:
                 raise commands.CommandError("You are not connected to a voice channel.")
@@ -467,22 +602,24 @@ class MusicModule(commands.Cog, CogFactory):
 
         await self._ensure_voice_or_fail(ctx)
         async with self.__lock:
-            if ctx.voice_client.queue.is_empty:
+            if not ctx.voice_client.queue:
                 raise commands.CommandError("The queue is empty!")
 
     def __generate_access_code(self):
-        while code := int("".join(choices(string.digits, k=self.ACCESS_CODE_LENGTH))):
+        while code := int("".join(choices("123456789", k=self.ACCESS_CODE_LENGTH))):
             if code not in self.__access_codes.values():
                 return code
         assert False
 
     async def __delete_player(self, player):
-        access_code = self.__access_codes.pop(player.channel.id)
-        del self.__players[player.channel.id]
+        access_code = self.__access_codes.pop(player.channel_id)
+        del self.__players[player.channel_id]
         log.info(
             "Deleted the MusicPlayer instance for Channel ID %s",
-            player.channel.id,
+            player.channel_id,
         )
-        await player.disconnect()
+        player.queue.clear()
+        await player.stop()
+        await player.disconnect(force=True)
         player.notify()
         self.bot.dispatch("acme_bot_player_deleted", player, access_code)

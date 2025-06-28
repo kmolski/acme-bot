@@ -2,8 +2,8 @@ from asyncio import get_running_loop, sleep, AbstractEventLoop
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+import lavalink
 import pytest
-import wavelink
 
 from acme_bot.music import MusicModule
 from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
@@ -13,7 +13,7 @@ from acme_bot.textutils import send_pages
 
 @dataclass
 class Track:
-    """Stub wavelink.Playable object."""
+    """Stub lavalink.AudioTrack object."""
 
     identifier: str
     title: str
@@ -31,7 +31,7 @@ class StubChannel:
 
     async def connect(self, *, cls):
         if self.ctx is not None:
-            self.ctx.voice_client = FakeVoiceClient(FakeQueue(), None)
+            self.ctx.voice_client = FakeVoiceClient([], None)
 
 
 @dataclass
@@ -61,58 +61,62 @@ class FakeBot:
         self.events.append((event, *args))
 
 
-class FakeQueue(list):
-    """Fake wavelink.Queue object."""
+class FakePlayerManager:
 
-    def __init__(self, history=True):
-        super().__init__()
-        self.mode = wavelink.QueueMode.loop_all
-        self.history = FakeQueue(False) if history else None
+    def create(self, guild_id):
+        pass
 
-    def get(self):
-        return None
 
-    def delete(self, idx):
-        del self[idx]
+@dataclass
+class FakeLavalink:
+    """Fake lavalink.Client object."""
 
-    def reset(self):
-        self.clear()
+    player_manager: FakePlayerManager = field(default_factory=FakePlayerManager)
 
-    @property
-    def is_empty(self):
-        return len(self) == 0
+    def add_event_hooks(self, obj):
+        pass
 
 
 @dataclass
 class FakeVoiceClient:
-    """Fake wavelink.Player object."""
+    """Fake lavalink.DefaultPlayer object."""
 
-    queue: FakeQueue
+    queue: list[Track]
     played_tracks: list[object]
-    current: object = None
-    position: int = 0
+    current: Track = None
+    loop: bool = True
+    position_timestamp: int = 0
     volume: int = 100
-    playing: bool = False
     paused: bool = False
-    connected: bool = True
     channel: StubChannel = field(default_factory=StubChannel)
 
-    def is_playing(self):
-        return not (self.stopped or self.paused)
+    @property
+    def channel_id(self):
+        return self.channel.id
 
     def notify(self):
         pass
 
-    async def disconnect(self):
+    async def disconnect(self, force=False):
         self.connected = False
 
-    async def play(self, track, **_):
-        self.played_tracks.append(track)
+    async def play(self, track=None, **_):
+        if self.loop == lavalink.DefaultPlayer.LOOP_QUEUE and self.current:
+            self.queue.append(self.current)
         self.playing = True
         self.paused = False
-        self.current = track
+        if not track and self.queue:
+            self.current = self.queue.pop(0)
+        else:
+            self.current = track
 
-    async def pause(self, toggle):
+    async def stop(self):
+        self.current = None
+
+    def set_loop(self, loop):
+        self.loop = loop
+
+    async def set_pause(self, toggle):
         self.paused = toggle
 
     async def set_volume(self, volume):
@@ -224,6 +228,7 @@ class FakeContext:
     display: bool = True
     author: StubUser = field(default_factory=StubUser)
     message: FakeMessage = field(default_factory=FakeMessage)
+    guild: StubChannel = field(default_factory=StubChannel)
 
     def history(self, **_):
         return self.hist
@@ -281,8 +286,13 @@ async def fake_bot():
 
 
 @pytest.fixture
+async def fake_lavalink():
+    return FakeLavalink()
+
+
+@pytest.fixture
 def fake_voice_client():
-    return FakeVoiceClient(FakeQueue(), [])
+    return FakeVoiceClient([], [])
 
 
 @pytest.fixture
@@ -368,8 +378,8 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(fake_bot, fake_voice_client):
-    cog = MusicModule(fake_bot)
+def music_module(fake_bot, fake_lavalink, fake_voice_client):
+    cog = MusicModule(fake_bot, fake_lavalink)
     cog._MusicModule__players[StubChannel.id] = fake_voice_client
     cog._MusicModule__access_codes[123456] = fake_voice_client
     return cog

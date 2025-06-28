@@ -8,11 +8,11 @@ dynamic = ["version"]
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "aio-pika (>=9.5.5,<10.0.0)",
-  "discord.py[voice] (>=2.5.2,<3.0.0)",
+  "discord.py (>=2.5.2,<3.0.0)",
+  "lavalink (>=5.9.0,<6.0.0)",
   "pydantic (>=2.11.5,<3.0.0)",
   "python-dotenv (>=1.1.0,<2.0.0)",
   "textX (>=4.2.2,<5.0.0)",
-  "wavelink (>=3.4.1,<4.0.0)"
 ]
 
 [project.urls]
