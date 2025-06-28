@@ -222,7 +222,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def create_cog(cls, bot):
         lavalink = Client(bot.user.id)
         lavalink.add_node(
-            host=str(LAVALINK_URI().with_user(None).with_port(None)),
+            host=LAVALINK_URI().host,
             password=LAVALINK_URI().password,
             port=LAVALINK_URI().port,
             region=None,
