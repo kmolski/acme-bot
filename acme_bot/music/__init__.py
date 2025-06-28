@@ -23,7 +23,7 @@ from random import choices
 from discord import Embed, VoiceProtocol
 from discord.ext import commands
 from lavalink import Client, DefaultPlayer, listener
-from lavalink.events import NodeConnectedEvent
+from lavalink.events import Event
 from lavalink.errors import ClientError
 
 from acme_bot.autoloader import CogFactory, autoloaded
@@ -536,11 +536,7 @@ class MusicModule(commands.Cog, CogFactory):
             self.__remote_id = remote_id
             log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
 
-    @listener(NodeConnectedEvent)
-    async def _lavalink_ready(self, payload):
-        log.info("Connected to Lavalink node at '%s'", payload.node.uri)
-
-    @listener
+    @listener(Event)
     async def _send_player_update(self, payload):
         if hasattr(payload, "player"):
             player = self.__players[payload.player.channel_id]
@@ -557,16 +553,15 @@ class MusicModule(commands.Cog, CogFactory):
 
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
-                self.lavalink.player_manager.create(ctx.guild.id)
+                player = self.lavalink.player_manager.create(ctx.guild.id)
                 await author_voice.channel.connect(cls=LavalinkPlayer)
 
                 async with self.__lock:
                     access_code = self.__generate_access_code()
-                    player = ctx.voice_client
-                    player.set_loop(True)
                     self.__players[player.channel_id] = player
                     self.__access_codes[player.channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
+                    player.set_loop(True)
 
                 if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
                     await ctx.send(
