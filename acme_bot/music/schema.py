@@ -67,7 +67,7 @@ class QueueEntry(BaseModel):
             uploader=track.author,
             duration=secs,
             webpage_url=track.uri,
-            uploader_url=track.raw["artistUrl"],
+            uploader_url=track.raw.get("artistUrl"),
             duration_string=format_duration(secs),
             thumbnail=track.artwork_url,
             extractor=track.source_name,

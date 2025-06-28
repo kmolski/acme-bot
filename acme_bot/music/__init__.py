@@ -136,6 +136,11 @@ class LavalinkPlayer(VoiceProtocol):
         return self.player.loop
 
     @property
+    def paused(self):
+        """Return the current paused state."""
+        return self.player.paused
+
+    @property
     def position_timestamp(self):
         """Return the current player position."""
         return self.player.position_timestamp
