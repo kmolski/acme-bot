@@ -47,7 +47,7 @@ log = logging.getLogger(__name__)
 def display_entry(entry):
     """Display an entry with the duration in MM:SS format."""
     index, track = entry
-    duration_string = format_duration(track.length // 1000)
+    duration_string = format_duration(track.duration // 1000)
     return f"{index}. **{track.title}** - {track.author} - {duration_string}"
 
 
@@ -59,7 +59,7 @@ def assemble_menu(header, entries):
 
 def export_entry(entry):
     """Export an entry string with the URL, title and duration."""
-    duration_string = format_duration(entry.length // 1000)
+    duration_string = format_duration(entry.duration // 1000)
     return f"{entry.uri}    {entry.title} - {duration_string}\n"
 
 
@@ -163,7 +163,7 @@ class LavalinkPlayer(VoiceProtocol):
 
     async def search(self, query):
         """Search for tracks using the given query."""
-        return self.__lavalink.get_tracks(query)
+        return (await self.__lavalink.get_tracks(query)).tracks
 
     def set_loop(self, loop):
         """Set the loop parameter of the player."""
@@ -354,7 +354,7 @@ class MusicModule(commands.Cog, CogFactory):
             results = list(
                 chain(
                     *[
-                        await self.lavalink.get_tracks(url)
+                        (await self.lavalink.get_tracks(url)).tracks
                         for url in strip_urls(url_list)
                     ]
                 )
