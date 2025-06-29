@@ -73,7 +73,7 @@ class FakeLavalink:
 
     player_manager: FakePlayerManager = field(default_factory=FakePlayerManager)
 
-    def add_event_hooks(self, obj):
+    def add_event_hook(self, obj):
         pass
 
 
