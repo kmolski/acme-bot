@@ -22,8 +22,7 @@ from random import choices
 
 from discord import Embed, VoiceProtocol
 from discord.ext import commands
-from lavalink import Client, DefaultPlayer, listener
-from lavalink.events import Event
+from lavalink import Client, DefaultPlayer
 from lavalink.errors import ClientError
 
 from acme_bot.autoloader import CogFactory, autoloaded
@@ -195,6 +194,7 @@ class LavalinkPlayer(VoiceProtocol):
     async def __destroy(self):
         self.cleanup()
         if not self.__destroyed:
+            self.notify = lambda: None
             self.__destroyed = True
             try:
                 await self.__lavalink.player_manager.destroy(self.channel.guild.id)
@@ -215,7 +215,7 @@ class MusicModule(commands.Cog, CogFactory):
         self.__remote_id = None
         self.bot = bot
         self.lavalink = lavalink
-        self.lavalink.add_event_hooks(self)
+        self.lavalink.add_event_hook(self._send_player_update)
 
     @classmethod
     def is_available(cls):
@@ -287,7 +287,6 @@ class MusicModule(commands.Cog, CogFactory):
         )
 
         new_entry = await new.get()
-        ctx.voice_client.notify()
         return export_entry(new_entry)
 
     @commands.command(name="play-snd", aliases=["psnd"])
@@ -313,7 +312,6 @@ class MusicModule(commands.Cog, CogFactory):
         )
 
         new_entry = await new.get()
-        ctx.voice_client.notify()
         return export_entry(new_entry)
 
     @commands.command(name="play-url", aliases=["purl"])
@@ -342,7 +340,6 @@ class MusicModule(commands.Cog, CogFactory):
             view=ConfirmAddTracks(ctx.author, ctx.voice_client, results),
             reference=ctx.message,
         )
-        ctx.voice_client.notify()
         return export_entry_list(results)
 
     @commands.command(name="list-urls", aliases=["lurl"])
@@ -536,9 +533,8 @@ class MusicModule(commands.Cog, CogFactory):
             self.__remote_id = remote_id
             log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
 
-    @listener(Event)
     async def _send_player_update(self, payload):
-        if hasattr(payload, "player"):
+        if hasattr(payload, "player") and payload.player.channel_id in self.__players:
             player = self.__players[payload.player.channel_id]
             player.notify()
 
@@ -618,8 +614,6 @@ class MusicModule(commands.Cog, CogFactory):
             "Deleted the MusicPlayer instance for Channel ID %s",
             player.channel_id,
         )
-        player.queue.clear()
         await player.stop()
         await player.disconnect(force=True)
-        player.notify()
         self.bot.dispatch("acme_bot_player_deleted", player, access_code)

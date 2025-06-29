@@ -49,7 +49,7 @@ class ConfirmAddTracks(VerifiedView):
         else:
             await self.__player.play(self.__results[0])
         self.__player.queue.extend(self.__results[1:])
-
+        self.__player.notify()
         await interaction.message.edit(
             content=f"\u2795 {len(self.__results)} tracks added to the queue.",
             view=None,
@@ -84,7 +84,7 @@ class SelectTrack(VerifiedView):
                 self.__player.queue.append(new)
             else:
                 await self.__player.play(new)
-
+            self.__player.notify()
             await interaction.message.edit(
                 content=f"\u2795 **{new.title}** by {new.author} added to the queue.",
                 view=None,
