@@ -265,7 +265,7 @@ class MusicModule(commands.Cog, CogFactory):
                 f"\u23cf\ufe0f Quitting channel **{ctx.voice_client.channel.name}**."
             )
         async with self.__lock:
-            queue = ctx.voice_client.queue.copy()
+            queue = [ctx.voice_client.current] + ctx.voice_client.queue.copy()
             await self.__delete_player(ctx.voice_client)
         return export_entry_list(queue)
 
@@ -424,7 +424,7 @@ class MusicModule(commands.Cog, CogFactory):
             The track URLs as a string.
         """
         async with self.__lock:
-            queue = ctx.voice_client.queue
+            queue = [ctx.voice_client.current] + ctx.voice_client.queue
             if ctx.display:
                 channel_name = ctx.voice_client.channel.name
                 embed = Embed(
