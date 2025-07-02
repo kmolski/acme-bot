@@ -37,7 +37,7 @@ class PauseCommand(RemoteCommand):
     op: Literal["pause"]
 
     async def run(self, player):
-        await player.set_pause(True)
+        await player.pause()
         player.notify()
 
 
@@ -47,9 +47,7 @@ class ResumeCommand(RemoteCommand):
     op: Literal["resume"]
 
     async def run(self, player):
-        if player.current is None:
-            await player.play()
-        await player.set_pause(False)
+        await player.resume()
         player.notify()
 
 

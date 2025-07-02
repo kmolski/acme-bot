@@ -110,14 +110,17 @@ class FakeVoiceClient:
         else:
             self.current = track
 
+    async def resume(self):
+        self.paused = False
+
     async def stop(self):
         self.current = None
 
     def set_loop(self, loop):
         self.loop = loop
 
-    async def set_pause(self, toggle):
-        self.paused = toggle
+    async def pause(self):
+        self.paused = True
 
     async def set_volume(self, volume):
         self.volume = volume

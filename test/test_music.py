@@ -16,7 +16,7 @@ async def test_pause_sets_player_pause(fake_ctx, fake_voice_client, music_module
 
 
 async def test_resume_unsets_player_pause(fake_ctx, fake_voice_client, music_module):
-    await fake_voice_client.set_pause(True)
+    await fake_voice_client.pause()
     await music_module.resume(music_module, fake_ctx)
     assert fake_voice_client.paused is False
 
