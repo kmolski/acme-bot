@@ -110,53 +110,48 @@ class LavalinkPlayer(VoiceProtocol):
         await self.__lavalink.voice_update_handler(handler_data)
 
     @property
-    def player(self):
-        """Return the lavalink.DefaultPlayer instance."""
-        return self.__lavalink.player_manager.get(self.channel.guild.id)
-
-    @property
     def channel_id(self):
         """Return the channel ID of the player."""
-        return self.player.channel_id
+        return self.__get_player().channel_id
 
     @property
     def current(self):
         """Return the currently playing track. (or None if stopped)"""
-        return self.player.current
+        return self.__get_player().current
 
     @current.setter
     def current(self, value):
         """Set the currently playing track."""
-        self.player.current = value
+        self.__get_player().current = value
 
     @property
     def loop(self):
         """Return the current loop parameter."""
-        return self.player.loop == DefaultPlayer.LOOP_QUEUE
+        return self.__get_player().loop == DefaultPlayer.LOOP_QUEUE
 
     @property
     def paused(self):
         """Return the current paused state."""
-        return self.player.paused
+        return self.__get_player().paused
 
     @property
     def position_timestamp(self):
         """Return the current player position."""
-        return self.player.position_timestamp
+        return self.__get_player().position_timestamp
 
     @property
     def queue(self):
         """Return the player queue."""
-        return self.player.queue
+        return self.__get_player().queue
 
     @property
     def volume(self):
         """Return the current player volume."""
-        return self.player.volume
+        return self.__get_player().volume
 
     async def play(self, track=None):
         """Play the given track. (or the next one if not specified)"""
-        await self.player.play(track)
+        await self.__get_player().play(track)
 
     async def prev(self):
         """Play the previous track."""
@@ -165,31 +160,41 @@ class LavalinkPlayer(VoiceProtocol):
             self.current = None
             await self.play(self.queue.pop(-1))
 
+    async def resume(self):
+        """Resume playing the current track, or play the first one from the queue."""
+        player = self.__get_player()
+        if player.current is None:
+            await player.play()
+        await player.set_pause(False)
+
     async def search(self, query):
         """Search for tracks using the given query."""
         return (await self.__lavalink.get_tracks(query)).tracks
 
     def set_loop(self, loop):
         """Set the loop parameter of the player."""
-        self.player.set_loop(
+        self.__get_player().set_loop(
             DefaultPlayer.LOOP_QUEUE if loop else DefaultPlayer.LOOP_NONE
         )
 
-    async def set_pause(self, pause):
+    async def pause(self):
         """Pause the player."""
-        await self.player.set_pause(pause)
+        await self.__get_player().set_pause(True)
 
     async def set_volume(self, volume):
         """Change the current player volume."""
-        await self.player.set_volume(volume)
+        await self.__get_player().set_volume(volume)
 
     async def skip(self):
         """Play the next track."""
-        await self.player.skip()
+        await self.__get_player().skip()
 
     async def stop(self):
         """Stop the player."""
-        await self.player.stop()
+        await self.__get_player().stop()
+
+    def __get_player(self):
+        return self.__lavalink.player_manager.get(self.channel.guild.id)
 
     async def __destroy(self):
         self.cleanup()
@@ -405,7 +410,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def pause(self, ctx):
         """Pause the player."""
         async with self.__lock:
-            await ctx.voice_client.set_pause(True)
+            await ctx.voice_client.pause()
             ctx.voice_client.notify()
         if ctx.display:
             await ctx.send("\u23f8\ufe0f Paused.")
@@ -437,9 +442,7 @@ class MusicModule(commands.Cog, CogFactory):
     async def resume(self, ctx):
         """Resume playing the current track."""
         async with self.__lock:
-            if ctx.voice_client.current is None:
-                await ctx.voice_client.play()
-            await ctx.voice_client.set_pause(False)
+            await ctx.voice_client.resume()
             ctx.voice_client.notify()
 
     @commands.command(aliases=["clea"])
