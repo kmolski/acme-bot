@@ -65,7 +65,7 @@ async def test_run_command_pauses_on_pause_command(
 async def test_run_command_resumes_on_resume_command(
     remote_control_module, fake_voice_client
 ):
-    await fake_voice_client.set_pause(True)
+    await fake_voice_client.pause()
 
     message = FakeAmqpMessage(
         b"""
