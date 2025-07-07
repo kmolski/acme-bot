@@ -1,0 +1,44 @@
+name: Create release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: create-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+          fetch-tags: true
+
+      - name: Create GitHub release
+        uses: go-semantic-release/action@v1
+        id: semrel
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          changelog-generator-opt: 'emojis=true'
+
+      - name: Build Python wheel
+        uses: ./.github/workflows/wheel_build.yml
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-wheel
+
+      - name: Upload release assets
+        run: gh release upload "$TAG_NAME" dist/*.whl remote_api.json
+        env:
+          TAG_NAME: 'v${{ steps.semrel.outputs.version }}'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        uses: ./.github/workflows/docker_build.yml
+        with:
+          tags: |
+            ghcr.io/kmolski/acme-bot:v${{ steps.semrel.outputs.version }}
+            ghcr.io/kmolski/acme-bot:latest

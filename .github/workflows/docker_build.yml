@@ -1,0 +1,42 @@
+name: Build Docker image
+
+on:
+  workflow_call:
+    inputs:
+      tags:
+        type: string
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docker-buildx-${{ github.ref_name }}
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Python wheel
+        uses: ./.github/workflows/wheel_build.yml
+        if: inputs.tags == ''
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-wheel
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: 'ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          tags: ${{ inputs.tags || ('ghcr.io/kmolski/acme-bot:' + github.ref_name) }}
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: true
