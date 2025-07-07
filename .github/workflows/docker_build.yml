@@ -36,7 +36,7 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          tags: ${{ inputs.tags || ('ghcr.io/kmolski/acme-bot:' + github.ref_name) }}
+          tags: ${{ inputs.tags || 'ghcr.io/kmolski/acme-bot:${{ github.ref_name}}' }}
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
