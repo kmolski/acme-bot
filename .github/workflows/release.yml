@@ -48,6 +48,8 @@ jobs:
   build-docker-image:
     uses: ./.github/workflows/docker_build.yml
     needs: build-python-wheel
+    permissions:
+      packages: write
     with:
       tags: |
         ghcr.io/kmolski/acme-bot:v${{ needs.create-release.outputs.version }}
