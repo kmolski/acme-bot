@@ -88,8 +88,8 @@ class LavalinkPlayer(VoiceProtocol):
             channel=self.channel, self_mute=self_mute, self_deaf=self_deaf
         )
 
-    async def disconnect(self, *, force=False) -> None:
-        player = self.__lavalink.player_manager.get(self.channel.guild.id)
+    async def disconnect(self, *, force=False):
+        player = self.__get_player()
         if not force and not player.is_connected:
             return
         await self.channel.guild.change_voice_state(channel=None)
