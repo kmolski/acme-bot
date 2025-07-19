@@ -34,6 +34,7 @@ LOG_LEVEL = ConfigProperty("LOG_LEVEL", logging.getLevelName)
 
 # Liveprobe module
 LIVEPROBE_ENABLE = ConfigProperty("LIVEPROBE_ENABLE", bool)
+LIVEPROBE_PORT = ConfigProperty("LIVEPROBE_PORT", int)
 
 # Music module
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)

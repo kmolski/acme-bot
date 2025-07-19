@@ -49,10 +49,11 @@ Getting started
 | `RABBITMQ_URI`          | _(none)_      | RabbitMQ connection URI. _(optional)_                              |
 | `COMMAND_PREFIX`        | `!`           | Command prefix for the bot instance.                               |
 | `LOG_LEVEL`             | `INFO`        | Level of log messages to display.                                  |
-| `LIVEPROBE_ENABLE`      | `0`           | Enables a TCP liveness probe on port 3000. (value: 0/1)            |
+| `LIVEPROBE_ENABLE`      | `0`           | Enables a TCP liveness probe for k8s. (value: 0/1)                 |
+| `LIVEPROBE_PORT`        | `3000`        | TCP port for the liveness probe.                                   |
 | `MUSIC_REMOTE_BASE_URL` | _(none)_      | Base URL of the acme-bot-remote frontend application. _(optional)_ |
 
-#### Docker
+#### Docker container
 
 ```console
 $ docker run -d \
