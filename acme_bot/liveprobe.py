@@ -21,7 +21,7 @@ from asyncio import start_server
 from discord.ext import commands
 
 from acme_bot.autoloader import CogFactory, autoloaded
-from acme_bot.config.properties import LIVEPROBE_ENABLE
+from acme_bot.config.properties import LIVEPROBE_ENABLE, LIVEPROBE_PORT
 
 log = logging.getLogger(__name__)
 
@@ -35,11 +35,13 @@ class LivenessProbeModule(commands.Cog, CogFactory):
 
     @classmethod
     def is_available(cls):
-        return LIVEPROBE_ENABLE.get() or False
+        return LIVEPROBE_ENABLE.get()
 
     @classmethod
     async def create_cog(cls, bot):
-        server = await start_server(cls._handle_conn, "", 3000, start_serving=False)
+        server = await start_server(
+            cls._handle_conn, "", LIVEPROBE_PORT(), start_serving=False
+        )
         return cls(server)
 
     @classmethod
