@@ -1,7 +1,6 @@
 import asyncio
 
 from conftest import FakeAmqpMessage
-from lavalink import DefaultPlayer
 
 
 async def test_run_command_handles_invalid_json(remote_control_module):
@@ -108,7 +107,7 @@ async def test_run_command_sets_loop_on_loop_command(
         """
     )
     await remote_control_module._run_command(message)
-    assert fake_voice_client.loop == DefaultPlayer.LOOP_NONE
+    assert fake_voice_client.loop is False
 
 
 async def test_run_command_sets_volume_on_volume_command(
