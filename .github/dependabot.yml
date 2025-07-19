@@ -11,7 +11,7 @@ updates:
         patterns: ["pytest*"]
       semver-patch:
         update-types: ["patch"]
-        exclude-patterns: ["black", "yt-dlp"]
+        exclude-patterns: ["black"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
