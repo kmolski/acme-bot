@@ -46,12 +46,12 @@ Getting started
 |-------------------------|---------------|--------------------------------------------------------------------|
 | `DISCORD_TOKEN`         | _(none)_      | Discord API token.                                                 |
 | `LAVALINK_URI`          | _(none)_      | Lavalink connection URI. _(optional)_                              |
-| `RABBITMQ_URI`          | _(none)_      | RabbitMQ connection URI. _(optional)_                              |
 | `COMMAND_PREFIX`        | `!`           | Command prefix for the bot instance.                               |
 | `LOG_LEVEL`             | `INFO`        | Level of log messages to display.                                  |
 | `LIVEPROBE_ENABLE`      | `0`           | Enables a TCP liveness probe for k8s. (value: 0/1)                 |
 | `LIVEPROBE_PORT`        | `3000`        | TCP port for the liveness probe.                                   |
 | `MUSIC_REMOTE_BASE_URL` | _(none)_      | Base URL of the acme-bot-remote frontend application. _(optional)_ |
+| `MUSIC_REMOTE_PORT`     | `8080`        | WebSocket port for the remote API.                                 |
 
 #### Docker container
 
@@ -59,7 +59,6 @@ Getting started
 $ docker run -d \
       -e DISCORD_TOKEN=<Discord API token> \
       -e LAVALINK_URI=<Lavalink instance URI> \
-      -e RABBITMQ_URI=<RabbitMQ URI, optional> \
       ghcr.io/kmolski/acme-bot:latest
 ```
 

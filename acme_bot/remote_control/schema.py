@@ -68,7 +68,7 @@ class LoopCommand(RemoteCommand):
     enabled: bool
 
     async def run(self, player):
-        player.set_loop(self.enabled)
+        player.loop = self.enabled
         player.notify()
 
 
