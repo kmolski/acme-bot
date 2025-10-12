@@ -1,6 +1,6 @@
 """Properties for deployment-specific config (e.g. credentials, URLs, log levels)"""
 
-#  Copyright (C) 2022-2024  Krzysztof Molski
+#  Copyright (C) 2022-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -38,3 +38,4 @@ LIVEPROBE_PORT = ConfigProperty("LIVEPROBE_PORT", int)
 
 # Music module
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)
+MUSIC_REMOTE_PORT = ConfigProperty("MUSIC_REMOTE_PORT", int)

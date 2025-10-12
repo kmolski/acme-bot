@@ -1,12 +1,18 @@
+from aiohttp import web
 from asyncio import get_running_loop, sleep, AbstractEventLoop
 from dataclasses import dataclass, field
+from multidict import CIMultiDict
 from uuid import uuid4
 
 import lavalink
 import pytest
 
 from acme_bot.music import MusicModule
-from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
+from acme_bot.remote_control import (
+    RemoteControlModule,
+    bearer_auth_factory,
+)
+from acme_bot.remote_control.rmq import RmqControlModule, RmqMusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
@@ -31,7 +37,7 @@ class StubChannel:
 
     async def connect(self, *, cls):
         if self.ctx is not None:
-            self.ctx.voice_client = FakeVoiceClient([], None)
+            self.ctx.voice_client = FakeVoiceClient([], [], [])
 
 
 @dataclass
@@ -83,6 +89,7 @@ class FakeVoiceClient:
 
     queue: list[Track]
     played_tracks: list[object]
+    observers: list[object]
     current: Track = None
     loop: bool = True
     position_timestamp: int = 0
@@ -95,7 +102,8 @@ class FakeVoiceClient:
         return self.channel.id
 
     def notify(self):
-        pass
+        for observer in self.observers:
+            observer.send_update()
 
     async def disconnect(self, force=False):
         self.connected = False
@@ -295,7 +303,7 @@ async def fake_lavalink():
 
 @pytest.fixture
 def fake_voice_client():
-    return FakeVoiceClient([], [])
+    return FakeVoiceClient([], [], [])
 
 
 @pytest.fixture
@@ -369,8 +377,29 @@ def stub_interaction(fake_message):
 
 
 @pytest.fixture
-async def remote_control_module(fake_bot, fake_voice_client):
-    cog = RemoteControlModule(fake_bot, None)
+def app():
+    token = "A" * 64
+    return web.Application(middlewares=[bearer_auth_factory(token)])
+
+
+@pytest.fixture
+async def test_client(aiohttp_client, remote_control_module, app):
+    client = await aiohttp_client(app)
+    token = f"acme-bot.bearer.{'A' * 64}"
+    headers = CIMultiDict([("Sec-WebSocket-Protocol", f"acme-bot,{token}")])
+    return await client.ws_connect("/123456", headers=headers)
+
+
+@pytest.fixture
+async def remote_control_module(fake_bot, fake_voice_client, app):
+    cog = RemoteControlModule(fake_bot, app, None)
+    await cog._register_player(fake_voice_client, 123456)
+    return cog
+
+
+@pytest.fixture
+async def rmq_control_module(fake_bot, fake_voice_client):
+    cog = RmqControlModule(fake_bot, None)
     await cog._register_player(fake_voice_client, 123456)
     return cog
 
@@ -399,7 +428,7 @@ def amqp_exchange(amqp_channel):
 
 
 @pytest.fixture
-async def player_observer(amqp_exchange, fake_voice_client):
-    return MusicPlayerObserver(
+async def rmq_player_observer(amqp_exchange, fake_voice_client):
+    return RmqMusicPlayerObserver(
         amqp_exchange, fake_voice_client, uuid4(), get_running_loop()
     )

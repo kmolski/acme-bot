@@ -79,8 +79,7 @@ class LavalinkPlayer(VoiceProtocol):
         super().__init__(bot, channel)
         self.__lavalink = bot.get_cog("MusicModule").lavalink
         self.__destroyed = False
-        self.observer = None
-        self.notify = lambda: None
+        self.observers = []
 
     async def connect(self, *, timeout, reconnect, self_deaf=False, self_mute=False):
         self.__lavalink.player_manager.create(guild_id=self.channel.guild.id)
@@ -129,6 +128,13 @@ class LavalinkPlayer(VoiceProtocol):
         """Return the current loop parameter."""
         return self.__get_player().loop == DefaultPlayer.LOOP_QUEUE
 
+    @loop.setter
+    def loop(self, value):
+        """Set the loop parameter of the player."""
+        self.__get_player().set_loop(
+            DefaultPlayer.LOOP_QUEUE if value else DefaultPlayer.LOOP_NONE
+        )
+
     @property
     def paused(self):
         """Return the current paused state."""
@@ -171,12 +177,6 @@ class LavalinkPlayer(VoiceProtocol):
         """Search for tracks using the given query."""
         return (await self.__lavalink.get_tracks(query)).tracks
 
-    def set_loop(self, loop):
-        """Set the loop parameter of the player."""
-        self.__get_player().set_loop(
-            DefaultPlayer.LOOP_QUEUE if loop else DefaultPlayer.LOOP_NONE
-        )
-
     async def pause(self):
         """Pause the player."""
         await self.__get_player().set_pause(True)
@@ -193,13 +193,17 @@ class LavalinkPlayer(VoiceProtocol):
         """Stop the player."""
         await self.__get_player().stop()
 
+    def notify(self):
+        """Notify the player's observers."""
+        for observer in self.observers:
+            observer.send_update()
+
     def __get_player(self):
         return self.__lavalink.player_manager.get(self.channel.guild.id)
 
     async def __destroy(self):
         self.cleanup()
         if not self.__destroyed:
-            self.notify = lambda: None
             self.__destroyed = True
             try:
                 await self.__lavalink.player_manager.destroy(self.channel.guild.id)
@@ -218,6 +222,7 @@ class MusicModule(commands.Cog, CogFactory):
         self.__players = {}
         self.__access_codes = {}
         self.__remote_id = None
+        self.__remote_token = None
         self.bot = bot
         self.lavalink = lavalink
         self.lavalink.add_event_hook(self._send_player_update)
@@ -399,7 +404,7 @@ class MusicModule(commands.Cog, CogFactory):
         """
         do_loop = bool(do_loop)
         async with self.__lock:
-            ctx.voice_client.set_loop(do_loop)
+            ctx.voice_client.loop = do_loop
             ctx.voice_client.notify()
         if ctx.display:
             msg = "on" if do_loop else "off"
@@ -529,12 +534,18 @@ class MusicModule(commands.Cog, CogFactory):
                     player = self.__players[prev.id]
                     await self.__delete_player(player)
 
-    @commands.Cog.listener("on_acme_bot_remote_id")
-    async def _register_remote_id(self, remote_id):
+    @commands.Cog.listener("on_acme_bot_remote_token")
+    async def _register_remote_token(self, remote_token):
+        """Register the remote access token of the current instance."""
+        async with self.__lock:
+            self.__remote_token = remote_token
+
+    @commands.Cog.listener("on_acme_bot_rmq_id")
+    async def _register_rmq_id(self, rmq_id):
         """Register the remote ID of the current instance."""
         async with self.__lock:
-            self.__remote_id = remote_id
-            log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
+            self.__remote_id = rmq_id
+            log.debug("Registered RmqControlModule with remote ID %s", rmq_id)
 
     async def _send_player_update(self, payload):
         if hasattr(payload, "player") and payload.player.channel_id in self.__players:
@@ -559,15 +570,18 @@ class MusicModule(commands.Cog, CogFactory):
                 async with self.__lock:
                     access_code = self.__generate_access_code()
                     player = ctx.voice_client
-                    player.set_loop(True)
+                    player.loop = True
                     self.__players[channel_id] = player
                     self.__access_codes[channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
 
-                if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
+                if MUSIC_REMOTE_BASE_URL.get() is not None:
                     await ctx.send(
                         embed=remote_embed(
-                            MUSIC_REMOTE_BASE_URL(), self.__remote_id, access_code
+                            MUSIC_REMOTE_BASE_URL(),
+                            self.__remote_token,
+                            self.__remote_id,
+                            access_code,
                         )
                     )
                 log.info(
