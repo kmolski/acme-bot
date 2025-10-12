@@ -38,3 +38,4 @@ LIVEPROBE_PORT = ConfigProperty("LIVEPROBE_PORT", int)
 
 # Music module
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)
+MUSIC_REMOTE_PORT = ConfigProperty("MUSIC_REMOTE_PORT", int)

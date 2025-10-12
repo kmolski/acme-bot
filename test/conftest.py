@@ -7,6 +7,7 @@ import pytest
 
 from acme_bot.music import MusicModule
 from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
+from acme_bot.remote_control.rmq import RmqControlModule, RmqMusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
 
@@ -370,7 +371,14 @@ def stub_interaction(fake_message):
 
 @pytest.fixture
 async def remote_control_module(fake_bot, fake_voice_client):
-    cog = RemoteControlModule(fake_bot, None)
+    cog = RemoteControlModule(fake_bot, None, None, None)
+    await cog._register_player(fake_voice_client, 123456)
+    return cog
+
+
+@pytest.fixture
+async def rmq_control_module(fake_bot, fake_voice_client):
+    cog = RmqControlModule(fake_bot, None)
     await cog._register_player(fake_voice_client, 123456)
     return cog
 
@@ -399,7 +407,12 @@ def amqp_exchange(amqp_channel):
 
 
 @pytest.fixture
-async def player_observer(amqp_exchange, fake_voice_client):
-    return MusicPlayerObserver(
+async def rmq_player_observer(amqp_exchange, fake_voice_client):
+    return RmqMusicPlayerObserver(
         amqp_exchange, fake_voice_client, uuid4(), get_running_loop()
     )
+
+
+@pytest.fixture
+async def player_observer(fake_voice_client):
+    return MusicPlayerObserver(fake_voice_client, None, get_running_loop())
