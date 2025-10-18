@@ -123,9 +123,13 @@ def current_track_embed(current):
     return embed
 
 
-def remote_embed(base_url, remote_id, access_code):
+def remote_embed(base_url, remote_token, remote_id, access_code):
     """Create an embed with a link to the remote control application."""
-    url = base_url % {"rid": remote_id, "ac": access_code}
+    url = base_url % {"ac": access_code}
+    if remote_token:
+        url = url % {"rt": remote_token}
+    if remote_id:
+        url = url % {"rid": remote_id}
     embed = Embed(
         title="\u27a1\ufe0f Click here to access the web player.",
         color=EMBED_COLOR,

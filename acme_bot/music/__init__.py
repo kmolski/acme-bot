@@ -222,6 +222,7 @@ class MusicModule(commands.Cog, CogFactory):
         self.__players = {}
         self.__access_codes = {}
         self.__remote_id = None
+        self.__remote_token = None
         self.bot = bot
         self.lavalink = lavalink
         self.lavalink.add_event_hook(self._send_player_update)
@@ -533,12 +534,18 @@ class MusicModule(commands.Cog, CogFactory):
                     player = self.__players[prev.id]
                     await self.__delete_player(player)
 
-    @commands.Cog.listener("on_acme_bot_remote_id")
-    async def _register_remote_id(self, remote_id):
+    @commands.Cog.listener("on_acme_bot_remote_token")
+    async def _register_remote_token(self, remote_token):
+        """Register the remote access token of the current instance."""
+        async with self.__lock:
+            self.__remote_token = remote_token
+
+    @commands.Cog.listener("on_acme_bot_rmq_id")
+    async def _register_rmq_id(self, rmq_id):
         """Register the remote ID of the current instance."""
         async with self.__lock:
-            self.__remote_id = remote_id
-            log.debug("Registered RemoteControlModule with remote ID %s", remote_id)
+            self.__remote_id = rmq_id
+            log.debug("Registered RmqControlModule with remote ID %s", rmq_id)
 
     async def _send_player_update(self, payload):
         if hasattr(payload, "player") and payload.player.channel_id in self.__players:
@@ -568,10 +575,13 @@ class MusicModule(commands.Cog, CogFactory):
                     self.__access_codes[channel_id] = access_code
                     self.bot.dispatch("acme_bot_player_created", player, access_code)
 
-                if MUSIC_REMOTE_BASE_URL.get() is not None and self.__remote_id:
+                if MUSIC_REMOTE_BASE_URL.get() is not None:
                     await ctx.send(
                         embed=remote_embed(
-                            MUSIC_REMOTE_BASE_URL(), self.__remote_id, access_code
+                            MUSIC_REMOTE_BASE_URL(),
+                            self.__remote_token,
+                            self.__remote_id,
+                            access_code,
                         )
                     )
                 log.info(

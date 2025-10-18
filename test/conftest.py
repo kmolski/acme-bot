@@ -1,3 +1,4 @@
+from aiohttp import web
 from asyncio import get_running_loop, sleep, AbstractEventLoop
 from dataclasses import dataclass, field
 from uuid import uuid4
@@ -6,7 +7,10 @@ import lavalink
 import pytest
 
 from acme_bot.music import MusicModule
-from acme_bot.remote_control import RemoteControlModule, MusicPlayerObserver
+from acme_bot.remote_control import (
+    RemoteControlModule,
+    bearer_auth_factory,
+)
 from acme_bot.remote_control.rmq import RmqControlModule, RmqMusicPlayerObserver
 from acme_bot.shell import ShellModule
 from acme_bot.textutils import send_pages
@@ -370,8 +374,22 @@ def stub_interaction(fake_message):
 
 
 @pytest.fixture
-async def remote_control_module(fake_bot, fake_voice_client):
-    cog = RemoteControlModule(fake_bot, None, None, None)
+def app():
+    token = "A" * 64
+    return web.Application(middlewares=[bearer_auth_factory(token)])
+
+
+@pytest.fixture
+async def test_client(aiohttp_client, remote_control_module, app):
+    token = f"Bearer {'A' * 64}"
+    client = await aiohttp_client(app)
+    await client.start_server()
+    return await client.ws_connect("/123456", headers={"Authorization": token})
+
+
+@pytest.fixture
+async def remote_control_module(fake_bot, fake_voice_client, app):
+    cog = RemoteControlModule(fake_bot, app, None)
     await cog._register_player(fake_voice_client, 123456)
     return cog
 
@@ -411,8 +429,3 @@ async def rmq_player_observer(amqp_exchange, fake_voice_client):
     return RmqMusicPlayerObserver(
         amqp_exchange, fake_voice_client, uuid4(), get_running_loop()
     )
-
-
-@pytest.fixture
-async def player_observer(fake_voice_client):
-    return MusicPlayerObserver(fake_voice_client, None, get_running_loop())

@@ -75,6 +75,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
 
         self.__bot = bot
         self.__app = app
+        self.__app.add_routes([web.get("/{access_code:\\d+}", self._handle_ws)])
         self.__runner = runner
 
     @classmethod
@@ -94,14 +95,12 @@ class RemoteControlModule(commands.Cog, CogFactory):
         token = choices(hexdigits, k=64)
         app = web.Application(middlewares=[bearer_auth_factory(token)])
         runner = web.AppRunner(app)
+        cog = cls(bot, app, runner)
         await runner.setup()
         server = web.TCPSite(runner, port=MUSIC_REMOTE_PORT())
         await server.start()
         bot.dispatch("acme_bot_remote_token", token)
-        return cls(bot, app, runner)
-
-    async def cog_load(self):
-        self.__app.add_routes([web.get("/{access_code:\\d+}", self._handle_ws)])
+        return cog
 
     async def cog_unload(self):
         await self.__runner.close()
@@ -129,21 +128,20 @@ class RemoteControlModule(commands.Cog, CogFactory):
         player.observers.add(observer)
 
         async for message in ws:
-            self._handle_message(player, message)
+            if message.type is not WSMsgType.TEXT:
+                log.error("Message type is not TEXT: %s", message.type)
+                continue
+            self._run_command(player, message.data)
 
-    async def _handle_message(self, player, message):
-        if message.type is not WSMsgType.TEXT:
-            log.error("Message type is not TEXT: %s", message.type)
-            return
-        content = message.data
-        log.debug("Received message: %s", content)
+    async def _run_command(self, player, message):
+        log.debug("Received message: %s", message)
         try:
-            command = RemoteCommandModel.model_validate_json(content).root
+            command = RemoteCommandModel.model_validate_json(message).root
             async with self.__lock:
                 await command.run(player)
         except KeyError as exc:
             log.debug("Invalid access code: '%s'", exc.args[0])
         except (ValidationError, ValueError) as exc:
-            log.exception("Invalid command: %s", content, exc_info=exc)
+            log.exception("Invalid command: %s", message, exc_info=exc)
         except (commands.CommandError, IndexError) as exc:
-            log.exception("Command failed: %s", content, exc_info=exc)
+            log.exception("Command failed: %s", message, exc_info=exc)
