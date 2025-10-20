@@ -1,6 +1,6 @@
 """Discord music bot with a custom shell language."""
 
-#  Copyright (C) 2019-2024  Krzysztof Molski
+#  Copyright (C) 2019-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@ from argparse import ArgumentParser
 from datetime import datetime, UTC
 from functools import partial
 from importlib import import_module
-from pkgutil import iter_modules
+from pkgutil import walk_packages
 from sys import modules
 
 from discord import Intents
@@ -66,7 +66,7 @@ class HelpCommand(commands.DefaultHelpCommand):
 def import_submodules():
     """Import all submodules of acme_bot."""
     current_module = modules[__name__]
-    for _, module_name, _ in iter_modules(current_module.__path__, f"{__name__}."):
+    for _, module_name, _ in walk_packages(current_module.__path__, f"{__name__}."):
         import_module(module_name)
 
 
