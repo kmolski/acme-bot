@@ -55,3 +55,4 @@ class LivenessProbeModule(commands.Cog, CogFactory):
 
     async def cog_unload(self):
         self.__server.close()
+        self.__server.abort_clients()
