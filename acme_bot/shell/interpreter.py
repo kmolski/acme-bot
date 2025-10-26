@@ -1,6 +1,6 @@
 """Shell interpreter based on the TextX parser generator."""
 
-#  Copyright (C) 2019-2024  Krzysztof Molski
+#  Copyright (C) 2019-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -16,10 +16,10 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from copy import copy
-from os.path import join, dirname
+from importlib.resources import read_text
 
 from discord.ext import commands
-from textx import metamodel_from_file
+from textx import metamodel_from_str
 
 from acme_bot.textutils import escape_md_block, MD_BLOCK_FMT
 
@@ -193,8 +193,8 @@ class ExprSubst:
         return result
 
 
-META_MODEL = metamodel_from_file(
-    join(dirname(__file__), "grammar.tx"),
+META_MODEL = metamodel_from_str(
+    read_text(__name__, "grammar.tx"),
     classes=[
         ExprSeq,
         ExprComp,

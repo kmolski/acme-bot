@@ -1,6 +1,6 @@
 """Configuration management based on .env files and environment overrides."""
 
-#  Copyright (C) 2022-2023  Krzysztof Molski
+#  Copyright (C) 2022-2025  Krzysztof Molski
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
@@ -18,8 +18,8 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib.resources import path
 from os import environ
-from os.path import dirname, join
 from typing import Any
 
 from dotenv import load_dotenv
@@ -34,8 +34,9 @@ def load_config(config_path=None):
         log.debug("Loading config file: '%s'", config_path)
         load_dotenv(config_path)
 
-    log.debug("Loading config file: 'default.conf'")
-    load_dotenv(join(dirname(__file__), "default.conf"))
+    with path(__name__, "default.conf") as default_path:
+        log.debug("Loading config file: 'default.conf'")
+        load_dotenv(default_path)
 
 
 @dataclass
