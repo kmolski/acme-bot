@@ -200,7 +200,6 @@ files = [
 
 [package.dependencies]
 frozenlist = ">=1.1.0"
-typing-extensions = {version = ">=4.2", markers = "python_version < \"3.13\""}
 
 [[package]]
 name = "annotated-types"
@@ -261,7 +260,6 @@ description = "LTS Port of Python audioop"
 optional = false
 python-versions = ">=3.13"
 groups = ["main"]
-markers = "python_version == \"3.13\""
 files = [
     {file = "audioop_lts-0.2.2-cp313-abi3-macosx_10_13_universal2.whl", hash = "sha256:fd3d4602dc64914d462924a08c1a9816435a2155d74f325853c1f1ac3b2d9800"},
     {file = "audioop_lts-0.2.2-cp313-abi3-macosx_10_13_x86_64.whl", hash = "sha256:550c114a8df0aafe9a05442a1162dfc8fec37e9af1d625ae6060fed6e756f303"},
@@ -1302,7 +1300,6 @@ files = [
 
 [package.dependencies]
 pytest = ">=8.2,<9"
-typing-extensions = {version = ">=4.12", markers = "python_version < \"3.13\""}
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1)"]
@@ -1376,12 +1373,11 @@ version = "4.15.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "test"]
+groups = ["main"]
 files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
 ]
-markers = {test = "python_version == \"3.12\""}
 
 [[package]]
 name = "typing-inspection"
@@ -1545,5 +1541,5 @@ propcache = ">=0.2.1"
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.12,<3.14"
-content-hash = "66289c3cdd0969deef008f7dc0921544e2fb45082365e556ee575bf33d97af36"
+python-versions = ">=3.13,<3.14"
+content-hash = "78c8ab136e37427fff5ed8c76bc8f632185aebb2bfd7d9f2443684225ffcca66"
