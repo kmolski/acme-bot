@@ -62,13 +62,13 @@ $ docker run -d \
       ghcr.io/kmolski/acme-bot:latest
 ```
 
-#### Standalone executable
+#### Poetry environment
 
 To use this method, [Poetry](https://python-poetry.org) has to be installed on your system.
 
 ```console
 $ git clone https://github.com/kmolski/acme-bot.git && cd acme-bot
-# copy acme_bot/config/default.conf to local.conf, set your own values
+# copy acme_bot/config/default.conf, set your own values
 $ poetry install
 $ poetry run acme-bot -c <configuration file>
 ```
