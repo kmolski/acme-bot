@@ -28,11 +28,11 @@ Getting started
 1. Create a new application in the [Discord Developer Portal](https://discord.com/developers/applications)
 2. Enable "Message Content Intent" in the "Bot" section
 3. Click "Reset Token" and "Copy" to copy your API token
-4. Enable the following permissions in the "Installation" section:
+4. Enable the following permissions in the "OAuth2" section:
+   - "Add Reactions"
    - "Attach Files"
    - "Connect"
    - "Embed Links"
-   - "Manage Messages"
    - "Read Message History"
    - "Send Messages"
    - "Speak"
