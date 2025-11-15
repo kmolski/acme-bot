@@ -47,24 +47,24 @@ def test_parse_file_substitution():
     assert META_MODEL.model_from_str("echo 1 no (open bar.txt) [foo.txt]") == expected
 
 
-async def test_expr_seq_eval_joins_output(fake_ctx):
+async def test_expr_seq_eval_joins_output(mock_ctx):
     ast = ExprSeq(
         expr_comps=[IntLiteral(None, value=1), BoolLiteral(None, value="False")]
     )
-    assert await ast.eval(fake_ctx) == "1False"
+    assert await ast.eval(mock_ctx) == "1False"
 
 
-async def test_expr_comp_returns_last_expr(fake_ctx):
+async def test_expr_comp_returns_last_expr(mock_ctx):
     ast = ExprComp(exprs=[IntLiteral(None, value=1), StrLiteral(None, value="hello")])
-    assert await ast.eval(fake_ctx) == "hello"
+    assert await ast.eval(mock_ctx) == "hello"
 
 
-async def test_expr_comp_propagates_exceptions(fake_ctx):
+async def test_expr_comp_propagates_exceptions(mock_ctx):
     ast = ExprComp(exprs=[IntLiteral(None, value=1), Command(name="echo", args=[])])
     with pytest.raises(Exception):
-        await ast.eval(fake_ctx)
+        await ast.eval(mock_ctx)
 
 
-async def test_expr_subst_evals_subexpr(fake_ctx):
+async def test_expr_subst_evals_subexpr(mock_ctx):
     ast = ExprSubst(parent=None, expr_seq=IntLiteral(None, value=1))
-    assert await ast.eval(fake_ctx) == 1
+    assert await ast.eval(mock_ctx) == 1
