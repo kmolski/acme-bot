@@ -8,60 +8,60 @@ from acme_bot.textutils import (
 )
 
 
-async def test_send_pages_short_msgs_are_unchanged(fake_ctx):
+async def test_send_pages_short_msgs_are_unchanged(mock_ctx):
     short = "too short to split"
 
-    await send_pages(fake_ctx, short)
-    assert fake_ctx.messages == [short]
+    await send_pages(mock_ctx, short)
+    assert mock_ctx.messages == [short]
 
 
-async def test_send_pages_long_lines_are_split_to_multiple_messages(fake_ctx):
+async def test_send_pages_long_lines_are_split_to_multiple_messages(mock_ctx):
     long_line = "much much longer " * 200
 
-    await send_pages(fake_ctx, long_line)
-    assert len(fake_ctx.messages) == 2
-    assert all(len(msg) <= MAX_MESSAGE_LENGTH for msg in fake_ctx.messages)
+    await send_pages(mock_ctx, long_line)
+    assert len(mock_ctx.messages) == 2
+    assert all(len(msg) <= MAX_MESSAGE_LENGTH for msg in mock_ctx.messages)
 
 
-async def test_send_pages_long_multiline_split_into_multiple_messages(fake_ctx):
+async def test_send_pages_long_multiline_split_into_multiple_messages(mock_ctx):
     long = "much much longer\n" * 200
 
-    await send_pages(fake_ctx, long)
-    assert len(fake_ctx.messages) == 2
-    assert all(len(msg) <= MAX_MESSAGE_LENGTH for msg in fake_ctx.messages)
+    await send_pages(mock_ctx, long)
+    assert len(mock_ctx.messages) == 2
+    assert all(len(msg) <= MAX_MESSAGE_LENGTH for msg in mock_ctx.messages)
 
 
-async def test_send_pages_preserves_empty_lines(fake_ctx):
+async def test_send_pages_preserves_empty_lines(mock_ctx):
     with_empty = "foobar\n\n" * 4
 
-    await send_pages(fake_ctx, with_empty)
-    assert fake_ctx.messages == [with_empty.rstrip()]
+    await send_pages(mock_ctx, with_empty)
+    assert mock_ctx.messages == [with_empty.rstrip()]
 
 
-async def test_send_pages_accepts_format_string(fake_ctx):
+async def test_send_pages_accepts_format_string(mock_ctx):
     content = "sample text"
     fmt = "```\n{}\n```"
 
-    await send_pages(fake_ctx, content, fmt=fmt)
-    assert fake_ctx.messages[0] == fmt.format(content)
-    assert "```" in fake_ctx.messages[0]
+    await send_pages(mock_ctx, content, fmt=fmt)
+    assert mock_ctx.messages[0] == fmt.format(content)
+    assert "```" in mock_ctx.messages[0]
 
 
-async def test_send_pages_sends_view_in_last_chunk(fake_ctx):
+async def test_send_pages_sends_view_in_last_chunk(mock_ctx):
     long = "much much longer\n" * 400
     view = View()
 
-    await send_pages(fake_ctx, long, view=view)
-    assert fake_ctx.views[:3] == [None] * 3
-    assert fake_ctx.views[3] == view
+    await send_pages(mock_ctx, long, view=view)
+    assert mock_ctx.views[:3] == [None] * 3
+    assert mock_ctx.views[3] == view
 
 
-async def test_send_pages_accepts_message_reference(fake_ctx):
+async def test_send_pages_accepts_message_reference(mock_ctx):
     long = "much much longer\n" * 400
     message = {}
 
-    await send_pages(fake_ctx, long, reference=message)
-    assert fake_ctx.references == [message] * 4
+    await send_pages(mock_ctx, long, reference=message)
+    assert mock_ctx.references == [message] * 4
 
 
 def test_escape_md_block_preserves_non_block_code():
