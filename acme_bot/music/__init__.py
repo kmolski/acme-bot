@@ -72,8 +72,8 @@ def strip_urls(urls):
     return (line.split()[0] for line in urls.split("\n") if line)
 
 
-class LavalinkPlayer(VoiceProtocol):
-    """Wrapper for lavalink.DefaultClient."""
+class MusicPlayer(VoiceProtocol):
+    """Wrapper for the lavalink.DefaultClient."""
 
     def __init__(self, bot, channel):
         super().__init__(bot, channel)
@@ -564,7 +564,7 @@ class MusicModule(commands.Cog, CogFactory):
         if ctx.voice_client is None:
             if author_voice := ctx.author.voice:
                 self.lavalink.player_manager.create(ctx.guild.id)
-                await author_voice.channel.connect(cls=LavalinkPlayer)
+                await author_voice.channel.connect(cls=MusicPlayer)
 
                 channel_id = author_voice.channel.id
                 async with self.__lock:

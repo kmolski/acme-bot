@@ -7,7 +7,7 @@ from uuid import uuid4
 import lavalink
 import pytest
 
-from acme_bot.music import LavalinkPlayer, MusicModule
+from acme_bot.music import MusicPlayer, MusicModule
 from acme_bot.remote_control import (
     RemoteControlModule,
     bearer_auth_factory,
@@ -45,7 +45,7 @@ class StubChannel:
 
     async def connect(self, *, cls):
         if self.ctx is not None:
-            self.ctx.voice_client = LavalinkPlayer(self.ctx.bot, self.ctx.guild)
+            self.ctx.voice_client = MusicPlayer(self.ctx.bot, self.ctx.guild)
 
 
 @dataclass
