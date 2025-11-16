@@ -7,7 +7,7 @@ from uuid import uuid4
 import lavalink
 import pytest
 
-from acme_bot.music import MusicPlayer, MusicModule
+from acme_bot.music import MusicModule
 from acme_bot.remote_control import (
     RemoteControlModule,
     bearer_auth_factory,
@@ -24,6 +24,8 @@ class StubTrack:
     identifier: str
     title: str
     author: str
+    duration: int = 0
+    uri: str = ""
 
 
 @dataclass
@@ -31,6 +33,11 @@ class StubGuild:
     """Stub discord.py guild object."""
 
     id: int = 123456789
+
+    async def change_voice_state(
+        self, *, channel=None, self_mute=False, self_deaf=False
+    ):
+        pass
 
 
 @dataclass
@@ -44,8 +51,8 @@ class StubChannel:
     guild: StubGuild = field(default_factory=StubGuild)
 
     async def connect(self, *, cls):
-        if self.ctx is not None:
-            self.ctx.voice_client = MusicPlayer(self.ctx.bot, self.ctx.guild)
+        self.ctx.voice_client = cls(self.ctx.bot, self.ctx.guild)
+        self.ctx.voice_client.cleanup = lambda: None
 
 
 @dataclass
@@ -83,13 +90,16 @@ class MockBot:
 class FakePlayerManager:
     """Fake lavalink.PlayerManager object."""
 
-    players: dict[object, object]
+    players: dict[object, object] = field(default_factory=dict)
 
     def create(self, guild_id):
-        pass
+        self.players[guild_id] = MockVoiceClient([], [], [])
 
     def get(self, channel_id):
         return self.players[channel_id]
+
+    async def destroy(self, guild_id):
+        del self.players[guild_id]
 
 
 @dataclass
@@ -114,18 +124,23 @@ class MockVoiceClient:
     position_timestamp: int = 0
     volume: int = 100
     paused: bool = False
+    is_connected: bool = True
     channel: StubChannel = field(default_factory=StubChannel)
 
     @property
     def channel_id(self):
         return self.channel.id
 
+    @channel_id.setter
+    def channel_id(self, value):
+        self.channel.id = value
+
     def notify(self):
         for observer in self.observers:
             observer.send_update()
 
     async def disconnect(self, force=False):
-        self.connected = False
+        self.is_connected = False
 
     async def play(self, track=None, **_):
         if self.loop == lavalink.DefaultPlayer.LOOP_QUEUE and self.current:
@@ -137,8 +152,8 @@ class MockVoiceClient:
         else:
             self.current = track
 
-    async def resume(self):
-        self.paused = False
+    async def skip(self):
+        await self.play()
 
     async def stop(self):
         self.current = None
@@ -146,8 +161,8 @@ class MockVoiceClient:
     def set_loop(self, loop):
         self.loop = loop
 
-    async def pause(self):
-        self.paused = True
+    async def set_pause(self, pause):
+        self.paused = pause
 
     async def set_volume(self, volume):
         self.volume = volume
@@ -253,7 +268,7 @@ class MockContext:
     files: list[str | None]
 
     bot: MockBot
-    voice_client: MockVoiceClient | None
+    voice_client: MockVoiceClient = None
 
     display: bool = True
     author: StubUser = field(default_factory=StubUser)
@@ -319,8 +334,8 @@ async def mock_bot():
 
 
 @pytest.fixture
-async def fake_player_manager(mock_voice_client):
-    return FakePlayerManager({mock_voice_client.channel_id: mock_voice_client})
+async def fake_player_manager():
+    return FakePlayerManager()
 
 
 @pytest.fixture
@@ -329,13 +344,13 @@ async def stub_lavalink(fake_player_manager):
 
 
 @pytest.fixture
-def mock_voice_client():
-    return MockVoiceClient([], [], [])
+def voice_client(mock_ctx):
+    return mock_ctx.voice_client
 
 
 @pytest.fixture
-def mock_ctx(mock_bot, mock_message, mock_voice_client):
-    return MockContext(
+async def mock_ctx(music_module, mock_message):
+    ctx = MockContext(
         [],
         [],
         [],
@@ -343,14 +358,16 @@ def mock_ctx(mock_bot, mock_message, mock_voice_client):
         AsyncList(),
         [],
         [],
-        mock_bot,
-        mock_voice_client,
+        music_module.bot,
     )
+    ctx.author.voice.channel.ctx = ctx
+    await music_module._ensure_voice_or_join(ctx)
+    return ctx
 
 
 @pytest.fixture
-def mock_ctx_history(mock_bot, stub_file_message, mock_voice_client):
-    return MockContext(
+async def mock_ctx_history(music_module, stub_file_message):
+    ctx = MockContext(
         [],
         [],
         [],
@@ -358,9 +375,11 @@ def mock_ctx_history(mock_bot, stub_file_message, mock_voice_client):
         AsyncList([stub_file_message]),
         [],
         [],
-        mock_bot,
-        mock_voice_client,
+        music_module.bot,
     )
+    ctx.author.voice.channel.ctx = ctx
+    await music_module._ensure_voice_or_join(ctx)
+    return ctx
 
 
 @pytest.fixture
@@ -374,7 +393,6 @@ def mock_ctx_no_voice(mock_bot, mock_message):
         [],
         [],
         mock_bot,
-        None,
     )
 
 
@@ -418,16 +436,16 @@ async def test_client(aiohttp_client, remote_control_module, app):
 
 
 @pytest.fixture
-async def remote_control_module(mock_bot, mock_voice_client, app):
+async def remote_control_module(mock_bot, voice_client, app):
     cog = RemoteControlModule(mock_bot, app, None)
-    await cog._register_player(mock_voice_client, 123456)
+    await cog._register_player(voice_client, 123456)
     return cog
 
 
 @pytest.fixture
-async def rmq_control_module(mock_bot, mock_voice_client):
+async def rmq_control_module(mock_bot, voice_client):
     cog = RmqControlModule(mock_bot, None)
-    await cog._register_player(mock_voice_client, 123456)
+    await cog._register_player(voice_client, 123456)
     return cog
 
 
@@ -437,10 +455,8 @@ def shell_module():
 
 
 @pytest.fixture
-def music_module(mock_bot, stub_lavalink, mock_voice_client):
+def music_module(mock_bot, stub_lavalink):
     cog = MusicModule(mock_bot, stub_lavalink)
-    cog._MusicModule__players[StubChannel.id] = mock_voice_client
-    cog._MusicModule__access_codes[123456] = mock_voice_client
     mock_bot.music_module = cog
     return cog
 
@@ -456,7 +472,7 @@ def amqp_exchange(amqp_channel):
 
 
 @pytest.fixture
-async def rmq_player_observer(amqp_exchange, mock_voice_client):
+async def rmq_player_observer(amqp_exchange, voice_client):
     return RmqMusicPlayerObserver(
-        amqp_exchange, mock_voice_client, uuid4(), get_running_loop()
+        amqp_exchange, voice_client, uuid4(), get_running_loop()
     )
