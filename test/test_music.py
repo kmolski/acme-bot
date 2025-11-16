@@ -37,6 +37,45 @@ async def test_remove_throws_on_string_argument(mock_ctx, music_module):
         await music_module.remove(music_module, mock_ctx, "foo")
 
 
+async def test_prev_moves_to_previous_entry(
+    mock_ctx, voice_client, youtube_playlist, music_module
+):
+    voice_client.current = youtube_playlist[0]
+    voice_client.queue.extend(youtube_playlist[1:])
+
+    await music_module.previous(music_module, mock_ctx)
+    assert voice_client.current.identifier == "FNKPYhXmzo0"
+
+
+async def test_skip_moves_to_previous_entry(
+    mock_ctx, voice_client, youtube_playlist, music_module
+):
+    voice_client.current = youtube_playlist[0]
+    voice_client.queue.extend(youtube_playlist[1:])
+
+    await music_module.skip(music_module, mock_ctx)
+    assert voice_client.current.identifier == "FNKPYhXmzo0"
+
+
+async def test_clear_clears_queue(
+    mock_ctx, voice_client, youtube_playlist, music_module
+):
+    voice_client.queue.extend(youtube_playlist)
+
+    await music_module.clear(music_module, mock_ctx)
+    assert len(voice_client.queue) == 0
+
+
+async def test_queue_returns_queue_contents(
+    mock_ctx, voice_client, youtube_playlist, music_module
+):
+    voice_client.current = youtube_playlist[0]
+    voice_client.queue.extend(youtube_playlist[1:])
+
+    result = await music_module.queue(music_module, mock_ctx)
+    assert "foo" in result
+
+
 async def test_quit_channel_if_empty_sends_event(
     mock_ctx, mock_bot, voice_client, music_module
 ):
