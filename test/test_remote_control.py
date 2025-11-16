@@ -191,6 +191,42 @@ async def test_move_command_does_not_move_if_id_isnt_matching(
     assert voice_client.current is None
 
 
+async def test_prev_command_moves_to_previous_entry(
+    test_client, voice_client, youtube_playlist
+):
+    voice_client.current = youtube_playlist[0]
+    voice_client.queue.extend(youtube_playlist[1:])
+
+    async with test_client:
+        await test_client.send_str(
+            """
+            {
+                "op": "prev",
+                "code": 123456
+            }
+            """
+        )
+    assert voice_client.current.identifier == "FNKPYhXmzo0"
+
+
+async def test_skip_command_moves_to_next_entry(
+    test_client, voice_client, youtube_playlist
+):
+    voice_client.current = youtube_playlist[0]
+    voice_client.queue.extend(youtube_playlist[1:])
+
+    async with test_client:
+        await test_client.send_str(
+            """
+            {
+                "op": "skip",
+                "code": 123456
+            }
+            """
+        )
+    assert voice_client.current.identifier == "FNKPYhXmzo0"
+
+
 async def test_observer_update_sends_player_state(test_client, voice_client):
     async with test_client:
         await test_client.send_str(
