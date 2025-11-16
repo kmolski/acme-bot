@@ -39,8 +39,8 @@ async def test_run_command_handles_command_error(test_client):
         )
 
 
-async def test_run_command_pauses_on_pause_command(test_client, mock_voice_client):
-    assert mock_voice_client.paused is False
+async def test_run_command_pauses_on_pause_command(test_client, voice_client):
+    assert voice_client.paused is False
 
     async with test_client:
         await test_client.send_str(
@@ -51,11 +51,11 @@ async def test_run_command_pauses_on_pause_command(test_client, mock_voice_clien
             }
             """
         )
-    assert mock_voice_client.paused is True
+    assert voice_client.paused is True
 
 
-async def test_run_command_resumes_on_resume_command(test_client, mock_voice_client):
-    await mock_voice_client.pause()
+async def test_run_command_resumes_on_resume_command(test_client, voice_client):
+    await voice_client.pause()
 
     async with test_client:
         await test_client.send_str(
@@ -66,13 +66,11 @@ async def test_run_command_resumes_on_resume_command(test_client, mock_voice_cli
             }
             """
         )
-    assert mock_voice_client.paused is False
+    assert voice_client.paused is False
 
 
-async def test_run_command_clears_queue_on_clear_command(
-    test_client, mock_voice_client
-):
-    mock_voice_client.queue.append({"id": 123})
+async def test_run_command_clears_queue_on_clear_command(test_client, voice_client):
+    voice_client.queue.append({"id": 123})
 
     async with test_client:
         await test_client.send_str(
@@ -83,10 +81,10 @@ async def test_run_command_clears_queue_on_clear_command(
             }
             """
         )
-    assert len(mock_voice_client.queue) == 0
+    assert len(voice_client.queue) == 0
 
 
-async def test_run_command_sets_loop_on_loop_command(test_client, mock_voice_client):
+async def test_run_command_sets_loop_on_loop_command(test_client, voice_client):
     async with test_client:
         await test_client.send_str(
             """
@@ -97,12 +95,10 @@ async def test_run_command_sets_loop_on_loop_command(test_client, mock_voice_cli
             }
             """
         )
-    assert mock_voice_client.loop is False
+    assert voice_client.loop is False
 
 
-async def test_run_command_sets_volume_on_volume_command(
-    test_client, mock_voice_client
-):
+async def test_run_command_sets_volume_on_volume_command(test_client, voice_client):
     async with test_client:
         await test_client.send_str(
             """
@@ -113,13 +109,13 @@ async def test_run_command_sets_volume_on_volume_command(
             }
             """
         )
-    assert mock_voice_client.volume == 42
+    assert voice_client.volume == 42
 
 
 async def test_remove_command_deletes_existing_entry_at_offset(
-    test_client, mock_voice_client, youtube_playlist
+    test_client, voice_client, youtube_playlist
 ):
-    mock_voice_client.queue.extend(youtube_playlist)
+    voice_client.queue.extend(youtube_playlist)
 
     async with test_client:
         await test_client.send_str(
@@ -132,13 +128,13 @@ async def test_remove_command_deletes_existing_entry_at_offset(
             }
             """
         )
-    assert [entry.identifier for entry in mock_voice_client.queue] == ["FNKPYhXmzo0"]
+    assert [entry.identifier for entry in voice_client.queue] == ["FNKPYhXmzo0"]
 
 
 async def test_remove_command_does_not_delete_if_id_isnt_matching(
-    test_client, mock_voice_client, youtube_playlist
+    test_client, voice_client, youtube_playlist
 ):
-    mock_voice_client.queue.extend(youtube_playlist)
+    voice_client.queue.extend(youtube_playlist)
 
     async with test_client:
         await test_client.send_str(
@@ -151,16 +147,16 @@ async def test_remove_command_does_not_delete_if_id_isnt_matching(
             }
             """
         )
-    assert [e.identifier for e in mock_voice_client.queue] == [
+    assert [e.identifier for e in voice_client.queue] == [
         "Ee_uujKuJM0",
         "FNKPYhXmzo0",
     ]
 
 
 async def test_move_command_moves_to_existing_entry_at_offset(
-    test_client, mock_voice_client, youtube_playlist
+    test_client, voice_client, youtube_playlist
 ):
-    mock_voice_client.queue.extend(youtube_playlist)
+    voice_client.queue.extend(youtube_playlist)
 
     async with test_client:
         await test_client.send_str(
@@ -173,13 +169,13 @@ async def test_move_command_moves_to_existing_entry_at_offset(
             }
             """
         )
-    assert mock_voice_client.current.identifier == "FNKPYhXmzo0"
+    assert voice_client.current.identifier == "FNKPYhXmzo0"
 
 
 async def test_move_command_does_not_move_if_id_isnt_matching(
-    test_client, mock_voice_client, youtube_playlist
+    test_client, voice_client, youtube_playlist
 ):
-    mock_voice_client.queue.extend(youtube_playlist)
+    voice_client.queue.extend(youtube_playlist)
 
     async with test_client:
         await test_client.send_str(
@@ -192,10 +188,10 @@ async def test_move_command_does_not_move_if_id_isnt_matching(
             }
             """
         )
-    assert mock_voice_client.current is None
+    assert voice_client.current is None
 
 
-async def test_observer_update_sends_player_state(test_client, mock_voice_client):
+async def test_observer_update_sends_player_state(test_client, voice_client):
     async with test_client:
         await test_client.send_str(
             """
