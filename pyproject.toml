@@ -36,6 +36,7 @@ ruff = "^0.14.6"
 pytest = "^8.4.2"
 pytest-aiohttp = "^1.1.0"
 pytest-asyncio = "^1.2.0"
+testcontainers = "^4.13.3"
 
 [tool.poetry-dynamic-versioning]
 enable = true
