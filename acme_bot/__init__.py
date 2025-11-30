@@ -57,9 +57,8 @@ class HelpCommand(commands.DefaultHelpCommand):
     """The default help command modified to work with the shell interpreter."""
 
     # Declare `command` as positional, because the shell does not support keyword args
-    # pylint: disable=arguments-differ
     async def command_callback(self, ctx, command=None):
-        self.context = ctx  # pylint: disable=attribute-defined-outside-init
+        self.context = ctx
         return await super().command_callback(ctx, command=command)
 
 
@@ -93,7 +92,7 @@ class AcmeBot(commands.Bot):
             ) as exc:
                 self.dispatch("command_error", ctx, exc)
             # Log the unhandled exceptions for later analysis
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
                 log.exception(
                     "Unhandled exception caused by message '%s':",
                     ctx.message.content,

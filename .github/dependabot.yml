@@ -5,13 +5,13 @@ updates:
     schedule:
       interval: "monthly"
     groups:
-      dev:
-        patterns: ["black", "flake8", "pylint"]
       test:
         patterns: ["pytest*"]
       semver-patch:
         update-types: ["patch"]
-        exclude-patterns: ["black"]
+    ignore:
+      - dependency-name: "ruff"
+        versions: ["*"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
