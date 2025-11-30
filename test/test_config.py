@@ -6,8 +6,8 @@ from acme_bot.config import load_config, ConfigProperty
 from acme_bot.config.properties import (
     COMMAND_PREFIX,
     DISCORD_TOKEN,
+    LAVALINK_URI,
     LOG_LEVEL,
-    RABBITMQ_URI,
 )
 
 
@@ -26,7 +26,7 @@ def test_load_config_user_file():
     load_config("test/data/test.conf")
 
     DISCORD_TOKEN()
-    RABBITMQ_URI()
+    LAVALINK_URI()
 
 
 def test_config_property_call_present():
