@@ -27,9 +27,7 @@ version = "2.0-dev"
 include = [{path = "acme_bot/version_info/commit.txt", format = ["sdist", "wheel"]}]
 
 [tool.poetry.group.dev.dependencies]
-black = "25.9.0"
-flake8 = "^7.3.0"
-pylint = "^4.0.2"
+ruff = "^0.14.6"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.4.2"

@@ -61,7 +61,7 @@ def _cog_header(cmd_cog):
     cog_name = cmd_cog.__cog_name__
     return f"""
 {_escape_md(cog_name)}
-{'-' * len(cog_name)}
+{"-" * len(cog_name)}
 """
 
 
@@ -74,7 +74,7 @@ def _cog_description(cmd_cog):
 def _cmd_docs(cmd):
     signature = _escape_md(cmd.signature)
     return f"""
-### {'/'.join([cmd.name] + cmd.aliases)}{(" " + signature).rstrip()}
+### {"/".join([cmd.name] + cmd.aliases)}{(" " + signature).rstrip()}
 ```
 {escape_md_block(cmd.help)}
 ```

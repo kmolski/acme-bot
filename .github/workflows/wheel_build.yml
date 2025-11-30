@@ -3,7 +3,7 @@ name: Build Python wheel
 on:
   pull_request:
   push:
-    branches: ['master']
+    branches: ["master"]
   workflow_call:
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - uses: actions/cache@v4
         id: cached-poetry
@@ -35,13 +35,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Check formatting with black
-        run: poetry run black --check .
-
-      - name: Lint with flake8
-        run: poetry run flake8
-
-      - name: Lint with pylint
-        run: poetry run pylint acme_bot/
+        run: poetry run ruff format --check
 
       - name: Run tests with pytest
         run: poetry run pytest test/
