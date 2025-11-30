@@ -135,13 +135,6 @@ class MockVoiceClient:
     def channel_id(self, value):
         self.channel.id = value
 
-    def notify(self):
-        for observer in self.observers:
-            observer.send_update()
-
-    async def disconnect(self, force=False):
-        self.is_connected = False
-
     async def play(self, track=None, **_):
         if self.loop == lavalink.DefaultPlayer.LOOP_QUEUE and self.current:
             self.queue.append(self.current)
