@@ -10,32 +10,35 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: nix develop --command bash {0}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 100
           fetch-tags: true
 
-      - uses: actions/setup-python@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: nix-community/cache-nix-action@v6
         with:
-          python-version: "3.13"
+          primary-key: nix-${{ hashFiles('**/flake.lock') }}
 
-      - uses: actions/cache@v4
-        id: cached-poetry
+      - name: Cache venv dependencies
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.local
-            ~/.cache/pypoetry/virtualenvs
+            .venv/
           key: poetry-${{ hashFiles('**/poetry.lock') }}
-
-      - uses: snok/install-poetry@v1
-        if: steps.cached-poetry.outputs.cache-hit != 'true'
 
       - name: Install Python dependencies
         run: poetry install --no-interaction
 
-      - name: Check formatting with black
-        run: poetry run ruff format --check
+      - name: Check formatting with ruff
+        run: ruff format --check
+
+      - name: Lint with ruff
+        run: ruff check
 
       - name: Run tests with pytest
         run: poetry run pytest test/
@@ -44,7 +47,6 @@ jobs:
         run: poetry build --no-interaction
 
       - name: Generate remote API schema
-        shell: bash
         run: poetry run docs/gen/remote_api_schema.py >remote_api.json
 
       - uses: actions/upload-artifact@v5
