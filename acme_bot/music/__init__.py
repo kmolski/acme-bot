@@ -16,7 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from asyncio import Queue, Lock
+from asyncio import Lock, Queue
 from itertools import chain
 from random import choices
 
@@ -29,6 +29,7 @@ from acme_bot.autoloader import CogFactory, autoloaded
 from acme_bot.config.properties import (
     LAVALINK_URI,
     MUSIC_REMOTE_BASE_URL,
+    MUSIC_SEARCH_DB_URL,
 )
 from acme_bot.convutils import to_int
 from acme_bot.music.ui import (
@@ -175,6 +176,27 @@ class MusicPlayer(VoiceProtocol):
 
     async def search(self, query):
         """Search for tracks using the given query."""
+        import psycopg
+
+        with psycopg.connect(
+            str(MUSIC_SEARCH_DB_URL()), row_factory=psycopg.rows.dict_row
+        ) as conn:
+            with conn.cursor() as cur:
+                q = query.removeprefix("ytsearch:")
+                sql = """
+                    SELECT path, title, artist
+                    FROM track
+                    WHERE search_vector @@ websearch_to_tsquery('english', %s)
+                    ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', %s)) DESC
+                    LIMIT 10;
+                """
+                cur.execute(sql, (q, q))
+                log.info("Search results: %s", cur.rowcount)
+                if res := cur.fetchall():
+                    return [
+                        (await self.__lavalink.get_tracks(x["path"])).tracks[0]
+                        for x in res
+                    ]
         return (await self.__lavalink.get_tracks(query)).tracks
 
     async def pause(self):
@@ -288,6 +310,7 @@ class MusicModule(commands.Cog, CogFactory):
         query = " ".join(str(part) for part in query)
         async with ctx.typing():
             results = await ctx.voice_client.search("ytsearch:" + query)
+        log.info("Results: %s", results)
 
         new = Queue()
         await ctx.send_pages(

@@ -11,9 +11,12 @@ dependencies = [
   "aiohttp (>=3.13.1,<4.0.0)",
   "discord.py (>=2.6.4,<3.0.0)",
   "lavalink (>=5.9.0,<6.0.0)",
+  "mutagen (>=1.47.0,<2.0.0)",
+  "psycopg[binary] (>=3.2.13,<4.0.0)",
   "pydantic (>=2.12.3,<3.0.0)",
   "python-dotenv (>=1.1.1,<2.0.0)",
   "textX (>=4.2.3,<5.0.0)",
+  "watchdog (>=6.0.0,<7.0.0)",
 ]
 
 [project.urls]
@@ -26,8 +29,8 @@ acme-bot = "acme_bot:run"
 typeCheckingMode = "off"
 
 [tool.poetry]
-version = "2.0-dev"
 include = [{path = "acme_bot/version_info/commit.txt", format = ["sdist", "wheel"]}]
+version = "2.0-dev"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.14.6"

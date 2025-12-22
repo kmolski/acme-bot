@@ -16,6 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+from pathlib import Path
 
 from yarl import URL
 
@@ -37,5 +38,7 @@ LIVEPROBE_ENABLE = ConfigProperty("LIVEPROBE_ENABLE", bool)
 LIVEPROBE_PORT = ConfigProperty("LIVEPROBE_PORT", int)
 
 # Music module
+MUSIC_SEARCH_DB_URL = ConfigProperty("MUSIC_SEARCH_DB_URL", URL)
+MUSIC_SEARCH_PATH = ConfigProperty("MUSIC_SEARCH_PATH", Path)
 MUSIC_REMOTE_BASE_URL = ConfigProperty("MUSIC_REMOTE_BASE_URL", URL)
 MUSIC_REMOTE_PORT = ConfigProperty("MUSIC_REMOTE_PORT", int)
