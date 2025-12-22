@@ -102,7 +102,7 @@ class RemoteControlModule(commands.Cog, CogFactory):
         return cog
 
     async def cog_unload(self):
-        await self.__runner.close()
+        await self.__runner.cleanup()
 
     @commands.Cog.listener("on_acme_bot_player_created")
     async def _register_player(self, player, access_code):
