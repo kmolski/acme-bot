@@ -1,22 +1,23 @@
 {
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
   };
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem
-      (system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-        in
-        {
-          devShells.default = with pkgs; mkShell {
+  outputs = { nixpkgs, ... }:
+    let
+      forAllSystems = f: nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
+        system: f { pkgs = import nixpkgs { inherit system; }; }
+      );
+    in
+    {
+      devShells = forAllSystems
+        ({ pkgs }: {
+          default = with pkgs; mkShell {
             buildInputs = [
               (python313.withPackages (ps: with ps; [ ruff poetry-dynamic-versioning ]))
               basedpyright
               poetry
             ];
           };
-        }
-      );
+        });
+    };
 }
