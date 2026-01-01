@@ -50,7 +50,7 @@ jobs:
       - name: Generate remote API schema
         run: poetry run docs/gen/remote_api_schema.py >remote_api.json
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: python-wheel
           path: |
