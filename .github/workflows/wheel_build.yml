@@ -25,7 +25,7 @@ jobs:
           primary-key: nix-${{ hashFiles('**/flake.lock') }}
 
       - name: Cache venv dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.local
