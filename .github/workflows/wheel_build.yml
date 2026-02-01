@@ -20,7 +20,7 @@ jobs:
           fetch-tags: true
 
       - uses: nixbuild/nix-quick-install-action@v34
-      - uses: nix-community/cache-nix-action@v6
+      - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: nix-${{ hashFiles('**/flake.lock') }}
 
