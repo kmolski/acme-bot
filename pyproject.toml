@@ -33,7 +33,7 @@ include = [{path = "acme_bot/version_info/commit.txt", format = ["sdist", "wheel
 ruff = "^0.14.6"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.2"
+pytest = "^9.0.1"
 pytest-aiohttp = "^1.1.0"
 pytest-asyncio = "^1.2.0"
 
